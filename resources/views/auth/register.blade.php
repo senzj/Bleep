@@ -13,11 +13,27 @@
                     <form method="POST" action="{{ route('register') }}">
                         @csrf
 
+                        {{-- Display Name --}}
+                        <label class="floating-label mb-6">
+                            <input type="text"
+                                   name="display_name"
+                                   placeholder="Display Name"
+                                   value="{{ old('display_name') }}"
+                                   class="input input-bordered @error('display_name') input-error @enderror"
+                                   required>
+                            <span>Display Name</span>
+                        </label>
+                        @error('display_name')
+                            <div class="label -mt-4 mb-2">
+                                <span class="label-text-alt text-error">{{ $message }}</span>
+                            </div>
+                        @enderror
+
                         {{-- Username --}}
                         <label class="floating-label mb-6">
                             <input type="text"
                                    name="username"
-                                   placeholder="JohnDoe"
+                                   placeholder="Username"
                                    value="{{ old('username') }}"
                                    class="input input-bordered @error('username') input-error @enderror"
                                    required>
@@ -29,11 +45,11 @@
                             </div>
                         @enderror
 
-                        <!-- Email -->
+                        {{-- Email --}}
                         <label class="floating-label mb-6">
                             <input type="email"
                                    name="email"
-                                   placeholder="mail@example.com"
+                                   placeholder="Email"
                                    value="{{ old('email') }}"
                                    class="input input-bordered @error('email') input-error @enderror"
                                    required>
@@ -45,11 +61,11 @@
                             </div>
                         @enderror
 
-                        <!-- Password -->
+                        {{-- Password --}}
                         <label class="floating-label mb-6">
                             <input type="password"
                                    name="password"
-                                   placeholder="password"
+                                   placeholder="Password"
                                    class="input input-bordered @error('password') input-error @enderror"
                                    required>
                             <span>Password</span>
@@ -60,17 +76,17 @@
                             </div>
                         @enderror
 
-                        <!-- Password Confirmation -->
+                        {{-- Password Confirmation --}}
                         <label class="floating-label mb-6">
                             <input type="password"
                                    name="password_confirmation"
-                                   placeholder="password confirmation"
+                                   placeholder="Password Confirmation"
                                    class="input input-bordered @error('password_confirmation') input-error @enderror"
                                    required>
                             <span>Confirm Password</span>
                         </label>
 
-                        <!-- Submit Button -->
+                        {{-- Submit Button --}}
                         <div class="form-control mt-8">
                             <button type="submit" class="btn btn-primary btn-sm w-full">
                                 Register

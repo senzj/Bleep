@@ -15,7 +15,7 @@ class Login extends Controller
     {
         // Validate the input
         $credentials = $request->validate([
-            'email' => 'required|email',
+            'username' => 'required|exists:users,username',
             'password' => 'required',
         ]);
 
@@ -30,7 +30,7 @@ class Login extends Controller
 
         // If login fails, redirect back with error
         return back()
-            ->withErrors(['email' => 'User does not exist.'])
-            ->onlyInput('email');
+            ->withErrors(['username' => 'User does not exist.'])
+            ->onlyInput('username');
     }
 }

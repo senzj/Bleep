@@ -8,23 +8,23 @@
         <div class="hero-content flex-col">
             <div class="card w-96 bg-base-100">
                 <div class="card-body">
-                    <h1 class="text-3xl font-bold text-center mb-6">Welcome Back</h1>
+                    <h1 class="text-3xl font-bold text-center mb-6">Bleep</h1>
 
                     <form method="POST" action="/login">
                         @csrf
 
                         {{-- Email --}}
                         <label class="floating-label mb-6">
-                            <input type="email"
-                                   name="email"
-                                   placeholder="mail@example.com"
-                                   value="{{ old('email') }}"
-                                   class="input input-bordered @error('email') input-error @enderror"
+                            <input type="username"
+                                   name="username"
+                                   placeholder="Username"
+                                   value="{{ old('username') }}"
+                                   class="input input-bordered @error('username') input-error @enderror"
                                    required
                                    autofocus>
-                            <span>Email</span>
+                            <span>Username</span>
                         </label>
-                        @error('email')
+                        @error('username')
                             <div class="label -mt-4 mb-2">
                                 <span class="label-text-alt text-error">{{ $message }}</span>
                             </div>
@@ -34,7 +34,7 @@
                         <label class="floating-label mb-6">
                             <input type="password"
                                    name="password"
-                                   placeholder="password"
+                                   placeholder="Password"
                                    class="input input-bordered @error('password') input-error @enderror"
                                    required>
                             <span>Password</span>
@@ -47,11 +47,11 @@
 
                         {{-- Remember Me --}}
                         <div class="form-control mt-4">
-                            <label class="label cursor-pointer justify-start">
+                            <label class="label cursor-pointer justify-end">
                                 <input type="checkbox"
                                        name="remember"
                                        class="checkbox">
-                                <span class="label-text ml-2">Remember me</span>
+                                <span class="label-text ml-1">Remember me</span>
                             </label>
                         </div>
 

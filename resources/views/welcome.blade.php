@@ -1,5 +1,5 @@
 <x-layout>
-    <x-slot:title> Bleep </x-slot:title>
+    <x-slot:title> Welcome </x-slot:title>
 
     <div class="max-w-2xl mx-auto text-center mt-20">
         <h1 class="text-4xl font-bold mb-4">Welcome to Bleep!</h1>
