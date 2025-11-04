@@ -1,7 +1,6 @@
 <?php
 
+use App\Http\Controllers\BleepController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('home');
-});
+Route::get('/', [BleepController::class, 'index']);
