@@ -36,4 +36,44 @@ class BleepController extends Controller
 
         return redirect('/')->with('success', 'Your bleep has been posted!');
     }
+
+    /**
+     * shows the Edit Bleep form.
+     */
+    public function edit(Bleep $bleep)
+    {
+        return view('bleeps.edit', compact('bleep'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Bleep $bleep)
+    {
+        $validated = $request->validate([
+            'message' => 'required|string|max:255',
+        ], [
+            'message.required' => 'Thoughts cannot be empty! Write something to bleep about.',
+            'message.max' => 'Your bleep is too long! Keep it under 255 characters.',
+        ]);
+
+        $bleep->update([
+            'message' => $validated['message'],
+        ]);
+
+        return redirect('/')->with('success', 'Your bleep has been updated!');
+    }
+
+    /**
+     * Delete the specified resource from storage.
+     */
+    public function destroy(Bleep $bleep)
+    {
+        // $this->authorize('delete', $bleep);
+
+        $bleep->delete();
+
+        return redirect('/')->with('success', 'Your bleep has been deleted!');
+    }
+
 }
