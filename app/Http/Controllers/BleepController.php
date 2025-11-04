@@ -3,10 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bleep;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class BleepController extends Controller
 {
+    /**
+     * Use authorizeResource to apply policies.
+     */
+    use AuthorizesRequests;
+
+    /**
+     * Display a listing of the resource.
+     */
     public function index()
     {
         $bleeps = Bleep::with('user')
@@ -30,7 +40,7 @@ class BleepController extends Controller
         ]);
 
 
-        Bleep::create([
+        Auth::user()->bleeps()->create([
             'message' => $validated['message'],
         ]);
 
@@ -50,6 +60,8 @@ class BleepController extends Controller
      */
     public function update(Request $request, Bleep $bleep)
     {
+        $this->authorize('update', $bleep);
+
         $validated = $request->validate([
             'message' => 'required|string|max:255',
         ], [
@@ -69,7 +81,7 @@ class BleepController extends Controller
      */
     public function destroy(Bleep $bleep)
     {
-        // $this->authorize('delete', $bleep);
+        $this->authorize('delete', $bleep);
 
         $bleep->delete();
 

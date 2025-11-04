@@ -33,20 +33,22 @@
                             <span class="text-sm text-base-content/60 italic">edited</span>
                         @endif
                     </div>
-                    <div class="flex gap-1">
-                        <a href="/bleeps/{{ $bleep->id }}/edit" class="btn btn-ghost btn-xs">
-                            Edit
-                        </a>
-                        <form method="POST" action="/bleeps/{{ $bleep->id }}">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit"
-                                onclick="return confirm('Are you sure you want to delete this bleep?')"
-                                class="btn btn-ghost btn-xs text-error">
-                                Delete
-                            </button>
-                        </form>
-                    </div>
+                    @can('update', $bleep)
+                        <div class="flex gap-1">
+                            <a href="/bleeps/{{ $bleep->id }}/edit" class="btn btn-ghost btn-xs">
+                                Edit
+                            </a>
+                            <form method="POST" action="/bleeps/{{ $bleep->id }}">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit"
+                                    onclick="return confirm('Are you sure you want to delete this bleep?')"
+                                    class="btn btn-ghost btn-xs text-error">
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
+                    @endcan
                 </div>
 
                 <p class="mt-1">
