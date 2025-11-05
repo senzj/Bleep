@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\Register;
 use App\Http\Controllers\BleepController;
 use App\Http\Controllers\Bleep\LikesController;
+use App\Http\Controllers\Bleep\CommentsController;
 
 // REGISTER
 Route::view('/register', 'auth.register')
@@ -47,5 +48,11 @@ Route::middleware('auth')->group((function () {
     // Likes Routes
     Route::post('/bleeps/{bleep}/like', [LikesController::class, 'toggle']);
     Route::get('/bleeps/{bleep}/likes-count', [LikesController::class, 'count']);
+
+    // Comments Routes
+    Route::get('/bleeps/{bleep}/comments', [CommentsController::class, 'index']);
+    Route::get('/bleeps/{bleep}/comments/count', [CommentsController::class, 'count']);
+    Route::post('/bleeps/{bleep}/comments', [CommentsController::class, 'store'])->middleware('auth');
+    Route::delete('/comments/{comment}', [CommentsController::class, 'destroy'])->middleware('auth');
 }));
 

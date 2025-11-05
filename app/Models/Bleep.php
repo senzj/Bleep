@@ -27,10 +27,19 @@ class Bleep extends Model
     }
 
     /**
+     * Relation to Comments model
+     */
+    public function comments()
+    {
+        return $this->hasMany(Comments::class);
+    }
+
+    /**
      * Check if user liked this bleep
      */
     public function isLikedBy($user)
     {
         return $this->likes()->where('user_id', $user->id)->exists();
     }
+
 }

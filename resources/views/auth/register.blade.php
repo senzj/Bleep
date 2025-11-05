@@ -1,4 +1,3 @@
-
 <x-layout>
     <x-slot:title>
         Register
@@ -12,6 +11,9 @@
 
                     <form method="POST" action="{{ route('register') }}">
                         @csrf
+
+                        {{-- Hidden timezone field --}}
+                        <input type="hidden" name="timezone" id="timezone" value="UTC">
 
                         {{-- Display Name --}}
                         <label class="floating-label mb-6">
@@ -103,4 +105,12 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Detect and set timezone
+        document.addEventListener('DOMContentLoaded', function() {
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            document.getElementById('timezone').value = timezone;
+        });
+    </script>
 </x-layout>

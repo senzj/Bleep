@@ -22,10 +22,7 @@ class BleepController extends Controller
     {
         $bleeps = Bleep::with('user')
             ->latest()
-            ->take(50)
-            ->get();
-
-        Log::info('Bleeps: ' . $bleeps->toJson());
+            ->paginate(50);
 
         return view('home', ['bleeps' => $bleeps]);
     }
