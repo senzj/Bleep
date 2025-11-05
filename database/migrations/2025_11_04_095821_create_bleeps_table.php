@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->cascadeOnDelete();
             $table->text('message');
+            $table->boolean('is_anonymous')->default(false);
             $table->timestamps();
         });
     }

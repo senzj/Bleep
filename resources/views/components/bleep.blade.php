@@ -7,6 +7,12 @@
 {{-- Props --}}
 @props(['bleep'])
 
+@php
+    $isAnonymous = (bool) $bleep->is_anonymous;
+    $displayName = $isAnonymous ? 'Anonymous' : ($bleep->user->dname ?? 'Unknown');
+    $username = $isAnonymous ? null : ("@" . $bleep->user->username ?? null);
+@endphp
+
 <article class="bg-base-100 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
 
     {{-- Header: Avatar + Author Info --}}
@@ -37,14 +43,14 @@
                     {{-- Name and username --}}
                     <div>
                         <div class="font-semibold text-gray-900>
-                            <span class="font-semibold text-sm truncate">{{ $bleep->user->dname ?? 'Anonymous' }}</span>
+                            <span class="font-semibold text-sm truncate">{{ $displayName }}</span>
 
                         </div>
 
                         <!-- Username -->
                         @if($bleep->user->username)
                             <div class="text-gray-500 text-sm">
-                                <span class="text-base-content/60 text-sm truncate">{{ "@" . $bleep->user->username }}</span>
+                                <span class="text-base-content/60 text-sm truncate">{{ $username }}</span>
                             </div>
                         @endif
 

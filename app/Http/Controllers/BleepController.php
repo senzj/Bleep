@@ -34,14 +34,18 @@ class BleepController extends Controller
     {
         $validated = $request->validate([
             'message' => 'required|string|max:255',
+            'is_anonymous' => 'nullable|boolean',
         ], [
             'message.required' => 'Thoughts cannot be empty! Write something to bleep about.',
             'message.max' => 'Your bleep is too long! Keep it under 255 characters.',
         ]);
 
 
+        $isAnonymous = $request->boolean('is_anonymous');
+
         Auth::user()->bleeps()->create([
             'message' => $validated['message'],
+            'is_anonymous' => $isAnonymous,
         ]);
 
         return redirect('/')->with('success', 'Your bleep has been posted!');

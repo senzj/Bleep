@@ -10,7 +10,7 @@ class Comments extends Model
         'user_id',
         'bleep_id',
         'message',
-        'is_anonymous'
+        'is_anonymous',
     ];
 
     /**

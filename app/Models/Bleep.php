@@ -8,6 +8,7 @@ class Bleep extends Model
 {
     protected $fillable = [
         'message',
+        'is_anonymous',
     ];
 
     /**

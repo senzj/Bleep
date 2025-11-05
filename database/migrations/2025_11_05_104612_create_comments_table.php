@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('bleep_id')->constrained()->onDelete('cascade');
             $table->text('message');
+
             $table->boolean('is_anonymous')->default(false);
             $table->timestamps();
         });

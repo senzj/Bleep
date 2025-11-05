@@ -36,7 +36,14 @@
                                 </div>
                             @enderror
 
-                            <div class="mt-4 flex items-center justify-end">
+                            <div class="mt-4 flex items-center justify-between">
+                                {{-- anonymous toggle --}}
+                                <label class="cursor-pointer label">
+                                    <span class="label-text">Post anonymously</span>
+                                    <input type="checkbox" name="is_anonymous" value="1" class="toggle toggle-primary" {{ old('is_anonymous') ? 'checked' : '' }} />
+                                </label>
+
+                                {{-- submit post --}}
                                 <button type="submit" class="btn btn-primary btn-sm">
                                     <i data-lucide="send" class="w-4 h-4"></i> Post
                                 </button>

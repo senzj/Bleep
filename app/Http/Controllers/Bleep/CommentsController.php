@@ -46,13 +46,14 @@ class CommentsController extends Controller
     public function store(Request $request, Bleep $bleep)
     {
         $request->validate([
-            'message' => 'required|string|max:500'
+            'message' => 'required|string|max:500',
+            'is_anonymous' => 'sometimes|boolean',
         ]);
 
         $comment = $bleep->comments()->create([
             'user_id' => Auth::id(),
             'message' => $request->message,
-            'is_anonymous' => false
+            'is_anonymous' => $request->is_anonymous ?? false,
         ]);
 
         return response()->json([
