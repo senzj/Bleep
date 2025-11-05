@@ -17,4 +17,20 @@ class Bleep extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Relation to Likes model
+     */
+    public function likes()
+    {
+        return $this->hasMany(Likes::class);
+    }
+
+    /**
+     * Check if user liked this bleep
+     */
+    public function isLikedBy($user)
+    {
+        return $this->likes()->where('user_id', $user->id)->exists();
+    }
 }

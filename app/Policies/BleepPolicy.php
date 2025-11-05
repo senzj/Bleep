@@ -63,4 +63,12 @@ class BleepPolicy
     {
         return false;
     }
+
+    /**
+     * Determine whether the user can like the model.
+     */
+    public function like(?User $user): bool
+    {
+        return $user !== null;
+    }
 }

@@ -1,3 +1,7 @@
+{{-- scripts --}}
+@vite(['resources/js/bleep/likes'])
+
+{{-- Props --}}
 @props(['bleep'])
 
 <article class="bg-base-100 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -25,9 +29,9 @@
         <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2 min-w-0">
-                    <span class="font-semibold text-sm truncate">{{ $bleep->dname ?? 'Anonymous' }}</span>
-                    @if($bleep->username)
-                        <span class="text-base-content/60 text-sm truncate">@{{ $bleep->username }}</span>
+                    <span class="font-semibold text-sm truncate">{{ $bleep->user->dname ?? 'Anonymous' }}</span>
+                    @if($bleep->user->username)
+                        <span class="text-base-content/60 text-sm truncate">{{ "@" . $bleep->user->username }}</span>
                     @endif
                     <span class="text-base-content/40">·</span>
                     <span class="text-sm whitespace-nowrap">{{ $bleep->created_at->diffForHumans() }}</span>
@@ -99,10 +103,18 @@
     {{-- Engagement Footer --}}
     <div class="flex items-center justify-between pt-3 border-t border-base-200">
         {{-- Likes --}}
-        <button class="btn btn-ghost btn-xs gap-1 hover:bg-red-100/50 hover:text-red-600 transition-colors group">
-            <i data-lucide="heart" class="w-4 h-4 group-hover:scale-110 transition-transform"></i>
-            <span class="hidden sm:inline text-xs">3.8k Like</span>
-        </button>
+        <form method="POST" action="/bleeps/{{ $bleep->id }}/like" class="like-form inline">
+            @csrf
+            <button type="submit"
+                class="btn btn-ghost btn-xs gap-1 hover:bg-red-100/50 hover:text-red-600 transition-colors group like-btn
+                {{ Auth::check() && $bleep->isLikedBy(Auth::user()) ? 'text-red-600' : '' }}"
+                data-bleep-id="{{ $bleep->id }}">
+                <i data-lucide="heart" class="w-4 h-4 group-hover:scale-110 transition-transform heart-icon"></i>
+                <span class="hidden sm:inline text-xs like-count">
+                    {{ $bleep->likes()->count() }} {{ $bleep->likes()->count() === 1 ? 'Like' : 'Likes' }}
+                </span>
+            </button>
+        </form>
 
         {{-- Replies --}}
         <button class="btn btn-ghost btn-xs gap-1 hover:bg-blue-100/50 hover:text-blue-600 transition-colors group">

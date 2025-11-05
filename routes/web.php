@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\Logout;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\Register;
 use App\Http\Controllers\BleepController;
+use App\Http\Controllers\Bleep\LikesController;
 
 // REGISTER
 Route::view('/register', 'auth.register')
@@ -30,15 +31,21 @@ Route::post('/logout', Logout::class)
     ->name('logout');
 
 
-// Bleep Routes
+// Bleep Home page
 Route::get('/', [BleepController::class, 'index']);
 
+
+// Protected Auth Routes
 Route::middleware('auth')->group((function () {
 
+    // Bleep Resource Routes
     Route::post('/bleeps', [BleepController::class, 'store']);
     Route::get('/bleeps/{bleep}/edit', [BleepController::class, 'edit']);
     Route::put('/bleeps/{bleep}', [BleepController::class, 'update']);
     Route::delete('/bleeps/{bleep}', [BleepController::class, 'destroy']);
 
+    // Likes Routes
+    Route::post('/bleeps/{bleep}/like', [LikesController::class, 'toggle']);
+    Route::get('/bleeps/{bleep}/likes-count', [LikesController::class, 'count']);
 }));
 

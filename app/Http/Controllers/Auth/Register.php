@@ -25,6 +25,7 @@ class Register extends Controller
 
         // Create the user
         $user = User::create([
+            'dname' => $validated['display_name'],
             'username' => $validated['username'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Bleep;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
@@ -23,6 +24,8 @@ class BleepController extends Controller
             ->latest()
             ->take(50)
             ->get();
+
+        Log::info('Bleeps: ' . $bleeps->toJson());
 
         return view('home', ['bleeps' => $bleeps]);
     }
