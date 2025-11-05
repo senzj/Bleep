@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
 
             if (!Array.isArray(data.comments) || data.comments.length === 0) {
-                floatingContent.innerHTML = await fetchPartial('empty-comments');
+                floatingContent.innerHTML = renderEmptyState();
             } else {
                 floatingContent.innerHTML = data.comments
                     .map(comment => renderCommentHTML(comment))
@@ -205,8 +205,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Error loading comments:', error);
-            floatingContent.innerHTML = await fetchPartial('error-comments');
+            floatingContent.innerHTML = renderErrorState();
         }
+    }
+
+    function renderEmptyState() {
+        return `
+            <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
+                <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>
+                <p class="text-sm font-semibold">No comments yet</p>
+                <p class="text-xs">Be the first to share your thoughts.</p>
+            </div>
+        `;
+    }
+
+    function renderErrorState() {
+        return `
+            <div class="flex flex-col items-center justify-center py-10 text-error">
+                <i data-lucide="alert-triangle" class="w-8 h-8 mb-3"></i>
+                <p class="text-sm font-semibold">Unable to load comments.</p>
+                <p class="text-xs text-base-content/70">Please try again shortly.</p>
+            </div>
+        `;
     }
 
     // Render comment HTML (inline styling from Blade template)
