@@ -13,6 +13,10 @@ class Comments extends Model
         'is_anonymous',
     ];
 
+    protected $casts = [
+        'is_anonymous' => 'boolean',
+    ];
+
     /**
      * Relation to User model
      */

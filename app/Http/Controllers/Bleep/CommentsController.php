@@ -20,22 +20,9 @@ class CommentsController extends Controller
         $comments = $bleep->comments()
             ->with('user')
             ->latest()
-            ->paginate(50)
-            ->map(function($comment) {
-                return [
-                    'id' => $comment->id,
-                    'message' => $comment->message,
-                    'created_at' => $comment->created_at->toDateTimeString(),
-                    'created_at_iso' => $comment->created_at->toIso8601String(),
-                    'diffTimestamp' => $comment->created_at->diffForHumans(),
-                    'user' => [
-                        'username' => $comment->user->username,
-                        'dname' => $comment->user->dname,
-                        'email' => $comment->user->email,
-                        'timezone' => $comment->user->timezone,
-                    ]
-                ];
-            });
+            ->take(50)
+            ->get()
+            ->map(fn ($comment) => $this->transformComment($comment));
 
         return response()->json(['comments' => $comments]);
     }
@@ -53,12 +40,12 @@ class CommentsController extends Controller
         $comment = $bleep->comments()->create([
             'user_id' => Auth::id(),
             'message' => $request->message,
-            'is_anonymous' => $request->is_anonymous ?? false,
-        ]);
+            'is_anonymous' => $request->boolean('is_anonymous'),
+        ])->load('user');
 
         return response()->json([
             'success' => true,
-            'comment' => $comment->load('user')
+            'comment' => $this->transformComment($comment),
         ]);
     }
 
@@ -82,5 +69,25 @@ class CommentsController extends Controller
         $comment->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    protected function transformComment(Comments $comment): array
+    {
+        $user = $comment->user;
+
+        return [
+            'id' => $comment->id,
+            'message' => $comment->message,
+            'created_at' => optional($comment->created_at)->toDateTimeString(),
+            'created_at_iso' => optional($comment->created_at)->toIso8601String(),
+            'diffTimestamp' => optional($comment->created_at)->diffForHumans(),
+            'is_anonymous' => (bool) $comment->is_anonymous,
+            'user' => [
+                'username' => $comment->is_anonymous ? null : optional($user)->username,
+                'dname' => $comment->is_anonymous ? null : optional($user)->dname,
+                'email' => $comment->is_anonymous ? null : optional($user)->email,
+                'timezone' => $comment->is_anonymous ? null : optional($user)->timezone,
+            ],
+        ];
     }
 }

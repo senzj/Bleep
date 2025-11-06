@@ -35,7 +35,7 @@
     }
 @endphp
 
-<article class="bg-base-100 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+<article class="bg-base-100 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow duration-200">
 
     {{-- Header: Avatar + Author Info --}}
     <div class="flex gap-3 mb-4">

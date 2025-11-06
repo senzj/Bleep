@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const floatingContent = document.getElementById('floating-comments-scroll');
     const floatingForm = document.getElementById('floating-comment-form');
     const floatingTextarea = floatingForm?.querySelector('textarea[name="message"]');
+    const anonymousToggle = floatingForm?.querySelector('#comment-anonymous-toggle');
+    const anonymousHelper = floatingForm?.querySelector('#comment-anonymous-helper');
     const overlay = document.getElementById('comments-overlay');
     const closeButton = document.getElementById('close-comments-btn');
     const viewerTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -76,10 +78,6 @@ document.addEventListener('DOMContentLoaded', function() {
             floatingModal.style.top = '50%';
             floatingModal.style.transform = 'translateY(-50%)';
             floatingModal.style.bottom = 'auto';
-
-            positionModal(bleepElement);
-            window.addEventListener('scroll', handleScroll);
-            window.addEventListener('resize', handleResize);
         } else {
             floatingModal.style.width = 'calc(100vw - 1.5rem)';
             floatingModal.style.height = '85vh';
@@ -89,9 +87,6 @@ document.addEventListener('DOMContentLoaded', function() {
             floatingModal.style.transform = 'translate(-50%, -50%)';
             floatingModal.style.right = 'auto';
             floatingModal.style.bottom = 'auto';
-
-            window.removeEventListener('scroll', handleScroll);
-            window.removeEventListener('resize', handleResize);
         }
 
         // Show loading state
@@ -108,6 +103,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (floatingTextarea) {
             floatingTextarea.value = '';
             autoGrow(floatingTextarea);
+        }
+        if (anonymousToggle) {
+            anonymousToggle.checked = false;
+            anonymousToggle.dispatchEvent(new Event('change'));
         }
 
         currentBleepElement = bleepElement;
@@ -232,38 +231,50 @@ document.addEventListener('DOMContentLoaded', function() {
     // Render comment HTML (inline styling from Blade template)
     function renderCommentHTML(comment) {
         const user = comment.user || {};
-        const displayName = user.dname || 'Anonymous';
+        const isAnonymous = Boolean(comment.is_anonymous);
+        const displayName = isAnonymous ? 'Anonymous' : (user.dname || 'Anonymous');
         const username = escapeHtml(user.username || '');
-        const timezone = user.timezone || 'UTC';
+        const usernameLine = !isAnonymous && username
+            ? `<span class="text-xs text-base-content/50 truncate">@${username}</span>`
+            : '<span class="text-xs text-base-content/50 truncate">@anonymous</span>';
+        const timezone = !isAnonymous && user.timezone ? user.timezone : null;
         const timestampISO = comment.created_at_iso || comment.created_at || '';
-        const email = escapeHtml(user.email || '');
+        const email = !isAnonymous && user.email ? escapeHtml(user.email) : null;
 
         const localTime = timestampISO ? new Date(timestampISO) : null;
         const viewerDateTime = localTime ? formatDateTimeInTimezone(localTime, viewerTimezone) : '—';
-        const authorDateTime = localTime ? formatDateTimeInTimezone(localTime, timezone) : '';
-        const timezoneTooltip = localTime
-            ? `${formatDateTimeTooltip(localTime, timezone)} (${formatTimezoneLabel(timezone)})`
-            : '';
+        const timezoneTooltip = isAnonymous
+            ? 'Posting time hidden for anonymous users'
+            : (localTime && timezone ? `${formatDateTimeTooltip(localTime, timezone)} (${formatTimezoneLabel(timezone)})` : '');
         const diffTimestamp = comment.diffTimestamp || (localTime ? timeAgo(localTime) : '');
 
-        return `
-            <div class="flex gap-3 p-2 mb-3 bg-base-200/50 rounded-2xl hover:bg-base-200/70 transition-colors duration-150">
-                <div class="avatar shrink-0">
-                    <div class="size-10 rounded-full">
-                        <img src="https://avatars.laravel.cloud/${encodeURIComponent(email)}" alt="${displayName}'s avatar" />
-                    </div>
+        const avatarHtml = isAnonymous
+            ? `
+                <div class="size-10 rounded-full bg-base-300 flex items-center justify-center shrink-0">
+                    <i data-lucide="user" class="w-5 h-5 text-base-content"></i>
                 </div>
+            `
+            : `
+                <div class="size-10 rounded-full shrink-0 overflow-hidden">
+                    <img src="https://avatars.laravel.cloud/${encodeURIComponent(email ?? '')}" alt="${displayName}'s avatar" class="w-full h-full object-cover" />
+                </div>
+            `;
+
+        return `
+            <div class="flex gap-3 p-4 rounded-lg bg-base-100 shadow-md hover:shadow-lg transition-shadow duration-200">
+                ${avatarHtml}
                 <div class="flex-1 min-w-0">
                     <div class="flex items-start justify-between gap-2">
                         <div class="flex flex-col min-w-0">
                             <span class="font-semibold text-sm truncate">${displayName}</span>
-                            <span class="text-xs text-base-content/50 truncate">@${username}</span>
+                            ${usernameLine}
                         </div>
                         <div class="flex flex-col text-right shrink-0 text-xs text-base-content/50 leading-tight whitespace-nowrap">
                             <span class="font-medium text-base-content/80" title="${escapeHtml(timezoneTooltip)}">${viewerDateTime}</span>
                             <span>${diffTimestamp}</span>
                         </div>
                     </div>
+
                     <p class="text-sm mb-1 mt-2.5 break-words leading-snug text-base-content/90">
                         ${escapeHtml(comment.message)}
                     </p>
@@ -345,6 +356,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!bleepId) return;
 
         const message = floatingTextarea.value.trim();
+        const isAnonymous = anonymousToggle?.checked ?? false;
         if (!message) return;
 
         const submitBtn = floatingForm.querySelector('button[type="submit"]');
@@ -360,12 +372,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken
                 },
-                body: JSON.stringify({ message })
+                body: JSON.stringify({ message, is_anonymous: isAnonymous })
             });
 
             if (response.ok) {
                 floatingTextarea.value = '';
                 autoGrow(floatingTextarea);
+                if (anonymousToggle) {
+                    anonymousToggle.checked = false;
+                    anonymousToggle.dispatchEvent(new Event('change'));
+                }
                 loadComments(bleepId);
                 updateCommentCount(bleepId);
             }
@@ -407,6 +423,35 @@ document.addEventListener('DOMContentLoaded', function() {
             closeComments();
         }
     });
+
+    if (anonymousToggle) {
+        const toggleIndicator = document.getElementById('toggle-indicator');
+        const userEmail = '{{ auth()->user()->email }}';
+
+        const updateToggleUI = () => {
+            if (anonymousToggle.checked) {
+                // Show black dot with icon
+                toggleIndicator.style.backgroundImage = 'none';
+                toggleIndicator.style.backgroundColor = '#1f2937';
+                toggleIndicator.innerHTML = `
+                    <div class="w-full h-full flex items-center justify-center">
+                        <i data-lucide="hat-glasses" class="w-3 h-3 text-white"></i>
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            } else {
+                // Show user avatar
+                toggleIndicator.innerHTML = '';
+                toggleIndicator.style.backgroundColor = 'transparent';
+                toggleIndicator.style.backgroundImage = `url('https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}')`;
+            }
+        };
+
+        anonymousToggle.addEventListener('change', updateToggleUI);
+        updateToggleUI();
+    }
 
     window.autoGrow = autoGrow;
 });

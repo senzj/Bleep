@@ -11,6 +11,7 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('script')
 </head>
 
 <body class="min-h-screen flex flex-col bg-base-200 font-sans">
@@ -45,7 +46,7 @@
     @endif
 
     {{-- main content --}}
-    <main class="flex-1 container mx-auto px-4 py-6">
+    <main class="flex-1 container mx-auto px-4 py-6 bg-gray-200/80">
         {{ $slot }}
     </main>
 </body>
