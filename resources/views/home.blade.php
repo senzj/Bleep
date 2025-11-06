@@ -101,12 +101,17 @@
             <div class="sticky bottom-0 z-10 border-t border-base-200 bg-base-100/95 backdrop-blur-sm p-3 shrink-0">
                 <form id="floating-comment-form" class="flex gap-2 items-end" data-bleep-id="">
                     @csrf
+                    {{-- Avatar --}}
                     <div class="avatar shrink-0">
                         <div class="size-8 rounded-full">
                             <img src="https://avatars.laravel.cloud/{{ urlencode(Auth::user()->email) }}" alt="{{ Auth::user()->username }}'s avatar" />
                         </div>
                     </div>
+
+                    {{-- Comment textarea --}}
                     <textarea name="message" rows="1" data-min-height="32" class="textarea textarea-bordered flex-1 resize-none text-sm leading-snug min-h-8 max-h-20" placeholder="Write a comment..." required></textarea>
+
+                    {{-- Submit button --}}
                     <button type="submit" class="btn btn-primary btn-sm btn-circle self-end">
                         <i data-lucide="send" class="w-4 h-4"></i>
                     </button>
