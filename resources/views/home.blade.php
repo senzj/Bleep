@@ -1,5 +1,6 @@
 @vite([
-    'resources/js/bleep/posts',
+    'resources/js/bleep/posts/posts',
+    'resources/js/bleep/modals/posts/edit',
 ])
 
 <x-layout>
@@ -145,4 +146,8 @@
 
     {{-- Overlay for closing modal --}}
     <div id="comments-overlay" class="hidden fixed inset-0 bg-gray-600/20 z-40"></div>
+
+    {{-- Edit Bleep Modal (AJAX) --}}
+    <x-modals.bleeps.post.edit />
+
 </x-layout>

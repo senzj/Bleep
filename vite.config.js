@@ -8,9 +8,10 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
-                'resources/js/bleep/likes.js',
-                'resources/js/bleep/comments.js',
-                'resources/js/bleep/posts.js',
+                'resources/js/bleep/modals/posts/edit.js',
+                'resources/js/bleep/posts/comments.js',
+                'resources/js/bleep/posts/likes.js',
+                'resources/js/bleep/posts/posts.js',
             ],
             refresh: true,
         }),

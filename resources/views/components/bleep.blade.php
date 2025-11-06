@@ -1,7 +1,7 @@
 {{-- scripts --}}
 @vite([
-    'resources/js/bleep/likes',
-    'resources/js/bleep/comments'
+    'resources/js/bleep/posts/likes',
+    'resources/js/bleep/posts/comments',
 ])
 
 {{-- Props --}}
@@ -26,10 +26,9 @@
 
     {{-- Header: Avatar + Author Info --}}
     <div class="flex gap-3 mb-4">
-
         {{-- Avatar --}}
         @if(! $isAnonymous && $bleep->user)
-            <div class="avatar shrink-0">
+            <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
                 <div class="size-12 rounded-full">
                     <img src="https://avatars.laravel.cloud/{{ urlencode($bleep->user->email) }}"
                          alt="{{ $bleep->user->name }}'s avatar" />
@@ -37,18 +36,19 @@
             </div>
         @elseif($isAnonymous)
             {{-- Anonymous avatar --}}
-            <div class="avatar shrink-0">
+            <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
                 <div class="size-12 rounded-full bg-base-300 flex items-center justify-center overflow-hidden">
                     <i data-lucide="hat-glasses" class="w-6 h-6 text-base-content/80"></i>
                 </div>
             </div>
         @else
-            <div class="avatar placeholder shrink-0">
+            <div class="avatar placeholder shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
                 <div class="size-12 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 bg-base-300">
                     <span class="text-xl">?</span>
                 </div>
             </div>
         @endif
+
 
         {{-- Author Info + Actions --}}
         <div class="flex-1 min-w-0">
@@ -60,12 +60,12 @@
                     <div>
                         {{-- Display name --}}
                         <div class="font-semibold text-gray-900">
-                            <span class="font-semibold text-sm truncate">{{ $displayName }}</span>
+                            <span class="font-semibold text-sm truncate bleep-display-name" data-bleep-id="{{ $bleep->id }}">{{ $displayName }}</span>
                         </div>
 
-                        {{-- Username (always show computed username; @anonymous for anonymous bleeps) --}}
+                        {{-- Username (always show computed username) --}}
                         <div class="text-gray-500 text-sm">
-                            <span class="text-base-content/60 text-sm truncate">{{ $username }}</span>
+                            <span class="text-base-content/60 text-sm truncate bleep-username" data-bleep-id="{{ $bleep->id }}">{{ $username }}</span>
                         </div>
                     </div>
                 </div>
@@ -96,11 +96,14 @@
 
                             @can('update', $bleep)
                                 <li>
-                                    <a href="/bleeps/{{ $bleep->id }}/edit"
-                                    class="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-gray-50 transition">
-                                        <i data-lucide="pencil" class="w-4 h-4 text-gray-500"></i>
+                                    <button type="button"
+                                        class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-base-200 transition edit-bleep-btn"
+                                        data-bleep-id="{{ $bleep->id }}"
+                                        data-bleep-message="{{ htmlspecialchars($bleep->message, ENT_QUOTES) }}"
+                                        data-bleep-anonymous="{{ $bleep->is_anonymous ? '1' : '0' }}">
+                                        <i data-lucide="pencil" class="w-4 h-4"></i>
                                         <span>Edit</span>
-                                    </a>
+                                    </button>
                                 </li>
 
                                 <li>
@@ -133,7 +136,7 @@
 
     {{-- Message Content --}}
     <div class="mb-4">
-        <p class="text-base leading-relaxed text-base-content">{{ $bleep->message }}</p>
+        <p class="text-base leading-relaxed text-base-content bleep-message" data-bleep-id="{{ $bleep->id }}">{{ $bleep->message }}</p>
 
         {{-- date and time created --}}
         <div class="text-xs text-gray-400 mt-5">
@@ -156,7 +159,7 @@
                 <i data-lucide="heart" class="w-4 h-4 group-hover:scale-110 transition-transform heart-icon"></i>
 
                 {{-- Count on mobile, text on desktop --}}
-                <span class="inline sm:hidden text-xs like-count">
+                <span class="inline sm:hidden text-xs like-count" data-bleep-id="{{ $bleep->id }}">
                     {{ $bleep->likes()->count() }}
                 </span>
                 <span class="hidden sm:inline text-xs like-text">
@@ -198,9 +201,11 @@
 
 </article>
 
-<script>
-function autoGrow(element) {
-    element.style.height = "auto";
-    element.style.height = (element.scrollHeight) + "px";
-}
-</script>
+@push('script')
+    <script>
+        function autoGrow(element) {
+            element.style.height = "auto";
+            element.style.height = (element.scrollHeight) + "px";
+        }
+    </script>
+@endpush

@@ -6,6 +6,7 @@ use App\Models\Bleep;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class BleepController extends Controller
@@ -52,14 +53,6 @@ class BleepController extends Controller
     }
 
     /**
-     * shows the Edit Bleep form.
-     */
-    public function edit(Bleep $bleep)
-    {
-        return view('bleeps.edit', compact('bleep'));
-    }
-
-    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, Bleep $bleep)
@@ -68,6 +61,7 @@ class BleepController extends Controller
 
         $validated = $request->validate([
             'message' => 'required|string|max:255',
+            'is_anonymous' => 'nullable|boolean',
         ], [
             'message.required' => 'Thoughts cannot be empty! Write something to bleep about.',
             'message.max' => 'Your bleep is too long! Keep it under 255 characters.',
@@ -75,7 +69,41 @@ class BleepController extends Controller
 
         $bleep->update([
             'message' => $validated['message'],
+            'is_anonymous' => $request->boolean('is_anonymous'),
         ]);
+
+        // reload relations
+        $bleep->load('user');
+
+        // viewer seed for deterministic display name
+        $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
+
+        $displayName = $bleep->is_anonymous
+            ? $bleep->anonymousDisplayNameFor($viewerSeed)
+            : ($bleep->user->dname ?? 'Unknown');
+
+        $username = $bleep->is_anonymous
+            ? '@anonymous'
+            : ('@' . ($bleep->user->username ?? 'Unknown'));
+
+        $avatarUrl = $bleep->is_anonymous
+            ? null
+            : 'https://avatars.laravel.cloud/' . urlencode($bleep->user->email);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'bleep' => [
+                    'id' => $bleep->id,
+                    'message' => $bleep->message,
+                    'is_anonymous' => (bool) $bleep->is_anonymous,
+                    'display_name' => $displayName,
+                    'username' => $username,
+                    'avatar_url' => $avatarUrl,
+                    'updated_at_iso' => optional($bleep->updated_at)->toIso8601String(),
+                ],
+            ]);
+        }
 
         return redirect('/')->with('success', 'Your bleep has been updated!');
     }
