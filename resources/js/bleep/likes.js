@@ -45,7 +45,22 @@ document.querySelectorAll('.like-form').forEach(form => {
                 // Fetch updated like count
                 const countResponse = await fetch(`/bleeps/${bleepId}/likes-count`);
                 const countData = await countResponse.json();
-                form.querySelector('.like-count').textContent = `${countData.count} ${countData.count === 1 ? 'Like' : 'Likes'}`;
+
+                // Update mobile-only number and desktop text separately
+                const mobileElem = form.querySelector('.like-count'); // mobile: show only number
+                const desktopElem = form.querySelector('.like-text'); // desktop: show "N Like/Liked/Likes"
+                const count = parseInt(countData.count ?? 0, 10);
+
+                if (mobileElem) {
+                    mobileElem.textContent = String(count);
+                }
+
+                if (desktopElem) {
+                    const suffix = count === 1
+                        ? (button.classList.contains('text-red-600') ? 'Liked' : 'Like')
+                        : 'Likes';
+                    desktopElem.textContent = `${count} ${suffix}`;
+                }
             }
         } catch (error) {
             console.error('Error:', error);

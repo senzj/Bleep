@@ -1,3 +1,7 @@
+@vite([
+    'resources/js/bleep/posts',
+])
+
 <x-layout>
     <x-slot:title>
         Bleep
@@ -38,9 +42,11 @@
 
                             <div class="mt-4 flex items-center justify-between">
                                 {{-- anonymous toggle --}}
-                                <label class="cursor-pointer label">
-                                    <span class="label-text">Post anonymously</span>
-                                    <input type="checkbox" name="is_anonymous" value="1" class="toggle toggle-primary" {{ old('is_anonymous') ? 'checked' : '' }} />
+                                <label class="cursor-pointer label flex items-center">
+                                    <span class="label-text mr-2">Post anonymously</span>
+                                    <input id="post-anonymous-toggle" type="checkbox" name="is_anonymous" value="1" class="toggle toggle-primary" {{ old('is_anonymous') ? 'checked' : '' }} />
+                                    <!-- Indicator: empty when unchecked, shows hat-glasses when checked -->
+                                    <div id="post-toggle-indicator" class="ml-2 w-7 h-7 rounded-full transition-all duration-200 flex items-center justify-center overflow-hidden" aria-hidden="true"></div>
                                 </label>
 
                                 {{-- submit post --}}
@@ -112,18 +118,21 @@
                         ></textarea>
                     </div>
 
+                    {{-- Toggle anonymous --}}
                     <div class="flex items-end gap-2 shrink-0">
                         <label class="relative inline-flex cursor-pointer">
                             <input type="checkbox" id="comment-anonymous-toggle" name="is_anonymous" value="1" class="peer sr-only">
-                            <div class="w-12 h-7 bg-base-300 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all"></div>
-                            <div id="toggle-indicator" class="absolute top-1 left-1 size-5 rounded-full overflow-hidden transition-all duration-300 peer-checked:left-6 peer-checked:bg-base-700 bg-cover bg-center"
+                            <div class="w-15 h-9 bg-base-300 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all"></div>
+                            <div id="toggle-indicator"
+                                class="absolute top-1 left-1 size-7 rounded-full transition-all duration-300 peer-checked:left-7 bg-cover bg-center flex items-center justify-center"
+                                data-user-email="{{ auth()->user()->email }}"
                                 style="background-image: url('https://avatars.laravel.cloud/{{ auth()->user()->email }}');">
                             </div>
                         </label>
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-sm btn-circle self-end shrink-0">
-                        <i data-lucide="send" class="w-4 h-4"></i>
+                    <button type="submit" class="btn btn-primary btn-base btn-circle self-end shrink-0">
+                        <i data-lucide="send" class="w-5 h-5"></i>
                     </button>
                 </form>
             </div>

@@ -36,6 +36,11 @@ Route::post('/logout', Logout::class)
 Route::get('/', [BleepController::class, 'index']);
 
 
+// Public: comments listing and count (allow guests to view comments)
+Route::get('/bleeps/{bleep}/comments', [CommentsController::class, 'index']);
+Route::get('/bleeps/{bleep}/comments/count', [CommentsController::class, 'count']);
+
+
 // Protected Auth Routes
 Route::middleware('auth')->group((function () {
 
@@ -45,13 +50,11 @@ Route::middleware('auth')->group((function () {
     Route::put('/bleeps/{bleep}', [BleepController::class, 'update']);
     Route::delete('/bleeps/{bleep}', [BleepController::class, 'destroy']);
 
-    // Likes Routes
+    // Likes Routes (require auth)
     Route::post('/bleeps/{bleep}/like', [LikesController::class, 'toggle']);
     Route::get('/bleeps/{bleep}/likes-count', [LikesController::class, 'count']);
 
-    // Comments Routes
-    Route::get('/bleeps/{bleep}/comments', [CommentsController::class, 'index']);
-    Route::get('/bleeps/{bleep}/comments/count', [CommentsController::class, 'count']);
+    // Comments Routes (only store/delete require auth)
     Route::post('/bleeps/{bleep}/comments', [CommentsController::class, 'store'])->middleware('auth');
     Route::delete('/comments/{comment}', [CommentsController::class, 'destroy'])->middleware('auth');
 }));

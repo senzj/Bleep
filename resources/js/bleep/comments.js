@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const floatingForm = document.getElementById('floating-comment-form');
     const floatingTextarea = floatingForm?.querySelector('textarea[name="message"]');
     const anonymousToggle = floatingForm?.querySelector('#comment-anonymous-toggle');
-    const anonymousHelper = floatingForm?.querySelector('#comment-anonymous-helper');
     const overlay = document.getElementById('comments-overlay');
     const closeButton = document.getElementById('close-comments-btn');
     const viewerTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -188,7 +187,24 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!floatingContent) return;
 
         try {
-            const response = await fetch(`/bleeps/${bleepId}/comments`);
+            const response = await fetch(`/bleeps/${bleepId}/comments`, {
+                headers: { 'Accept': 'application/json' } // ask for JSON so Laravel returns 401 JSON instead of redirect
+            });
+
+            if (response.status === 401) {
+                // guest: not authorized to fetch comments (if your routes remained protected)
+                floatingContent.innerHTML = `
+                    <div class="p-4 text-center text-sm text-base-content/70">
+                        <p>Please <a href="/login" class="link link-primary">login</a> to view comments.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error('Failed to load comments');
+            }
+
             const data = await response.json();
 
             if (!Array.isArray(data.comments) || data.comments.length === 0) {
@@ -199,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     .join('');
             }
 
-            if (typeof lucide !== 'undefined') {
+            if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
                 lucide.createIcons();
             }
         } catch (error) {
@@ -232,7 +248,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderCommentHTML(comment) {
         const user = comment.user || {};
         const isAnonymous = Boolean(comment.is_anonymous);
-        const displayName = isAnonymous ? 'Anonymous' : (user.dname || 'Anonymous');
+        // Prefer server-supplied display_name (will be deterministic for anonymous comments)
+        const displayName = comment.display_name || (isAnonymous ? 'Anonymous' : (user.dname || 'Anonymous'));
         const username = escapeHtml(user.username || '');
         const usernameLine = !isAnonymous && username
             ? `<span class="text-xs text-base-content/50 truncate">@${username}</span>`
@@ -251,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const avatarHtml = isAnonymous
             ? `
                 <div class="size-10 rounded-full bg-base-300 flex items-center justify-center shrink-0">
-                    <i data-lucide="user" class="w-5 h-5 text-base-content"></i>
+                    <i data-lucide="hat-glasses" class="w-5 h-5 text-base-content"></i>
                 </div>
             `
             : `
@@ -370,10 +387,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify({ message, is_anonymous: isAnonymous })
             });
+
+            if (response.status === 401) {
+                // If guest somehow tries to post: prompt login
+                window.location.href = '/login';
+                return;
+            }
 
             if (response.ok) {
                 floatingTextarea.value = '';
@@ -384,7 +408,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 loadComments(bleepId);
                 updateCommentCount(bleepId);
+            } else {
+                console.error('Error posting comment:', await response.text());
             }
+
         } catch (error) {
             console.error('Error posting comment:', error);
         } finally {
@@ -426,26 +453,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (anonymousToggle) {
         const toggleIndicator = document.getElementById('toggle-indicator');
-        const userEmail = '{{ auth()->user()->email }}';
+        const userEmail = toggleIndicator?.dataset.userEmail ?? '';
 
         const updateToggleUI = () => {
+            if (!toggleIndicator) return;
+
             if (anonymousToggle.checked) {
-                // Show black dot with icon
+                // Show black dot with lucide icon
                 toggleIndicator.style.backgroundImage = 'none';
                 toggleIndicator.style.backgroundColor = '#1f2937';
                 toggleIndicator.innerHTML = `
-                    <div class="w-full h-full flex items-center justify-center">
-                        <i data-lucide="hat-glasses" class="w-3 h-3 text-white"></i>
+                    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                        <i data-lucide="hat-glasses" class="w-4 h-4 text-white"></i>
                     </div>
                 `;
-                if (typeof lucide !== 'undefined') {
+
+                // Ensure Lucide scans new DOM nodes
+                if (window.lucide) {
                     lucide.createIcons();
                 }
             } else {
                 // Show user avatar
                 toggleIndicator.innerHTML = '';
                 toggleIndicator.style.backgroundColor = 'transparent';
-                toggleIndicator.style.backgroundImage = `url('https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}')`;
+
+                if (userEmail) {
+                    toggleIndicator.style.backgroundImage =
+                        `url('https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}')`;
+                    toggleIndicator.style.backgroundSize = 'cover';
+                    toggleIndicator.style.backgroundPosition = 'center';
+                } else {
+                    toggleIndicator.style.backgroundImage = 'none';
+                }
             }
         };
 

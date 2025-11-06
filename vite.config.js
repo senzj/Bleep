@@ -10,6 +10,7 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/js/bleep/likes.js',
                 'resources/js/bleep/comments.js',
+                'resources/js/bleep/posts.js',
             ],
             refresh: true,
         }),

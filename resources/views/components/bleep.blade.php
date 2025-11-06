@@ -10,24 +10,11 @@
 @php
     $isAnonymous = (bool) $bleep->is_anonymous;
 
-    // For anonymous bleeps, generate a random two-word name (e.g. "rampage berry").
-    // Username remains @Anonymous.
     if ($isAnonymous) {
-        $firstParts = [
-            'Rampage','Clam','Sunny','Brave','Sneaky','Mighty','Quiet','Spicy','Fuzzy','Neon',
-            'Turbo','Happy','Icy','Rusty','Velvet','Silver','Crimson','Jolly','Gloomy','Zen'
-        ];
-
-        $secondParts = [
-            'Berry','Banana','Fox','Tiger','Pancake','Nimbus','Penguin','Pixel','Breeze','Blossom',
-            'Rocket','Dandelion','Echo','Shadow','Nova','Sailor','Comet','Mango','Quartz','Marsh'
-        ];
-
-        $first = $firstParts[array_rand($firstParts)];
-        $second = $secondParts[array_rand($secondParts)];
-
-        // Lowercase to match examples like "rampage berry"
-        $displayName = ucwords($first . ' ' . $second);
+        // viewer seed: authenticated user id or session id for guests
+        $viewerSeed = auth()->check() ? auth()->id() : request()->session()->getId();
+        // stable per (bleep, viewer)
+        $displayName = $bleep->anonymousDisplayNameFor($viewerSeed);
         $username = '@anonymous';
     } else {
         $displayName = $bleep->user->dname ?? 'Unknown';
@@ -41,11 +28,18 @@
     <div class="flex gap-3 mb-4">
 
         {{-- Avatar --}}
-        @if($bleep->user)
+        @if(! $isAnonymous && $bleep->user)
             <div class="avatar shrink-0">
                 <div class="size-12 rounded-full">
                     <img src="https://avatars.laravel.cloud/{{ urlencode($bleep->user->email) }}"
                          alt="{{ $bleep->user->name }}'s avatar" />
+                </div>
+            </div>
+        @elseif($isAnonymous)
+            {{-- Anonymous avatar --}}
+            <div class="avatar shrink-0">
+                <div class="size-12 rounded-full bg-base-300 flex items-center justify-center overflow-hidden">
+                    <i data-lucide="hat-glasses" class="w-6 h-6 text-base-content/80"></i>
                 </div>
             </div>
         @else
@@ -64,18 +58,15 @@
 
                     {{-- Name and username --}}
                     <div>
-                        <div class="font-semibold text-gray-900>
+                        {{-- Display name --}}
+                        <div class="font-semibold text-gray-900">
                             <span class="font-semibold text-sm truncate">{{ $displayName }}</span>
-
                         </div>
 
-                        <!-- Username -->
-                        @if($bleep->user->username)
-                            <div class="text-gray-500 text-sm">
-                                <span class="text-base-content/60 text-sm truncate">{{ $username }}</span>
-                            </div>
-                        @endif
-
+                        {{-- Username (always show computed username; @anonymous for anonymous bleeps) --}}
+                        <div class="text-gray-500 text-sm">
+                            <span class="text-base-content/60 text-sm truncate">{{ $username }}</span>
+                        </div>
                     </div>
                 </div>
 
