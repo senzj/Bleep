@@ -9,8 +9,30 @@
 
 @php
     $isAnonymous = (bool) $bleep->is_anonymous;
-    $displayName = $isAnonymous ? 'Anonymous' : ($bleep->user->dname ?? 'Unknown');
-    $username = $isAnonymous ? null : ("@" . $bleep->user->username ?? null);
+
+    // For anonymous bleeps, generate a random two-word name (e.g. "rampage berry").
+    // Username remains @Anonymous.
+    if ($isAnonymous) {
+        $firstParts = [
+            'Rampage','Clam','Sunny','Brave','Sneaky','Mighty','Quiet','Spicy','Fuzzy','Neon',
+            'Turbo','Happy','Icy','Rusty','Velvet','Silver','Crimson','Jolly','Gloomy','Zen'
+        ];
+
+        $secondParts = [
+            'Berry','Banana','Fox','Tiger','Pancake','Nimbus','Penguin','Pixel','Breeze','Blossom',
+            'Rocket','Dandelion','Echo','Shadow','Nova','Sailor','Comet','Mango','Quartz','Marsh'
+        ];
+
+        $first = $firstParts[array_rand($firstParts)];
+        $second = $secondParts[array_rand($secondParts)];
+
+        // Lowercase to match examples like "rampage berry"
+        $displayName = ucwords($first . ' ' . $second);
+        $username = '@anonymous';
+    } else {
+        $displayName = $bleep->user->dname ?? 'Unknown';
+        $username = "@" . ($bleep->user->username ?? 'Unknown');
+    }
 @endphp
 
 <article class="bg-base-100 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200">

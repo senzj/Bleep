@@ -98,20 +98,29 @@
 
         {{-- Sticky Input Footer --}}
         @auth
-            <div class="sticky bottom-0 z-10 border-t border-base-200 bg-base-100/95 backdrop-blur-sm p-3 shrink-0">
-                <form id="floating-comment-form" class="flex gap-2 items-end" data-bleep-id="">
-                    @csrf
-                    <div class="avatar shrink-0">
-                        <div class="size-8 rounded-full">
-                            <img src="https://avatars.laravel.cloud/{{ urlencode(Auth::user()->email) }}" alt="{{ Auth::user()->username }}'s avatar" />
-                        </div>
+            <form id="floating-comment-form" class="flex gap-2 items-end" data-bleep-id="">
+                @csrf
+                <div class="avatar shrink-0">
+                    <div class="size-8 rounded-full">
+                        <img src="https://avatars.laravel.cloud/{{ urlencode(Auth::user()->email) }}" alt="{{ Auth::user()->username }}'s avatar" />
                     </div>
-                    <textarea name="message" rows="1" data-min-height="32" class="textarea textarea-bordered flex-1 resize-none text-sm leading-snug min-h-8 max-h-20" placeholder="Write a comment..." required></textarea>
-                    <button type="submit" class="btn btn-primary btn-sm btn-circle self-end">
-                        <i data-lucide="send" class="w-4 h-4"></i>
-                    </button>
-                </form>
-            </div>
+                </div>
+
+                <!-- textarea + anonymous toggle -->
+                <div class="flex-1">
+                    <textarea name="message" rows="1" data-min-height="32" class="textarea textarea-bordered w-full resize-none text-sm leading-snug min-h-8 max-h-20" placeholder="Write a comment..." required></textarea>
+
+                    <!-- anonymous toggle -->
+                    <label class="mt-2 inline-flex items-center gap-2 text-sm text-base-content/60">
+                        <input type="checkbox" name="is_anonymous" value="1" class="toggle toggle-sm toggle-primary">
+                        <span>Post anonymously</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-sm btn-circle self-end">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                </button>
+            </form>
         @else
             <div class="sticky bottom-0 z-10 border-t border-base-200 bg-base-100/95 backdrop-blur-sm p-4 text-center text-sm text-base-content/60 shrink-0">
                 <a href="/login" class="link link-primary">Login</a> to comment
