@@ -1,6 +1,5 @@
-
 <!DOCTYPE html>
-<html lang="en" data-theme="lofi">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="lofi">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +9,10 @@
         <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
         <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @stack('styles')
+
+        <meta name="base-url" content="{{ url('') }}">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
     </head>
 
     <body class="min-h-screen flex flex-col font-sans bg-gray-200/80">
@@ -48,6 +51,6 @@
             {{ $slot }}
         </main>
 
-        @stack('script')
+        @stack('scripts')
     </body>
 </html>

@@ -29,25 +29,35 @@ class CommentsController extends Controller
         return response()->json(['comments' => $comments]);
     }
 
-    /**
-     * Store a newly created comment
-     */
-    public function store(Request $request, Bleep $bleep)
-    {
-        $request->validate(['message' => 'required|string|max:255']);
+        /**
+         * Store a newly created comment
+         */
+        public function store(Request $request, Bleep $bleep)
+        {
+            $request->validate(['message' => 'required|string|max:255']);
 
-        $comment = $bleep->comments()->create([
-            'user_id' => Auth::id(),
-            'message' => $request->message,
-            'is_anonymous' => $request->boolean('is_anonymous'),
-        ])->load('user');
+            $comment = $bleep->comments()->create([
+                'user_id' => Auth::id(),
+                'message' => $request->message,
+                'is_anonymous' => $request->boolean('is_anonymous'),
+            ])->load('user');
 
-        $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
+            $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
+            $transformed = $this->transformComment($comment, $bleep, $viewerSeed);
 
-        return response()->json([
-            'success' => true,
-            'comment' => $this->transformComment($comment, $bleep, $viewerSeed),
-        ]);
+            // JSON response for AJAX/fetch clients
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                'comment' => $transformed,
+            ]);
+        }
+
+        // Non-AJAX: redirect back to the post page with optional flash data
+        return redirect()
+            ->route('post', $bleep->id)
+            ->with('success', 'Your comment was posted.')
+            ->with('new_comment', $transformed);
     }
 
     /**

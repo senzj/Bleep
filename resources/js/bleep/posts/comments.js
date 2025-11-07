@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const floatingContent = document.getElementById('floating-comments-scroll');
     const floatingForm = document.getElementById('floating-comment-form');
     const floatingTextarea = floatingForm?.querySelector('textarea[name="message"]');
-    const anonymousToggle = floatingForm?.querySelector('#comment-anonymous-toggle');
+    // find toggle inside floating form OR on the page (single post layout)
+    const anonymousToggle = (floatingForm && floatingForm.querySelector('#comment-anonymous-toggle')) || document.querySelector('#comment-anonymous-toggle');
     const overlay = document.getElementById('comments-overlay');
     const closeButton = document.getElementById('close-comments-btn');
     const viewerTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -187,8 +188,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!floatingContent) return;
 
         try {
-            const response = await fetch(`/bleeps/${bleepId}/comments`, {
-                headers: { 'Accept': 'application/json' } // ask for JSON so Laravel returns 401 JSON instead of redirect
+            // GET the comments list (route: /bleeps/comments/{bleep}/comments)
+            const response = await fetch(`/bleeps/comments/${bleepId}/comments`, {
+                headers: { 'Accept': 'application/json' }
             });
 
             if (response.status === 401) {
@@ -383,11 +385,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                 document.querySelector('input[name="_token"]')?.value;
 
-            const response = await fetch(`/bleeps/${bleepId}/comments`, {
+            // Post comment (use route: /bleeps/comments/{bleep}/post)
+            const response = await fetch(`/bleeps/comments/${bleepId}/post`, {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({ message, is_anonymous: isAnonymous })
@@ -423,7 +428,8 @@ document.addEventListener('DOMContentLoaded', function() {
     async function updateCommentCount(bleepId) {
         try {
             const button = document.querySelector(`.comment-btn[data-bleep-id="${bleepId}"]`);
-            const response = await fetch(`/bleeps/${bleepId}/comments/count`);
+            // Update count (use route: /bleeps/comments/{bleep}/count)
+            const response = await fetch(`/bleeps/comments/${bleepId}/count`);
             const data = await response.json();
 
             if (button && data?.count !== undefined) {
@@ -459,7 +465,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!toggleIndicator) return;
 
             if (anonymousToggle.checked) {
-                // Show black dot with lucide icon
+                // Show anonymous icon
                 toggleIndicator.style.backgroundImage = 'none';
                 toggleIndicator.style.backgroundColor = '#1f2937';
                 toggleIndicator.innerHTML = `
@@ -467,16 +473,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i data-lucide="hat-glasses" class="w-4 h-4 text-white"></i>
                     </div>
                 `;
-
-                // Ensure Lucide scans new DOM nodes
-                if (window.lucide) {
-                    lucide.createIcons();
-                }
+                if (window.lucide) lucide.createIcons();
             } else {
                 // Show user avatar
                 toggleIndicator.innerHTML = '';
                 toggleIndicator.style.backgroundColor = 'transparent';
-
                 if (userEmail) {
                     toggleIndicator.style.backgroundImage =
                         `url('https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}')`;

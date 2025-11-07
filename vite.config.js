@@ -12,6 +12,8 @@ export default defineConfig({
                 'resources/js/bleep/posts/comments.js',
                 'resources/js/bleep/posts/likes.js',
                 'resources/js/bleep/posts/posts.js',
+                'resources/js/bleep/posts/share.js',
+                'resources/js/bleep/posts/repost.js',
             ],
             refresh: true,
         }),
