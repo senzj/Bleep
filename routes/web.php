@@ -66,9 +66,11 @@ Route::middleware('auth')->group((function () {
     Route::post('/bleeps/{bleep}/like', [LikesController::class, 'toggle']);
     Route::get('/bleeps/{bleep}/likes-count', [LikesController::class, 'count']);
 
-    // Comments Routes (only store/delete require auth)
+    // Comments Routes
     Route::post('/bleeps/comments/{bleep}/post', [CommentsController::class, 'store']);
+    Route::put('/bleeps/comments/{comment}/update', [CommentsController::class, 'update']);
     Route::delete('/bleeps/comments/{comment}/delete', [CommentsController::class, 'destroy']);
+    Route::post('/bleeps/comments/{comment}/report', [CommentsController::class, 'report']);
 
     // Shares
     Route::post('/bleeps/{bleep}/share', [ShareController::class, 'store']);

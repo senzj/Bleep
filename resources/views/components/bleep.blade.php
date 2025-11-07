@@ -113,7 +113,8 @@
                                         <span>Edit</span>
                                     </button>
                                 </li>
-
+                            @endcan
+                            @can('delete', $bleep)
                                 <li>
                                     <form method="POST" action="/bleeps/{{ $bleep->id }}/delete">
                                         @csrf
@@ -152,7 +153,7 @@
         <div class="text-xs text-gray-400 mt-5 flex items-center justify-between">
             {{-- Left: Date posted --}}
             <span class="text-xs">
-                {{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('F j, Y \| g:i:s A') }}
+                {{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y \| g:i:s A') }}
             </span>
 
             {{-- Right: Views --}}

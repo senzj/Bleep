@@ -37,11 +37,11 @@
                 <div class="flex items-end gap-2 shrink-0">
                     <label class="relative inline-flex cursor-pointer">
                         <input type="checkbox" id="comment-anonymous-toggle" name="is_anonymous" value="1" class="peer sr-only">
-                        <div class="w-15 h-9 bg-base-300 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all"></div>
+                        <div class="w-15 h-9 bg-base-300 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
                         <div id="toggle-indicator"
                             class="absolute top-1 left-1 size-7 rounded-full transition-all duration-300 peer-checked:left-7 bg-cover bg-center flex items-center justify-center"
-                            data-user-email="{{ auth()->user()->email }}"
-                            style="background-image: url('https://avatars.laravel.cloud/{{ auth()->user()->email }}');">
+                            data-user-email="{{ Auth::user()->email }}"
+                            style="background-image: url('https://avatars.laravel.cloud/{{ Auth::user()->email }}');">
                         </div>
                     </label>
                 </div>
