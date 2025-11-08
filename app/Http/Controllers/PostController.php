@@ -10,7 +10,13 @@ class PostController extends Controller
     public function index(Bleep $bleep)
     {
         // load relations used by the component and the comments list
-        $bleep->load('user', 'likes', 'comments.user');
+        $bleep->load([
+            'user',
+            'likes',
+            'comments' => function ($query) {
+                $query->with('user')->latest();
+            }
+        ]);
 
         return view('pages.post', compact('bleep'));
     }

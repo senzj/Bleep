@@ -8,6 +8,7 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
+                'resources/js/auth/register.js',
                 'resources/js/bleep/modals/posts/edit.js',
                 'resources/js/bleep/posts/comment.js',
                 'resources/js/bleep/posts/like.js',

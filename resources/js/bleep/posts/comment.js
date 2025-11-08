@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const baseUrl = document.querySelector('meta[name="base_url"]')?.content || '';
+
     let currentOpenBleepId = null;
     let currentBleepElement = null;
 
@@ -303,7 +305,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (anonymousToggle) {
         const toggleIndicator = document.getElementById('toggle-indicator');
+        // accept both data-user-avatar and legacy data-profile-url just in case
+        const userAvatarAttr = toggleIndicator?.dataset.userAvatar ?? toggleIndicator?.dataset.profileUrl ?? '';
         const userEmail = toggleIndicator?.dataset.userEmail ?? '';
+        const userAvatar = userAvatarAttr || (baseUrl ? `${baseUrl}/images/avatar/default.jpg` : '/images/avatar/default.jpg');
 
         const updateToggleUI = () => {
             if (!toggleIndicator) return;
@@ -322,9 +327,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show user avatar
                 toggleIndicator.innerHTML = '';
                 toggleIndicator.style.backgroundColor = 'transparent';
-                if (userEmail) {
-                    toggleIndicator.style.backgroundImage =
-                        `url('https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}')`;
+                // prefer server-provided avatar URL else default to local default image
+                if (userAvatar) {
+                    toggleIndicator.style.backgroundImage = `url('${userAvatar}')`;
                     toggleIndicator.style.backgroundSize = 'cover';
                     toggleIndicator.style.backgroundPosition = 'center';
                 } else {
@@ -525,6 +530,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const userName = btn.dataset.userName;
         const userUsername = btn.dataset.userUsername;
         const userEmail = btn.dataset.userEmail;
+        const userAvatarFromBtn = btn.dataset.userAvatar ?? '';
+        const userAvatar = userAvatarFromBtn || (baseUrl ? `${baseUrl}/images/avatar/default.jpg` : '/images/avatar/default.jpg');
 
         // Find the comment container - works for both inline and modal
         const commentContainer = document.querySelector(`[data-comment-id="${commentId}"]`);
@@ -534,10 +541,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (commentContainer.querySelector('.edit-inline-edit-ui')) return;
 
         // Convert to edit mode
-        enableInlineEdit(commentContainer, commentId, message, isAnonymous, userName, userUsername, userEmail);
+        enableInlineEdit(commentContainer, commentId, message, isAnonymous, userName, userUsername, userEmail, userAvatar);
     });
 
-    function enableInlineEdit(commentContainer, commentId, originalMessage, isAnonymous, userName, userUsername, userEmail) {
+    function enableInlineEdit(commentContainer, commentId, originalMessage, isAnonymous, userName, userUsername, userEmail, userAvatar) {
         // Find the message paragraph
         const messagePara = commentContainer.querySelector('.comment-message');
         if (!messagePara) return;
@@ -550,7 +557,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 class="textarea textarea-bordered w-full resize-none text-sm"
                 maxlength="255"
                 rows="3"
-                placeholder="Edit your comment...">${escapeHtml(originalMessage)}</textarea>
+                placeholder="Edit your comment...">${originalMessage}</textarea>
 
             <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
@@ -558,7 +565,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <input type="checkbox" class="edit-inline-anon-toggle peer sr-only" ${isAnonymous ? 'checked' : ''}>
                         <div class="w-14 h-8 bg-base-300 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
                         <div class="edit-inline-anon-indicator absolute top-1 left-1 size-6 rounded-full transition-all duration-300 peer-checked:left-6 bg-cover bg-center flex items-center justify-center"
-                            data-user-email="${userEmail}">
+                            data-user-email="${userEmail}" data-user-avatar="${userAvatar}">
                         </div>
                     </label>
                     <span class="text-xs text-base-content/60">Anonymous</span>
@@ -600,8 +607,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show user avatar
                 indicator.innerHTML = '';
                 indicator.style.backgroundColor = 'transparent';
-                if (userEmail) {
-                    indicator.style.backgroundImage = `url('https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}')`;
+                const src = editUI.querySelector('.edit-inline-anon-indicator')?.dataset.userAvatar || userAvatar;
+                if (src) {
+                    indicator.style.backgroundImage = `url('${src}')`;
                     indicator.style.backgroundSize = 'cover';
                     indicator.style.backgroundPosition = 'center';
                 } else {
@@ -673,10 +681,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             `;
                         } else {
-                            // Show user avatar
+                            // Show user avatar (prefer server-provided URL)
+                            const src = userAvatar || (baseUrl ? `${baseUrl}/images/avatar/default.jpg` : '/images/avatar/default.jpg');
                             avatarContainer.innerHTML = `
                                 <div class="size-10 rounded-full overflow-hidden">
-                                    <img src="https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}" alt="${userName}'s avatar" class="w-full h-full object-cover">
+                                    <img src="${src}" alt="${userName}'s avatar" class="w-full h-full object-cover">
                                 </div>
                             `;
                         }
@@ -735,17 +744,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Reinitialize lucide icons
         if (window.lucide) window.lucide.createIcons();
-    }
-
-    // Helper function to escape HTML
-    function escapeHtml(text) {
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return text.replace(/[&<>"']/g, m => map[m]);
     }
 });

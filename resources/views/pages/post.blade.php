@@ -1,8 +1,3 @@
-@vite([
-    'resources/js/bleep/modals/posts/edit.js',
-    'resources/js/bleep/posts/like.js',
-    'resources/js/bleep/posts/post.js',
-    ])
 <x-layout>
     {{-- Store user email for avatar display --}}
     @auth
@@ -16,6 +11,17 @@
         $displayName = $bleep->is_anonymous
             ? $bleep->anonymousDisplayNameFor($viewerSeed)
             : ($bleep->user->dname ?? 'Unknown');
+
+        $UserAvatarUrl = null;
+        if (Auth::check()) {
+            $usr = Auth::user();
+            $avatarPath = $usr->profile_picture ?? null;
+            if ($avatarPath) {
+                $UserAvatarUrl = asset('storage/' . $avatarPath);
+            } else {
+                $UserAvatarUrl = asset('images/avatar/default.jpg');
+            }
+        }
     @endphp
 
     <div class="max-w-3xl mx-auto my-8 ">
@@ -51,9 +57,10 @@
                                         <div class="w-18 h-9 bg-base-100 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
                                         <div id="toggle-indicator"
                                             class="absolute top-1 left-1 size-7 rounded-full transition-all duration-300 peer-checked:left-10 bg-cover bg-center flex items-center justify-center"
-                                            data-user-email="{{ auth()->user()->email }}"
-                                            style="background-image: url('https://avatars.laravel.cloud/{{ auth()->user()->email }}');">
-                                        </div>
+                                            data-profile-url="{{ $UserAvatarUrl ?? '' }}"
+                                            data-user-avatar="{{ $UserAvatarUrl ?? '' }}"
+                                            style="background-image: url('{{ $UserAvatarUrl ?? asset('images/avatar/default.jpg') }}');">
+                                         </div>
                                     </label>
                                 </div>
 
@@ -123,5 +130,8 @@
             </form>
         </div>
     </div>
+
+    {{-- Ensure edit modal is available on the post page so the Edit button works --}}
+    <x-modals.posts.edit />
 
 </x-layout>

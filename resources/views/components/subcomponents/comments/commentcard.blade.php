@@ -19,6 +19,17 @@
         ? "@{$username}"
         : '@anonymous';
     $email = !$isAnonymous && $user?->email ? $user->email : null;
+
+    // compute a usable avatar URL (public storage if exists, else remote fallback, else default)
+    if ($user) {
+        if ($user->profile_picture && \Illuminate\Support\Facades\Storage::disk('public')->exists($user->profile_picture)) {
+            $userAvatarUrl = asset('storage/' . $user->profile_picture);
+        }  else {
+            $userAvatarUrl = asset('images/avatar/default.jpg');
+        }
+    } else {
+        $userAvatarUrl = asset('images/avatar/default.jpg');
+    }
 @endphp
 
 <div class="flex gap-3 p-4 rounded-lg bg-base-100 shadow-md hover:shadow-lg transition-shadow duration-200" data-comment-id="{{ $comment->id }}">
@@ -29,9 +40,7 @@
                 <i data-lucide="hat-glasses" class="w-5 h-5 text-base-content"></i>
             </div>
         @else
-            <div class="size-10 rounded-full overflow-hidden">
-                <img src="https://avatars.laravel.cloud/{{ urlencode($email ?? '') }}" alt="{{ $displayName }}'s avatar" class="w-full h-full object-cover" />
-            </div>
+            <x-subcomponents.avatar :user="$user" size="10" />
         @endif
     </div>
 
@@ -68,6 +77,7 @@
                                         data-user-name="{{ $user?->dname ?? 'Unknown' }}"
                                         data-user-username="{{ $user?->username ?? 'unknown' }}"
                                         data-user-email="{{ $user?->email ?? '' }}"
+                                        data-user-avatar="{{ $userAvatarUrl }}"
                                         title="Edit this comment">
                                         <i data-lucide="pencil" class="w-4 h-4"></i>
                                         <span>Edit</span>

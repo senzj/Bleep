@@ -11,28 +11,13 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @stack('styles')
 
-        <meta name="base-url" content="{{ url('') }}">
+        {{-- meta data --}}
+        <meta name="base_url" content="{{ url('') }}">
         <meta name="csrf-token" content="{{ csrf_token() }}">
     </head>
 
     <body class="min-h-screen flex flex-col font-sans bg-gray-200/80">
-        <nav class="navbar bg-base-100">
-            <div class="navbar-start">
-                <a href="/" class="btn btn-ghost text-2xl">Bleep</a>
-            </div>
-            <div class="navbar-end gap-2">
-                @auth
-                    <span class="text-sm">{{ auth()->user()->username }}</span>
-                    <form method="POST" action="/logout" class="inline">
-                        @csrf
-                        <button type="submit" class="btn btn-ghost btn-sm">Logout</button>
-                    </form>
-                @else
-                    <a href="{{ route('login') }}" class="btn btn-ghost btn-sm">Sign In</a>
-                    <a href="{{ route('register') }}" class="btn btn-primary btn-sm">Sign Up</a>
-                @endauth
-            </div>
-        </nav>
+        @include('components.include.navbar')
 
         {{-- success toast --}}
         @if (session('success'))

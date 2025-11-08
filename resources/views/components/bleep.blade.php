@@ -1,5 +1,6 @@
 {{-- scripts --}}
 @vite([
+    'resources/js/bleep/modals/posts/edit.js',   // ensure edit handler is loaded
     'resources/js/bleep/posts/like.js',
     'resources/js/bleep/posts/comment.js',
     'resources/js/bleep/posts/repost.js',
@@ -9,10 +10,13 @@
 {{-- Props --}}
 @props([
     'bleep',
-    'showCommentsButton' => true
+    'showCommentsButton' => true,
 ])
 
 @php
+    // Normalize showCommentsButton so strings like "false" become boolean false
+    $showCommentsButton = filter_var($showCommentsButton ?? true, FILTER_VALIDATE_BOOLEAN);
+
     $isAnonymous = (bool) $bleep->is_anonymous;
 
     if ($isAnonymous) {
@@ -40,10 +44,7 @@
         {{-- Avatar --}}
         @if(! $isAnonymous && $bleep->user)
             <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
-                <div class="size-12 rounded-full">
-                    <img src="https://avatars.laravel.cloud/{{ urlencode($bleep->user->email) }}"
-                         alt="{{ $bleep->user->name }}'s avatar" />
-                </div>
+                <x-subcomponents.avatar :user="$bleep->user" :size="12" />
             </div>
         @elseif($isAnonymous)
             {{-- Anonymous avatar --}}
@@ -59,7 +60,6 @@
                 </div>
             </div>
         @endif
-
 
         {{-- Author Info + Actions --}}
         <div class="flex-1 min-w-0">
@@ -110,7 +110,7 @@
                                     <button type="button"
                                         class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-base-200 transition edit-bleep-btn"
                                         data-bleep-id="{{ $bleep->id }}"
-                                        data-bleep-message="{{ htmlspecialchars($bleep->message, ENT_QUOTES) }}"
+                                        data-bleep-message="{{ $bleep->message }}"
                                         data-bleep-anonymous="{{ $bleep->is_anonymous ? '1' : '0' }}">
                                         <i data-lucide="pencil" class="w-4 h-4"></i>
                                         <span>Edit</span>

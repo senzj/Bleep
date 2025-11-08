@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -22,9 +23,9 @@ class User extends Authenticatable
         'dname',
         'username',
         'email',
-        'profile_picture',
         'password',
         'timezone',
+        'profile_picture',
     ];
 
     /**
@@ -56,5 +57,20 @@ class User extends Authenticatable
     public function bleeps(): HasMany
     {
         return $this->hasMany(Bleep::class);
+    }
+
+    // safe computed accessor — does not change DB value
+    public function getProfilePictureUrlAttribute(): ?string
+    {
+        $path = $this->getOriginal('profile_picture'); // raw DB value
+        if (! $path) {
+            return asset('images/avatar/default.jpg');
+        }
+
+        $path = ltrim($path, '/');
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+            return asset('storage/' . $path);
+        }
+        return asset('images/avatar/default.jpg');
     }
 }

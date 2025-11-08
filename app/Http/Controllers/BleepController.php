@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Bleep;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class BleepController extends Controller
