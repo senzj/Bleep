@@ -85,6 +85,7 @@ class CommentsController extends Controller
             return response()->json([
                 'success' => true,
                 'comment' => $transformed,
+                'message' => 'Comment updated successfully.'
             ]);
         }
 
@@ -148,6 +149,36 @@ class CommentsController extends Controller
         }
 
         return redirect()->back()->with('success', 'Comment reported successfully.');
+    }
+
+    /**
+     * Get comments as rendered HTML
+     */
+    public function commentsHtml(Bleep $bleep)
+    {
+        $comments = $bleep->comments()
+            ->with('user')
+            ->latest()
+            ->get();
+
+        // Render each comment card and collect the HTML
+        $html = $comments->map(function($comment) use ($bleep) {
+            return view('components.subcomponents.comments.commentcard', [
+                'comment' => $comment,
+                'bleep' => $bleep
+            ])->render();
+        })->join('');
+
+        // If no comments, return empty state
+        if ($comments->isEmpty()) {
+            $html = '<div class="flex flex-col items-center justify-center py-10 text-base-content/60">
+                <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>
+                <p class="text-sm font-semibold">No comments yet</p>
+                <p class="text-xs">Be the first to share your thoughts.</p>
+            </div>';
+        }
+
+        return response()->json(['html' => $html]);
     }
 
     protected function transformComment(Comments $comment, ?Bleep $bleep = null, $viewerSeed = null): array

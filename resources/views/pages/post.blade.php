@@ -1,8 +1,7 @@
 @vite([
-        'resources/js/bleep/posts/posts',
-        'resources/js/bleep/posts/likes',
-        'resources/js/bleep/posts/comments',
-        'resources/js/bleep/modals/posts/edit',
+    'resources/js/bleep/modals/posts/edit.js',
+    'resources/js/bleep/posts/like.js',
+    'resources/js/bleep/posts/post.js',
     ])
 <x-layout>
     {{-- Store user email for avatar display --}}
@@ -75,120 +74,15 @@
 
             {{-- Comments display --}}
             <div class="mt-6 space-y-4">
-                @foreach($bleep->comments->sortByDesc('created_at') as $comment)
-                    @php
-                        $isAnon = (bool) $comment->is_anonymous;
-                        $displayName = $isAnon
-                            ? $bleep->anonymousDisplayNameFor($viewerSeed)
-                            : ($comment->user->dname ?? 'Unknown');
-                        $username = $isAnon ? '@anonymous' : ('@' . ($comment->user->username ?? 'unknown'));
-                    @endphp
-
-                    <div class="p-4 bg-base-100 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200" data-comment-id="{{ $comment->id }}">
-                        <div class="flex items-start gap-3">
-                            {{-- avatar (anonymous or user) --}}
-                            @if(! $isAnon && $comment->user)
-                                <div class="avatar">
-                                    <div class="size-10 rounded-full overflow-hidden">
-                                        <img src="https://avatars.laravel.cloud/{{ urlencode($comment->user->email) }}" alt="{{ $displayName }}">
-                                    </div>
-                                </div>
-                            @else
-                                <div class="avatar">
-                                    <div class="size-10 rounded-full bg-base-300 flex items-center justify-center">
-                                        <i data-lucide="hat-glasses" class="w-4 h-4 text-base-content/80"></i>
-                                    </div>
-                                </div>
-                            @endif
-
-                            <div class="flex-1 min-w-0">
-                                {{-- Header: Name, Username, Time, Actions --}}
-                                <div class="flex items-start justify-between gap-2 mb-2">
-                                    <div class="flex flex-col min-w-0">
-                                        <span class="font-semibold text-sm truncate">{{ $displayName }}</span>
-                                        <span class="text-xs text-gray-500 truncate">{{ $username }}</span>
-                                    </div>
-
-                                    {{-- Time & Actions --}}
-                                    <div class="flex items-center gap-2 shrink-0">
-                                        {{-- Date and time --}}
-                                        <div class="text-right">
-                                            <div class="text-xs text-base-content/50 whitespace-nowrap">
-                                                {{ $comment->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y \| g:i:s A') }}
-                                            </div>
-                                            <div class="text-xs text-base-content/50 whitespace-nowrap">
-                                                {{ $comment->created_at->diffForHumans() }}
-                                            </div>
-                                        </div>
-
-                                        {{-- Action Dropdown --}}
-                                        <div class="dropdown dropdown-end">
-                                            <button tabindex="0" class="btn btn-ghost btn-xs btn-circle hover:bg-base-300" title="More options">
-                                                <i data-lucide="more-vertical" class="w-4 h-4"></i>
-                                            </button>
-
-                                            <ul tabindex="0" class="dropdown-content z-10 shadow-lg bg-base-100 rounded-xl w-48 border border-base-200 p-2 space-y-1">
-                                                {{-- Edit Comment --}}
-                                                @can('update', $comment)
-                                                    <li>
-                                                        <button type="button"
-                                                            class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-base-200 transition edit-comment-btn"
-                                                            data-comment-id="{{ $comment->id }}"
-                                                            data-bleep-id="{{ $bleep->id }}"
-                                                            data-comment-message="{{ htmlspecialchars($comment->message, ENT_QUOTES) }}"
-                                                            data-is-anonymous="{{ $comment->is_anonymous ? '1' : '0' }}"
-                                                            title="Edit this comment">
-                                                            <i data-lucide="pencil" class="w-4 h-4"></i>
-                                                            <span>Edit</span>
-                                                        </button>
-                                                    </li>
-                                                @endcan
-
-                                                {{-- Delete Comment --}}
-                                                @can('delete', $comment)
-                                                    <li>
-                                                        <button type="button"
-                                                            class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 rounded-md hover:bg-red-50 transition delete-comment-btn"
-                                                            data-comment-id="{{ $comment->id }}"
-                                                            data-bleep-id="{{ $bleep->id }}"
-                                                            title="Delete this comment">
-                                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                                            <span>Delete</span>
-                                                        </button>
-                                                    </li>
-                                                @endcan
-
-                                                {{-- Report Comment --}}
-                                                <li>
-                                                    <button type="button"
-                                                        class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-orange-500 rounded-md hover:bg-orange-50 transition report-comment-btn"
-                                                        data-comment-id="{{ $comment->id }}"
-                                                        data-bleep-id="{{ $bleep->id }}"
-                                                        title="Report this comment">
-                                                        <i data-lucide="flag" class="w-4 h-4"></i>
-                                                        <span>Report</span>
-                                                    </button>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- Comment Message --}}
-                                <p class="text-sm break-words leading-snug text-base-content/90">
-                                    {{ $comment->message }}
-                                </p>
-                            </div>
-                        </div>
+                @forelse($bleep->comments->sortByDesc('created_at') as $comment)
+                    <x-subcomponents.comments.commentcard :comment="$comment" :bleep="$bleep" />
+                @empty
+                    <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
+                        <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>
+                        <p class="text-sm font-semibold">No comments yet</p>
+                        <p class="text-xs">Be the first to share your thoughts.</p>
                     </div>
-                @endforeach
-
-                @if($bleep->comments->isEmpty())
-                    <div class="text-center text-sm text-gray-500 py-6">
-                        <i data-lucide="message-circle-off" class="w-5 h-5 inline-block mr-2"></i>
-                        No comments yet. Be the first to comment.
-                    </div>
-                @endif
+                @endforelse
             </div>
         </div>
 

@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\HasAnonymousName;
 use Illuminate\Database\Eloquent\Model;
 
 class Bleep extends Model
 {
+    use HasAnonymousName;
+
     protected $fillable = [
         'message',
         'is_anonymous',
@@ -42,31 +45,4 @@ class Bleep extends Model
     {
         return $this->likes()->where('user_id', $user->id)->exists();
     }
-
-    /**
-     * Deterministic anonymous display name for this bleep (viewer-specific).
-     * Uses bleep id + viewer seed so different viewers get different names,
-     * but the same viewer sees the same name for the same bleep.
-     */
-    public function anonymousDisplayNameFor(string|int $viewerSeed): string
-    {
-        $firstParts = [
-            'Rampage','Clam','Sunny','Brave','Sneaky','Mighty','Quiet','Spicy','Fuzzy','Neon',
-            'Turbo','Happy','Icy','Rusty','Velvet','Silver','Crimson','Jolly','Gloomy','Zen'
-        ];
-
-        $secondParts = [
-            'Berry','Banana','Fox','Tiger','Pancake','Nimbus','Penguin','Pixel','Breeze','Blossom',
-            'Rocket','Dandelion','Echo','Shadow','Nova','Sailor','Comet','Mango','Quartz','Marsh'
-        ];
-
-        // deterministic hash from bleep id + viewer seed
-        $hash = md5((string) $this->id . '|' . (string) $viewerSeed);
-
-        $firstIndex  = hexdec(substr($hash, 0, 8)) % count($firstParts);
-        $secondIndex = hexdec(substr($hash, 8, 8)) % count($secondParts);
-
-        return ucwords($firstParts[$firstIndex] . ' ' . $secondParts[$secondIndex]);
-    }
-
 }

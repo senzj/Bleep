@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\HasAnonymousName;
 use Illuminate\Database\Eloquent\Model;
 
 class Comments extends Model
 {
+    use HasAnonymousName;
+
     protected $fillable = [
         'user_id',
         'bleep_id',

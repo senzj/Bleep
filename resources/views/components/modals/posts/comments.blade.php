@@ -10,11 +10,17 @@
         </button>
     </div>
 
-    {{-- Scrollable Content (fills remaining space) --}}
+    {{-- Scrollable Content --}}
     <div id="floating-comments-scroll" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-200/80">
-        <div class="flex justify-center items-center py-10">
-            <span class="loading loading-spinner loading-md"></span>
-        </div>
+        @forelse($bleep->comments->sortByDesc('created_at') as $comment)
+            <x-subcomponents.comments.commentcard :comment="$comment" :bleep="$bleep" />
+        @empty
+            <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
+                <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>
+                <p class="text-sm font-semibold">No comments yet</p>
+                <p class="text-xs">Be the first to share your thoughts.</p>
+            </div>
+        @endforelse
     </div>
 
     {{-- Sticky Input Footer --}}

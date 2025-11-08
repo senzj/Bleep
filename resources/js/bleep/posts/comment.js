@@ -60,6 +60,82 @@ document.addEventListener('DOMContentLoaded', function() {
 
     floatingForm?.addEventListener('submit', handleFloatingFormSubmit);
 
+    // Handle floating form submit
+    async function handleFloatingFormSubmit(e) {
+        e.preventDefault();
+
+        if (!floatingForm || !floatingTextarea) return;
+
+        const bleepId = floatingForm.dataset.bleepId;
+        const message = floatingTextarea.value.trim();
+        const isAnonymous = anonymousToggle?.checked ?? false;
+
+        if (!message) {
+            showToast('Message cannot be empty', 'error');
+            return;
+        }
+
+        if (!bleepId) {
+            showToast('Invalid bleep', 'error');
+            return;
+        }
+
+        const submitBtn = floatingForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            const originalHTML = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span>';
+        }
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+            const response = await fetch(`/bleeps/comments/${bleepId}/post`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    message,
+                    is_anonymous: isAnonymous,
+                }),
+            });
+
+            if (response.ok) {
+                // Clear form
+                floatingTextarea.value = '';
+                autoGrow(floatingTextarea);
+
+                // Reset toggle
+                if (anonymousToggle) {
+                    anonymousToggle.checked = false;
+                    anonymousToggle.dispatchEvent(new Event('change'));
+                }
+
+                // Reload comments
+                await loadComments(bleepId);
+
+                showToast('Comment posted successfully', 'success');
+            } else {
+                const error = await response.json();
+                showToast(error.message || 'Failed to post comment', 'error');
+            }
+        } catch (error) {
+            console.error('Error posting comment:', error);
+            showToast('An error occurred', 'error');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i data-lucide="send" class="w-5 h-5"></i>';
+                if (window.lucide) window.lucide.createIcons();
+            }
+        }
+    }
+
     // Open comments modal
     function openComments(bleepId, bleepElement) {
         if (!floatingModal || !floatingContent || !overlay) return;
@@ -188,13 +264,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!floatingContent) return;
 
         try {
-            // GET the comments list (route: /bleeps/comments/{bleep}/comments)
-            const response = await fetch(`/bleeps/comments/${bleepId}/comments`, {
+            // Fetch Blade-rendered HTML
+            const response = await fetch(`/bleeps/comments/${bleepId}/html`, {
                 headers: { 'Accept': 'application/json' }
             });
 
             if (response.status === 401) {
-                // guest: not authorized to fetch comments (if your routes remained protected)
                 floatingContent.innerHTML = `
                     <div class="p-4 text-center text-sm text-base-content/70">
                         <p>Please <a href="/login" class="link link-primary">login</a> to view comments.</p>
@@ -208,14 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const data = await response.json();
-
-            if (!Array.isArray(data.comments) || data.comments.length === 0) {
-                floatingContent.innerHTML = renderEmptyState();
-            } else {
-                floatingContent.innerHTML = data.comments
-                    .map(comment => renderCommentHTML(comment))
-                    .join('');
-            }
+            floatingContent.innerHTML = data.html;
 
             if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
                 lucide.createIcons();
@@ -224,275 +292,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error loading comments:', error);
             floatingContent.innerHTML = renderErrorState();
         }
-    }
-
-    function renderEmptyState() {
-        return `
-            <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
-                <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>
-                <p class="text-sm font-semibold">No comments yet</p>
-                <p class="text-xs">Be the first to share your thoughts.</p>
-            </div>
-        `;
-    }
-
-    function renderErrorState() {
-        return `
-            <div class="flex flex-col items-center justify-center py-10 text-error">
-                <i data-lucide="alert-triangle" class="w-8 h-8 mb-3"></i>
-                <p class="text-sm font-semibold">Unable to load comments.</p>
-                <p class="text-xs text-base-content/70">Please try again shortly.</p>
-            </div>
-        `;
-    }
-
-    // Render comment HTML (inline styling from Blade template)
-    function renderCommentHTML(comment) {
-        const user = comment.user || {};
-        const isAnonymous = Boolean(comment.is_anonymous);
-        const displayName = comment.display_name || (isAnonymous ? 'Anonymous' : (user.dname || 'Anonymous'));
-        const username = escapeHtml(user.username || '');
-        const usernameLine = !isAnonymous && username
-            ? `<span class="text-xs text-base-content/50 truncate">@${username}</span>`
-            : '<span class="text-xs text-base-content/50 truncate">@anonymous</span>';
-        const timezone = !isAnonymous && user.timezone ? user.timezone : null;
-        const timestampISO = comment.created_at_iso || comment.created_at || '';
-        const email = !isAnonymous && user.email ? escapeHtml(user.email) : null;
-
-        const localTime = timestampISO ? new Date(timestampISO) : null;
-        const viewerDateTime = localTime ? formatDateTimeInTimezone(localTime, viewerTimezone) : '—';
-        const timezoneTooltip = isAnonymous
-            ? 'Posting time hidden for anonymous users'
-            : (localTime && timezone ? `${formatDateTimeTooltip(localTime, timezone)} (${formatTimezoneLabel(timezone)})` : '');
-        const diffTimestamp = comment.diffTimestamp || (localTime ? timeAgo(localTime) : '');
-
-        const avatarHtml = isAnonymous
-            ? `
-                <div class="size-10 rounded-full bg-base-300 flex items-center justify-center shrink-0">
-                    <i data-lucide="hat-glasses" class="w-5 h-5 text-base-content"></i>
-                </div>
-            `
-            : `
-                <div class="size-10 rounded-full shrink-0 overflow-hidden">
-                    <img src="https://avatars.laravel.cloud/${encodeURIComponent(email ?? '')}" alt="${displayName}'s avatar" class="w-full h-full object-cover" />
-                </div>
-            `;
-
-        // Determine if current user owns this comment (you'll need to pass this from backend)
-        // For now, we'll add data attributes and let the click handlers check permissions
-        const actionsHtml = `
-            <div class="dropdown dropdown-end">
-                <button tabindex="0" class="btn btn-ghost btn-xs btn-circle hover:bg-base-300" title="More options">
-                    <i data-lucide="more-vertical" class="w-4 h-4"></i>
-                </button>
-                <ul tabindex="0" class="dropdown-content z-10 shadow-lg bg-base-100 rounded-xl w-48 border border-base-200 p-2 space-y-1">
-                    <li>
-                        <button type="button"
-                            class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-base-200 transition edit-comment-btn"
-                            data-comment-id="${comment.id}"
-                            data-comment-message="${escapeHtml(comment.message)}"
-                            data-is-anonymous="${comment.is_anonymous ? '1' : '0'}"
-                            title="Edit this comment">
-                            <i data-lucide="pencil" class="w-4 h-4"></i>
-                            <span>Edit</span>
-                        </button>
-                    </li>
-
-                    <li>
-                        <button type="button"
-                            class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 rounded-md hover:bg-red-50 transition delete-comment-btn"
-                            data-comment-id="${comment.id}"
-                            title="Delete this comment">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            <span>Delete</span>
-                        </button>
-                    </li>
-
-                    <li>
-                        <button type="button"
-                            class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-orange-500 rounded-md hover:bg-orange-50 transition report-comment-btn"
-                            data-comment-id="${comment.id}"
-                            title="Report this comment">
-                            <i data-lucide="flag" class="w-4 h-4"></i>
-                            <span>Report</span>
-                        </button>
-                    </li>
-                </ul>
-            </div>
-        `;
-
-        return `
-            <div class="flex gap-3 p-4 rounded-lg bg-base-100 shadow-md hover:shadow-lg transition-shadow duration-200" data-comment-id="${comment.id}">
-                ${avatarHtml}
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-start justify-between gap-2">
-                        <div class="flex flex-col min-w-0">
-                            <span class="font-semibold text-sm truncate">${displayName}</span>
-                            ${usernameLine}
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <div class="flex flex-col text-right shrink-0 text-xs text-base-content/50 leading-tight whitespace-nowrap">
-                                <span title="${escapeHtml(timezoneTooltip)}">${viewerDateTime}</span>
-                                <span>${diffTimestamp}</span>
-                            </div>
-                            ${actionsHtml}
-                        </div>
-                    </div>
-
-                    <p class="text-sm mb-1 mt-2.5 break-words leading-snug text-base-content/90">
-                        ${escapeHtml(comment.message)}
-                    </p>
-                </div>
-            </div>
-        `;
-    }
-
-    function formatDateTimeInTimezone(date, timeZone) {
-        if (!date || Number.isNaN(date.getTime())) return '';
-        const datePart = new Intl.DateTimeFormat('en-US', {
-            timeZone,
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        }).format(date);
-        const timePart = new Intl.DateTimeFormat('en-US', {
-            timeZone,
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit'
-        }).format(date);
-        return `${datePart} | ${timePart}`;
-    }
-
-    function formatDateTimeTooltip(date, timeZone) {
-        if (!date || Number.isNaN(date.getTime())) return '';
-        return new Intl.DateTimeFormat('en-US', {
-            timeZone,
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit'
-        }).format(date);
-    }
-
-    function formatTimezoneLabel(timeZone) {
-        if (!timeZone) return 'UTC';
-        return timeZone.replace(/_/g, ' ');
-    }
-
-    // Utility to generate "x minutes/hours/days ago"
-    function timeAgo(date) {
-        const seconds = Math.floor((new Date() - date) / 1000);
-        let interval = Math.floor(seconds / 31536000);
-        if (interval >= 1) return interval + 'y ago';
-        interval = Math.floor(seconds / 2592000);
-        if (interval >= 1) return interval + 'mo ago';
-        interval = Math.floor(seconds / 86400);
-        if (interval >= 1) return interval + 'd ago';
-        interval = Math.floor(seconds / 3600);
-        if (interval >= 1) return interval + 'h ago';
-        interval = Math.floor(seconds / 60);
-        if (interval >= 1) return interval + 'm ago';
-        return 'just now';
-    }
-
-    // Fetch partial HTML (optional, for cleaner approach)
-    async function fetchPartial(partialName) {
-        try {
-            const response = await fetch(`/partials/${partialName}`);
-            return await response.text();
-        } catch (error) {
-            console.error(`Error fetching partial ${partialName}:`, error);
-            return '';
-        }
-    }
-
-    // Handle form submission
-    async function handleFloatingFormSubmit(e) {
-        e.preventDefault();
-
-        if (!floatingForm || !floatingTextarea) return;
-
-        const bleepId = floatingForm.dataset.bleepId;
-        if (!bleepId) return;
-
-        const message = floatingTextarea.value.trim();
-        const isAnonymous = anonymousToggle?.checked ?? false;
-        if (!message) return;
-
-        const submitBtn = floatingForm.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-
-        try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
-                document.querySelector('input[name="_token"]')?.value;
-
-            // Post comment (use route: /bleeps/comments/{bleep}/post)
-            const response = await fetch(`/bleeps/comments/${bleepId}/post`, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ message, is_anonymous: isAnonymous })
-            });
-
-            if (response.status === 401) {
-                // If guest somehow tries to post: prompt login
-                window.location.href = '/login';
-                return;
-            }
-
-            if (response.ok) {
-                floatingTextarea.value = '';
-                autoGrow(floatingTextarea);
-                if (anonymousToggle) {
-                    anonymousToggle.checked = false;
-                    anonymousToggle.dispatchEvent(new Event('change'));
-                }
-                loadComments(bleepId);
-                updateCommentCount(bleepId);
-            } else {
-                console.error('Error posting comment:', await response.text());
-            }
-
-        } catch (error) {
-            console.error('Error posting comment:', error);
-        } finally {
-            submitBtn.disabled = false;
-        }
-    }
-
-    // Update comment count on bleep button
-    async function updateCommentCount(bleepId) {
-        try {
-            const button = document.querySelector(`.comment-btn[data-bleep-id="${bleepId}"]`);
-            // Update count (use route: /bleeps/comments/{bleep}/count)
-            const response = await fetch(`/bleeps/comments/${bleepId}/count`);
-            const data = await response.json();
-
-            if (button && data?.count !== undefined) {
-                const countSpan = button.querySelector('.comment-count');
-                const labelSpan = button.querySelector('.comment-label');
-                if (countSpan) countSpan.textContent = data.count;
-                if (labelSpan) labelSpan.textContent = data.count === 1 ? 'Comment' : 'Comments';
-            }
-        } catch (error) {
-            console.error('Error updating comment count:', error);
-        }
-    }
-
-    // Escape HTML to prevent XSS
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text ?? '';
-        return div.innerHTML;
     }
 
     // Close modal on Escape key
@@ -723,6 +522,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const commentId = btn.dataset.commentId;
         const message = btn.dataset.commentMessage;
         const isAnonymous = btn.dataset.isAnonymous === '1';
+        const userName = btn.dataset.userName;
+        const userUsername = btn.dataset.userUsername;
+        const userEmail = btn.dataset.userEmail;
 
         // Find the comment container - works for both inline and modal
         const commentContainer = document.querySelector(`[data-comment-id="${commentId}"]`);
@@ -732,21 +534,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (commentContainer.querySelector('.edit-inline-edit-ui')) return;
 
         // Convert to edit mode
-        enableInlineEdit(commentContainer, commentId, message, isAnonymous);
+        enableInlineEdit(commentContainer, commentId, message, isAnonymous, userName, userUsername, userEmail);
     });
 
-    function enableInlineEdit(commentContainer, commentId, originalMessage, isAnonymous) {
+    function enableInlineEdit(commentContainer, commentId, originalMessage, isAnonymous, userName, userUsername, userEmail) {
         // Find the message paragraph
-        const messagePara = commentContainer.querySelector('p[class*="text-sm"]');
+        const messagePara = commentContainer.querySelector('.comment-message');
         if (!messagePara) return;
-
-        // Get user email from the page (stored in hidden meta tag or data attribute)
-        const userEmail = document.querySelector('meta[name="user-email"]')?.content ||
-                          document.querySelector('[data-user-email]')?.dataset.userEmail || '';
 
         // Create edit UI
         const editUI = document.createElement('div');
-        editUI.className = 'edit-inline-edit-ui space-y-3 py-2';
+        editUI.className = 'edit-inline-edit-ui space-y-3 mt-2';
         editUI.innerHTML = `
             <textarea
                 class="textarea textarea-bordered w-full resize-none text-sm"
@@ -758,11 +556,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="flex items-center gap-2">
                     <label class="relative inline-flex cursor-pointer">
                         <input type="checkbox" class="edit-inline-anon-toggle peer sr-only" ${isAnonymous ? 'checked' : ''}>
-                        <div class="w-14 h-8 bg-base-100 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
+                        <div class="w-14 h-8 bg-base-300 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
                         <div class="edit-inline-anon-indicator absolute top-1 left-1 size-6 rounded-full transition-all duration-300 peer-checked:left-6 bg-cover bg-center flex items-center justify-center"
-                            data-user-email="${userEmail}"
-                            style="${isAnonymous ? 'background-image: none; background-color: #1f2937;' : `background-image: url('https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}');`}">
-                            ${isAnonymous ? '<i data-lucide="hat-glasses" class="w-3 h-3 text-white"></i>' : ''}
+                            data-user-email="${userEmail}">
                         </div>
                     </label>
                     <span class="text-xs text-base-content/60">Anonymous</span>
@@ -770,7 +566,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 <div class="flex gap-2">
                     <button type="button" class="btn btn-ghost btn-sm cancel-inline-edit">Cancel</button>
-                    <button type="button" class="btn btn-primary btn-sm save-inline-edit" data-comment-id="${commentId}">Update</button>
+                    <button type="button" class="btn btn-primary btn-sm save-inline-edit" data-comment-id="${commentId}">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        Update
+                    </button>
                 </div>
             </div>
         `;
@@ -790,27 +589,30 @@ document.addEventListener('DOMContentLoaded', function() {
         const toggle = editUI.querySelector('.edit-inline-anon-toggle');
         const indicator = editUI.querySelector('.edit-inline-anon-indicator');
 
-        if (toggle) {
-            toggle.addEventListener('change', () => {
-                if (toggle.checked) {
-                    // Show anonymous icon
-                    indicator.style.backgroundImage = 'none';
-                    indicator.style.backgroundColor = '#1f2937';
-                    indicator.innerHTML = '<i data-lucide="hat-glasses" class="w-3 h-3 text-white"></i>';
-                    if (window.lucide) window.lucide.createIcons();
+        const updateToggleIndicator = () => {
+            if (toggle.checked) {
+                // Show anonymous icon
+                indicator.style.backgroundImage = 'none';
+                indicator.style.backgroundColor = '#1f2937';
+                indicator.innerHTML = '<i data-lucide="hat-glasses" class="w-4 h-4 text-white"></i>';
+                if (window.lucide) window.lucide.createIcons();
+            } else {
+                // Show user avatar
+                indicator.innerHTML = '';
+                indicator.style.backgroundColor = 'transparent';
+                if (userEmail) {
+                    indicator.style.backgroundImage = `url('https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}')`;
+                    indicator.style.backgroundSize = 'cover';
+                    indicator.style.backgroundPosition = 'center';
                 } else {
-                    // Show user avatar
-                    indicator.innerHTML = '';
-                    indicator.style.backgroundColor = 'transparent';
-                    if (userEmail) {
-                        indicator.style.backgroundImage = `url('https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}')`;
-                        indicator.style.backgroundSize = 'cover';
-                        indicator.style.backgroundPosition = 'center';
-                    } else {
-                        indicator.style.backgroundImage = 'none';
-                    }
+                    indicator.style.backgroundImage = 'none';
                 }
-            });
+            }
+        };
+
+        if (toggle) {
+            toggle.addEventListener('change', updateToggleIndicator);
+            updateToggleIndicator(); // Initialize
         }
 
         // Cancel button
@@ -832,6 +634,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             saveBtn.disabled = true;
+            const originalBtnHTML = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span>';
 
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -852,6 +656,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (response.ok) {
+                    const data = await response.json();
+
                     // Update the message paragraph
                     messagePara.textContent = newMessage;
                     messagePara.classList.remove('hidden');
@@ -863,20 +669,33 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Show anonymous avatar
                             avatarContainer.innerHTML = `
                                 <div class="size-10 rounded-full bg-base-300 flex items-center justify-center">
-                                    <i data-lucide="hat-glasses" class="w-4 h-4 text-base-content/80"></i>
+                                    <i data-lucide="hat-glasses" class="w-5 h-5 text-base-content"></i>
                                 </div>
                             `;
                         } else {
                             // Show user avatar
-                            const userEmail = document.querySelector('meta[name="user-email"]')?.content || '';
                             avatarContainer.innerHTML = `
                                 <div class="size-10 rounded-full overflow-hidden">
-                                    <img src="https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}" alt="User avatar">
+                                    <img src="https://avatars.laravel.cloud/${encodeURIComponent(userEmail)}" alt="${userName}'s avatar" class="w-full h-full object-cover">
                                 </div>
                             `;
                         }
-                        // Reinitialize lucide icons if avatar changed to anonymous
                         if (window.lucide) window.lucide.createIcons();
+                    }
+
+                    // Update display name and username
+                    const displayNameEl = commentContainer.querySelector('.comment-display-name');
+                    const usernameEl = commentContainer.querySelector('.comment-username');
+
+                    if (displayNameEl && usernameEl) {
+                        if (newIsAnonymous) {
+                            // Use the anonymous name from server response if available
+                            displayNameEl.textContent = data.comment?.display_name || 'Anonymous User';
+                            usernameEl.textContent = '@anonymous';
+                        } else {
+                            displayNameEl.textContent = userName;
+                            usernameEl.textContent = '@' + userUsername;
+                        }
                     }
 
                     // Update the edit button data attributes for next edit
@@ -886,47 +705,47 @@ document.addEventListener('DOMContentLoaded', function() {
                         editBtn.dataset.isAnonymous = newIsAnonymous ? '1' : '0';
                     }
 
-                    // Update display name if anonymity changed
-                    const displayNameEl = commentContainer.querySelector('span.font-semibold');
-                    const usernameEl = commentContainer.querySelector('span.text-gray-500');
-                    if (displayNameEl && usernameEl) {
-                        // You may need to get the bleep data to recalculate anonymous name
-                        if (newIsAnonymous) {
-                            displayNameEl.textContent = 'Anonymous User'; // Or calculate properly
-                            usernameEl.textContent = '@anonymous';
-                        } else {
-                            // Fetch from data attribute or recalculate
-                            const userName = editBtn?.dataset.userName || 'Unknown';
-                            const userUsername = editBtn?.dataset.userUsername || 'unknown';
-                            displayNameEl.textContent = userName;
-                            usernameEl.textContent = '@' + userUsername;
-                        }
-                    }
-
                     // Remove edit UI
                     editUI.remove();
                     showToast('Comment updated successfully', 'success');
 
                     // Reload comments in floating modal if open
                     if (currentOpenBleepId) {
-                        loadComments(currentOpenBleepId);
+                        await loadComments(currentOpenBleepId);
                     }
                 } else {
                     const error = await response.json();
                     showToast(error.message || 'Failed to update comment', 'error');
+                    saveBtn.innerHTML = originalBtnHTML;
+                    saveBtn.disabled = false;
+                    if (window.lucide) window.lucide.createIcons();
                 }
             } catch (error) {
                 console.error('Error updating comment:', error);
                 showToast('An error occurred', 'error');
-            } finally {
+                saveBtn.innerHTML = originalBtnHTML;
                 saveBtn.disabled = false;
+                if (window.lucide) window.lucide.createIcons();
             }
         });
 
         // Focus textarea
         textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
         // Reinitialize lucide icons
         if (window.lucide) window.lucide.createIcons();
+    }
+
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
     }
 });

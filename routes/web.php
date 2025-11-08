@@ -43,6 +43,7 @@ Route::get('/', [BleepController::class, 'index']);
 // Comments
 Route::get('/bleeps/comments/{bleep}/comments', [CommentsController::class, 'index']);
 Route::get('/bleeps/comments/{bleep}/count', [CommentsController::class, 'count']);
+Route::get('/bleeps/comments/{bleep}/html', [CommentsController::class, 'commentsHtml'])->name('comments.html');
 
 // Shares
 Route::post('/bleeps/{bleep}/share', [ShareController::class, 'store']);

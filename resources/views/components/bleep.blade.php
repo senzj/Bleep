@@ -1,13 +1,16 @@
 {{-- scripts --}}
 @vite([
-    'resources/js/bleep/posts/likes',
-    'resources/js/bleep/posts/comments',
-    'resources/js/bleep/posts/share',
-    'resources/js/bleep/posts/repost',
+    'resources/js/bleep/posts/like.js',
+    'resources/js/bleep/posts/comment.js',
+    'resources/js/bleep/posts/repost.js',
+    'resources/js/bleep/posts/share.js',
 ])
 
 {{-- Props --}}
-@props(['bleep', 'showCommentsButton' => true])
+@props([
+    'bleep',
+    'showCommentsButton' => true
+])
 
 @php
     $isAnonymous = (bool) $bleep->is_anonymous;
