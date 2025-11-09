@@ -81,8 +81,29 @@
 
             {{-- Comments display --}}
             <div class="mt-6 space-y-4">
-                @forelse($bleep->comments->sortByDesc('created_at') as $comment)
-                    <x-subcomponents.comments.commentcard :comment="$comment" :bleep="$bleep" />
+                @php
+                    $comments = $bleep->comments->sortByDesc('created_at');
+                    $groups = $comments->groupBy(function($c) {
+                        $tz = $c->user?->timezone ?? config('app.timezone', 'UTC');
+                        return $c->created_at->copy()->setTimezone($tz)->format('Y-m-d') . '|' . $tz;
+                    });
+                @endphp
+
+                @forelse($groups as $key => $group)
+                    @php
+                        [$date, $tz] = explode('|', $key);
+                        $dt = \Carbon\Carbon::createFromFormat('Y-m-d', $date, $tz);
+                        $showYear = $dt->year !== now()->year;
+                        $label = $dt->format('F j') . ($showYear ? ', ' . $dt->year : '');
+                    @endphp
+
+                    <div class="text-sm text-base-content/60 font-medium mt-4 mb-2">
+                        {{ $label }}
+                    </div>
+
+                    @foreach($group as $comment)
+                        <x-subcomponents.comments.commentcard :comment="$comment" :bleep="$bleep" />
+                    @endforeach
                 @empty
                     <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
                         <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>

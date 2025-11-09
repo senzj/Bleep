@@ -12,16 +12,27 @@
 
     {{-- Scrollable Content --}}
     <div id="floating-comments-scroll" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-200/80">
-        @if($bleep && $bleep->comments)
-            @forelse($bleep->comments->sortByDesc('created_at') as $comment)
-                <x-subcomponents.comments.commentcard :comment="$comment" :bleep="$bleep" />
-            @empty
-                <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
-                    <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>
-                    <p class="text-sm font-semibold">No comments yet</p>
-                    <p class="text-xs">Be the first to share your thoughts.</p>
+        @if($bleep && $bleep->comments && $bleep->comments->count())
+            @php
+                $comments = $bleep->comments->sortByDesc('created_at');
+                $groups = $comments->groupBy(function($c) { return $c->created_at->format('Y-m-d'); });
+            @endphp
+
+            @foreach($groups as $date => $group)
+                @php
+                    $dt = \Carbon\Carbon::parse($date);
+                    $showYear = $dt->year !== now()->year;
+                    $label = $dt->format('F j') . ($showYear ? ', ' . $dt->year : '');
+                @endphp
+
+                <div class="text-sm text-base-content/60 font-medium mt-4 mb-2">
+                    {{ $label }}
                 </div>
-            @endforelse
+
+                @foreach($group as $comment)
+                    <x-subcomponents.comments.commentcard :comment="$comment" :bleep="$bleep" />
+                @endforeach
+            @endforeach
         @else
             <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
                 <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>

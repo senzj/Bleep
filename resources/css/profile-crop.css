@@ -1,0 +1,64 @@
+#cropper_container {
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    touch-action: none;
+    background-color: rgba(0, 0, 0, 0.65);
+}
+
+#cropper_container:active {
+    cursor: grabbing;
+}
+
+#cropper_image {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: auto !important;
+    height: auto !important;
+    transform: translate(-50%, -50%);
+    transform-origin: center center;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    max-width: none;
+    max-height: none;
+    will-change: transform;
+}
+
+/* Crop guide overlay */
+#cropper_container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px dashed rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* Corner markers */
+#cropper_container::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    z-index: 11;
+}
+
+#profile_picture_preview {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}

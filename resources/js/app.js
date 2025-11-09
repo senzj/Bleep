@@ -2,4 +2,4 @@ import './bootstrap';
 
 import './lucideicons';
 
-import './cropper';
+// import './alpine';

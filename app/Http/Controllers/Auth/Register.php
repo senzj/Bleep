@@ -20,17 +20,17 @@ class Register extends Controller
         // Validate the input
         $validated = $request->validate([
             'display_name' => 'required|string|max:255',
-            'username' => 'required|string|max:255|unique:users',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'timezone' => 'nullable|string|timezone',
+            'username' => 'required|string|max:255|unique:users,username',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'password' => 'required|string|confirmed|min:8',
+            'timezone' => 'nullable|string|max:64',
             'profile_picture' => 'nullable|string',
         ],[
             'display_name.required' => 'Display name is required.',
             'username.required' => 'Username is required.',
             'email.required' => 'Email is required.',
             'password.required' => 'Password is required.',
-            'timezone.string' => 'Timezone must be a valid string.',
+            'timezone.string' => 'Invalid timezone.',
         ]);
 
         // Fetch timezone from request or default to UTC

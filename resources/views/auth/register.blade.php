@@ -1,5 +1,5 @@
 @vite([
-    'resources/js/auth/register.js',
+    'resources/js/auth/register.js'
 ])
 
 <x-layout>
@@ -13,29 +13,33 @@
                 <div class="card-body p-6 sm:p-8">
                     <h1 class="text-3xl font-bold text-center mb-6">Create Account</h1>
 
-                    <form method="POST" action="{{ route('register') }}" enctype="multipart/form-data">
+                    <form id="register-form" method="POST" action="{{ route('register') }}" enctype="multipart/form-data">
                         @csrf
 
                         {{-- Hidden timezone field --}}
                         <input type="hidden" name="timezone" id="timezone" value="UTC">
 
                         {{-- Hidden profile picture data --}}
-                        <input type="hidden" name="profile_picture" id="profile_picture_data">
+                        <input type="hidden" name="profile_picture" id="profile_picture_data" value="{{ old('profile_picture', '') }}">
 
                         {{-- User Profile Picture --}}
                         <div class="form-control mb-6">
                             <label class="label justify-center">
                                 <span class="label-text font-medium">Profile Picture</span>
                             </label>
+
+                            {{-- Profile Picture --}}
                             <div class="flex flex-col items-center gap-4">
                                 <div class="relative group cursor-pointer" onclick="document.getElementById('profile_picture_input').click()">
-                                    <div class="avatar">
-                                        <div class="w-32 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 transition-all group-hover:ring-offset-4">
+                                    {{-- Avatar Preview --}}
+                                    <div class="avatar shadow-lg rounded-full border border-base-200">
+                                       <div class="w-32 rounded-full ring ring-gray-400 transition-all relative">
                                             <img id="profile_picture_preview"
-                                                 src=""
-                                                 alt="Profile Preview"
-                                                 class="hidden w-full h-full rounded-full object-cover" />
-                                            <div id="default_avatar" class="flex items-center justify-center h-full bg-base-300">
+                                                src=""  {{-- src removed dynamically if empty --}}
+                                                alt="Profile Preview"
+                                                class="hidden w-full h-full rounded-full object-cover" />
+                                            <div id="default_avatar"
+                                                class="flex items-center justify-center h-full w-full bg-base-300 rounded-full">
                                                 <i data-lucide="user" class="w-16 h-16 text-base-content/50"></i>
                                             </div>
                                         </div>
@@ -46,17 +50,25 @@
                                     </div>
                                 </div>
                                 <input type="file"
-                                       id="profile_picture_input"
-                                       class="hidden"
-                                       accept="image/*">
+                                    id="profile_picture_input"
+                                    class="hidden"
+                                    accept="image/*">
 
-                                <button type="button"
-                                        class="btn btn-sm btn-outline btn-primary"
-                                        onclick="document.getElementById('profile_picture_input').click()">
+                                <div class="flex gap-2">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline btn-primary"
+                                            onclick="document.getElementById('profile_picture_input').click()">
+                                        <i data-lucide="upload" class="w-4 h-4 mr-1"></i>
+                                        Upload Photo
+                                    </button>
 
-                                    <i data-lucide="upload" class="w-4 h-4 mr-1"></i>
-                                    Upload Photo
-                                </button>
+                                    <button type="button"
+                                            id="recrop_button"
+                                            class="btn btn-sm btn-outline btn-secondary hidden">
+                                        <i data-lucide="crop" class="w-4 h-4 mr-1"></i>
+                                        Recrop
+                                    </button>
+                                </div>
                                 <span class="text-xs text-base-content/60 text-center">Square image recommended, max 5MB</span>
                             </div>
                             @error('profile_picture')
@@ -157,28 +169,9 @@
         </div>
     </div>
 
+    {{-- Cropper Modal --}}
+    <x-modals.profile.crop />
 
- </x-layout>
+</x-layout>
 
-{{-- Cropper Modal --}}
-<input type="checkbox" id="cropper_modal" class="modal-toggle" />
-<div class="modal">
-  <div class="modal-box p-0 bg-base-100 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
-    <div class="p-4 sm:p-6">
-      <h3 class="font-semibold text-lg mb-2">Crop Profile Picture</h3>
-      <p class="text-sm text-base-content/70 mb-4">Adjust the image inside the square. Grid shows rule-of-thirds (3×3).</p>
 
-      <div id="cropper_container" class="relative w-full aspect-square overflow-hidden bg-base-300 rounded-lg">
-        <img id="cropper_image" src="" alt="Crop" class="max-w-full block mx-auto select-none">
-      </div>
-
-      <div class="flex justify-between items-center gap-3 mt-6">
-        <div class="text-sm text-base-content/60">Preview updates the profile circle after saving.</div>
-        <div class="flex justify-end gap-3">
-          <label for="cropper_modal" id="cancel_crop" class="btn btn-ghost btn-sm">Cancel</label>
-          <button id="crop_button" type="button" class="btn btn-primary btn-sm">Crop & Save</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>

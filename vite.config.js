@@ -7,6 +7,7 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
+                'resources/css/profile-crop.css',
                 'resources/js/app.js',
                 'resources/js/auth/register.js',
                 'resources/js/bleep/modals/posts/edit.js',
@@ -15,6 +16,7 @@ export default defineConfig({
                 'resources/js/bleep/posts/post.js',
                 'resources/js/bleep/posts/repost.js',
                 'resources/js/bleep/posts/share.js',
+                'resources/js/profile/profile-crop.js',
             ],
             refresh: true,
         }),

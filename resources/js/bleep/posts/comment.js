@@ -714,6 +714,29 @@ document.addEventListener('DOMContentLoaded', function() {
                         editBtn.dataset.isAnonymous = newIsAnonymous ? '1' : '0';
                     }
 
+                    // Add/update compact "Edited" tag
+                    try {
+                        const dateWrap = commentContainer.querySelector('.comment-date-wrap');
+                        const updatedAt = data.comment?.updated_at || new Date().toISOString();
+                        if (dateWrap) {
+                            let tag = dateWrap.querySelector('.comment-edited-tag');
+                            if (!tag) {
+                                tag = document.createElement('span');
+                                tag.className = 'comment-edited-tag text-xs text-base-content/50';
+                                tag.textContent = '· Edited';
+                                // insert after the first span (created_at)
+                                const firstSpan = dateWrap.querySelector('span');
+                                firstSpan?.insertAdjacentElement('afterend', tag);
+                            }
+                            const dt = new Date(updatedAt);
+                            const title = `Edited: ${dt.toLocaleString(viewerTimezone || 'UTC')}`;
+                            tag.title = title;
+                        }
+                    } catch (err) {
+                        // non-fatal
+                        console.debug('Could not set edited tag', err);
+                    }
+
                     // Remove edit UI
                     editUI.remove();
                     showToast('Comment updated successfully', 'success');

@@ -32,7 +32,10 @@
     }
 @endphp
 
-<div class="flex gap-3 p-4 rounded-lg bg-base-100 shadow-md hover:shadow-lg transition-shadow duration-200" data-comment-id="{{ $comment->id }}">
+<div class="flex gap-3 p-4 rounded-lg bg-base-100 shadow-md hover:shadow-lg transition-shadow duration-200"
+     data-comment-id="{{ $comment->id }}"
+     data-comment-created-at="{{ $comment->created_at->toIso8601String() }}"
+     data-comment-updated-at="{{ $comment->updated_at->toIso8601String() }}">
     {{-- Avatar --}}
     <div class="avatar shrink-0">
         @if ($isAnonymous)
@@ -52,12 +55,65 @@
                 <span class="text-xs text-base-content/50 truncate comment-username">{{ $usernameLine }}</span>
             </div>
 
+            {{-- date and actions --}}
             <div class="flex items-center gap-2 shrink-0">
-                <div class="flex flex-col text-right shrink-0 text-xs text-base-content/50 leading-tight whitespace-nowrap">
-                    <span title="{{ $isAnonymous ? 'Posting time hidden for anonymous users' : '' }}">
-                        {{ $comment->created_at->format('M d, Y | g:i A') }}
+                {{-- comment date --}}
+                <div class="flex flex-col text-right shrink-0 text-xs text-base-content/50 leading-tight whitespace-nowrap comment-date-wrap">
+                    @php
+                        // timezone: prefer the comment author timezone (or fallback to app timezone)
+                        $tz = $user?->timezone ?? config('app.timezone', 'UTC');
+
+                        $createdAt = $comment->created_at->setTimezone($tz);
+                        $nowTz = \Carbon\Carbon::now($tz);
+                        $ageSeconds = $nowTz->diffInSeconds($createdAt);
+                        $isToday = $createdAt->isSameDay($nowTz);
+                        $within7Days = $ageSeconds <= (7 * 86400);
+
+                        // display rules:
+                        // - if created today => show relative ("X minutes/hours ago")
+                        //   but if you prefer absolute after 24h use time (we treat >24h as not today)
+                        // - if not today => show local time (g:i A)
+                        // - human diff only shown when within 7 days
+
+                        $createdTimeLabel = $createdAt->format('g:i A');
+                        $createdHuman = $within7Days ? $createdAt->diffForHumans() : null;
+                    @endphp
+
+                    <span title="{{ $isAnonymous ? 'Posting time hidden for anonymous users' : $createdAt->toIso8601String() }}">
+                        @if($isToday)
+                            {{-- show relative (mins/hours ago) when today --}}
+                            {{ $createdHuman }}
+                        @else
+                            {{-- show absolute local time when not today --}}
+                            {{ $createdTimeLabel }}
+                            @if($within7Days)
+                                · {{ $createdHuman }}
+                            @endif
+                        @endif
                     </span>
-                    <span>{{ $comment->created_at->diffForHumans() }}</span>
+
+                    @php
+                        $edited = $comment->updated_at && $comment->updated_at->gt($comment->created_at);
+                    @endphp
+
+                    @if($edited)
+                        @php
+                            $updatedAt = $comment->updated_at->setTimezone($tz);
+                            $updatedAge = $nowTz->diffInSeconds($updatedAt);
+                            $updatedWithin7 = $updatedAge <= (7 * 86400);
+                            $updatedTimeLabel = $updatedAt->format('g:i A');
+                            $updatedHuman = $updatedWithin7 ? $updatedAt->diffForHumans() : null;
+                        @endphp
+
+                        <span class="comment-edited-tag text-xs text-base-content/50" title="Edited: {{ $updatedAt->format('M d, Y | g:i A') }}">
+                            Edited ·
+                            @if($updatedWithin7)
+                                {{ ' ' . $updatedHuman }}
+                            @else
+                                {{ ' ' . $updatedTimeLabel }}
+                            @endif
+                        </span>
+                    @endif
                 </div>
 
                 {{-- Actions Dropdown --}}
@@ -107,6 +163,7 @@
                         </li>
                     </ul>
                 </div>
+
             </div>
         </div>
 
