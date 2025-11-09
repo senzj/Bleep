@@ -109,15 +109,25 @@ class BleepController extends Controller
     }
 
     /**
-     * Delete the specified resource from storage.
+     * Soft delete the specified resource (marks as deleted by author)
      */
     public function destroy(Bleep $bleep)
     {
         $this->authorize('delete', $bleep);
 
+        // Mark as deleted by author before soft deleting
+        $bleep->update(['deleted_by_author' => true]);
+
+        // Soft delete will trigger cascade deletes in boot method
         $bleep->delete();
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Your bleep has been deleted!'
+            ]);
+        }
 
         return redirect('/')->with('success', 'Your bleep has been deleted!');
     }
-
 }

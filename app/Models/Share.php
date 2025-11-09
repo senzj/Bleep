@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
 
 class Share extends Model
@@ -20,13 +21,26 @@ class Share extends Model
         'visits' => 'integer',
     ];
 
+    /**
+     * Generate a short unique token
+     */
+    public static function generateToken(): string
+    {
+        do {
+            // Generate 8-character token (first 8 chars of UUID without dashes)
+            $token = substr(str_replace('-', '', Str::uuid()->toString()), 0, 8);
+        } while (self::where('token', $token)->exists());
+
+        return $token;
+    }
+
     // Relationships to user
     public function user() {
         return $this->belongsTo(User::class);
     }
 
-    // Relationships to bleep
+    // Relationships to bleep (include soft-deleted)
     public function bleep() {
-        return $this->belongsTo(Bleep::class);
+        return $this->belongsTo(Bleep::class)->withTrashed();
     }
 }

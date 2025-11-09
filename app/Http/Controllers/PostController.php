@@ -7,17 +7,24 @@ use Illuminate\Http\Request;
 
 class PostController extends Controller
 {
-    public function index(Bleep $bleep)
+    public function index(Request $request, $id)
     {
-        // load relations used by the component and the comments list
-        $bleep->load([
-            'user',
-            'likes',
-            'comments' => function ($query) {
-                $query->with('user')->latest();
-            }
-        ]);
+        // Include soft-deleted bleeps for the deleted state view
+        $bleep = Bleep::withTrashed()->find($id);
 
-        return view('pages.post', compact('bleep'));
+        // If bleep doesn't exist at all (force deleted), redirect to home
+        if (!$bleep) {
+            return redirect('/')->with('info', 'This bleep is no longer available.');
+        }
+
+        // If deleted, show deleted view
+        if ($bleep->trashed()) {
+            return view('pages.bleeps.deleted', [
+                'bleep' => $bleep,
+                'deletedByAuthor' => $bleep->deleted_by_author
+            ]);
+        }
+
+        return view('pages.bleeps.post', ['bleep' => $bleep]);
     }
 }

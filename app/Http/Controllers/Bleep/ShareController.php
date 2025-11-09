@@ -27,7 +27,7 @@ class ShareController extends Controller
                 'user_id'    => Auth::id(),
                 'session_key'=> Auth::check() ? null : $sessionKey,
             ],
-            ['token' => Str::uuid()->toString()]
+            ['token' => Share::generateToken()]
         );
 
         $share->touch();
@@ -52,10 +52,30 @@ class ShareController extends Controller
 
     public function redirect(string $token)
     {
-        $share = Share::where('token', $token)->firstOrFail();
+        // Find share, if not found redirect to home
+        $share = Share::with('bleep')->where('token', $token)->first();
+
+        if (!$share) {
+            return redirect('/')->with('info', 'This share link is no longer available.');
+        }
+
+        // Get bleep (including soft-deleted)
+        $bleep = $share->bleep;
+
+        // If bleep doesn't exist at all (force deleted), redirect to home
+        if (!$bleep) {
+            return redirect('/')->with('info', 'This bleep is no longer available.');
+        }
+
+        // If bleep is soft-deleted, show deleted page
+        if ($bleep->trashed()) {
+            return redirect()->route('post', $bleep->id);
+        }
+
+        // Increment visits only if bleep is still active
         $share->increment('visits');
 
-        return redirect()->route('post', $share->bleep);
+        return redirect()->route('post', $bleep->id);
     }
 
     /**

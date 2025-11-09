@@ -1,5 +1,5 @@
 @vite([
-    'resources/js/bleep/posts/like.js',
+    'resources/js/bleep/posts/likes.js',
     'resources/js/bleep/posts/post.js',
 ])
 

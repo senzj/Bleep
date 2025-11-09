@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('shares', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('bleep_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('bleep_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('session_key', 64)->nullable();
-            $table->string('token')->unique();
+            $table->string('token', 8)->unique();
             $table->date('shared_on');
             $table->unsignedBigInteger('visits')->default(0);
             $table->timestamps();

@@ -50,8 +50,8 @@ Route::post('/bleeps/{bleep}/share', [ShareController::class, 'store']);
 
 Route::get('/s/{token}', [ShareController::class, 'redirect'])->name('shares.redirect');
 
-// Bleep Posts
-Route::get('/bleeps/{bleep}', [PostController::class, 'index'])
+// Bleep Posts (with soft-deleted support)
+Route::get('/bleeps/{id}', [PostController::class, 'index'])
     ->name('post');
 
 

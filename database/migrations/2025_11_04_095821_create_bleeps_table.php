@@ -17,6 +17,8 @@ return new class extends Migration
             $table->text('message');
             $table->boolean('is_anonymous')->default(false);
             $table->timestamps();
+            $table->softDeletes();
+            $table->boolean('deleted_by_author')->default(false);
         });
     }
 
