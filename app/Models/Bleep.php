@@ -77,10 +77,12 @@ class Bleep extends Model
 
         static::deleting(function ($bleep) {
             // Delete related records when bleep is deleted
-            // Note: Shares are NOT deleted so tokens remain valid
             $bleep->comments()->delete();
             $bleep->likes()->delete();
             $bleep->reposts()->delete();
+
+            // Set bleep_id to null in shares instead of deleting
+            $bleep->shares()->update(['bleep_id' => null]);
         });
     }
 }

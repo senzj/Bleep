@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('shares', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('bleep_id')->constrained()->onDelete('cascade');
+            $table->foreignId('bleep_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('session_key', 64)->nullable();
             $table->string('token', 8)->unique();
