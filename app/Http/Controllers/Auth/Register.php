@@ -22,7 +22,7 @@ class Register extends Controller
             'display_name' => 'required|string|max:255',
             'username' => 'required|string|max:255|unique:users,username',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|confirmed|min:8',
+            'password' => 'required|string|confirmed|min:12|regex:/[a-z]/|regex:/[A-Z]/|regex:/[0-9]/|regex:/[@$!%*#?&]/',
             'timezone' => 'nullable|string|max:64',
             'profile_picture' => 'nullable|string',
         ],[
@@ -30,6 +30,9 @@ class Register extends Controller
             'username.required' => 'Username is required.',
             'email.required' => 'Email is required.',
             'password.required' => 'Password is required.',
+            'password.min' => 'Password must be at least 12 characters.',
+            'password.regex' => 'Password must include uppercase, lowercase, number, and special characters.',
+            'password.confirmed' => 'Password confirmation does not match.',
             'timezone.string' => 'Invalid timezone.',
         ]);
 

@@ -1,3 +1,7 @@
+@vite([
+    'resources/js/bleep/modals/posts/edit.js',
+])
+
 <div id="edit-bleep-modal" class="hidden fixed inset-0 z-50 items-center justify-center">
     <div id="edit-bleep-modal-overlay" class="absolute inset-0 bg-black/40"></div>
 
@@ -25,9 +29,10 @@
                 </div>
 
                 <div class="mt-3 flex items-center justify-between">
-                    <label class="flex items-center gap-2 text-sm">
-                        <input id="edit-is-anonymous" type="checkbox" name="is_anonymous" value="1" class="toggle toggle-sm">
-                        <span>Post anonymously</span>
+                    <label class="cursor-pointer label flex items-center">
+                        <span class="label-text mr-2">Post anonymously</span>
+                        <input id="edit-is-anonymous" type="checkbox" name="is_anonymous" value="1" class="toggle toggle-primary" />
+                        <div id="edit-toggle-indicator" class="ml-2 w-7 h-7 rounded-full transition-all duration-200 flex items-center justify-center overflow-hidden" aria-hidden="true"></div>
                     </label>
 
                     <div class="flex gap-2">

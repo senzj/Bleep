@@ -13,11 +13,13 @@ document.addEventListener('click', (e) => {
     if (!modal || !form) return;
 
     // inject values
-    // Set form action to correct endpoint (use /update to match routes/web.php)
     form.setAttribute('action', `/bleeps/${bleepId}/update`);
     form.setAttribute('data-bleep-id', bleepId);
     form.querySelector('textarea[name="message"]').value = message;
     form.querySelector('#edit-is-anonymous').checked = isAnonymous;
+
+    // Update toggle indicator on load
+    updateEditToggleUI();
 
     // open modal
     modal.classList.remove('hidden');
@@ -123,6 +125,29 @@ document.addEventListener('click', (e) => {
     // render icons inside modal if present
     if (window.createLucideIcons) window.createLucideIcons();
 });
+
+// Anonymous toggle handler for edit modal
+const editToggle = document.getElementById('edit-is-anonymous');
+const editIndicator = document.getElementById('edit-toggle-indicator');
+
+if (editToggle && editIndicator) {
+    const updateEditToggleUI = () => {
+        if (editToggle.checked) {
+            editIndicator.style.backgroundImage = 'none';
+            editIndicator.style.backgroundColor = '#1f2937';
+            editIndicator.innerHTML = `<i data-lucide="hat-glasses" class="w-4 h-4 text-white"></i>`;
+            if (window.createLucideIcons) window.createLucideIcons();
+        } else {
+            editIndicator.innerHTML = '';
+            editIndicator.style.backgroundColor = 'transparent';
+            editIndicator.style.backgroundImage = 'none';
+        }
+    };
+
+    editToggle.addEventListener('change', updateEditToggleUI);
+    // Will be called when modal opens
+    window.updateEditToggleUI = updateEditToggleUI;
+}
 
 // close modal when clicking overlay
 document.addEventListener('click', (e) => {

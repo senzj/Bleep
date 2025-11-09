@@ -1,5 +1,4 @@
 @vite([
-    'resources/js/bleep/modals/posts/edit.js',
     'resources/js/bleep/posts/like.js',
     'resources/js/bleep/posts/post.js',
 ])
@@ -47,7 +46,6 @@
                                 <label class="cursor-pointer label flex items-center">
                                     <span class="label-text mr-2">Post anonymously</span>
                                     <input id="post-anonymous-toggle" type="checkbox" name="is_anonymous" value="1" class="toggle toggle-primary" {{ old('is_anonymous') ? 'checked' : '' }} />
-                                    <!-- Indicator: empty when unchecked, shows hat-glasses when checked -->
                                     <div id="post-toggle-indicator" class="ml-2 w-7 h-7 rounded-full transition-all duration-200 flex items-center justify-center overflow-hidden" aria-hidden="true"></div>
                                 </label>
 
