@@ -1,9 +1,4 @@
 <x-layout>
-    {{-- Store user email for avatar display --}}
-    @auth
-        <meta name="user-email" content="{{ Auth::User()->email }}">
-    @endauth
-
     <x-slot:title>Bleep Post</x-slot:title>
 
     @php
@@ -30,10 +25,9 @@
             Back
         </a>
 
-        {{-- Bleep Post --}}
+        {{-- Bleep Post (showCommentsButton is false by default on post route) --}}
         <div class="space-y-4">
-            {{-- bleep component --}}
-            <x-bleep :bleep="$bleep" :show-comments-button="false" />
+            <x-bleep :bleep="$bleep" />
         </div>
 
         {{-- Comments Section --}}
@@ -53,7 +47,6 @@
                                     placeholder="Write a comment..."></textarea>
 
                             <div class="flex flex-col items-end gap-2">
-
                                 <div class="flex items-end gap-2 shrink-0">
                                     <label class="relative inline-flex cursor-pointer">
                                         <input type="checkbox" id="comment-anonymous-toggle" name="is_anonymous" value="1" class="peer sr-only">
@@ -63,7 +56,7 @@
                                             data-profile-url="{{ $UserAvatarUrl ?? '' }}"
                                             data-user-avatar="{{ $UserAvatarUrl ?? '' }}"
                                             style="background-image: url('{{ $UserAvatarUrl ?? asset('images/avatar/default.jpg') }}');">
-                                         </div>
+                                        </div>
                                     </label>
                                 </div>
 
@@ -116,7 +109,6 @@
                 @endforelse
             </div>
         </div>
-
     </div>
 
     {{-- Report Comment Modal --}}
@@ -155,7 +147,6 @@
         </div>
     </div>
 
-    {{-- Ensure edit modal is available on the post page so the Edit button works --}}
+    {{-- Edit Bleep Modal (needed for edit button) --}}
     <x-modals.posts.edit />
-
 </x-layout>

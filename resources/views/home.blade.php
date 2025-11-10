@@ -1,3 +1,6 @@
+@vite([
+    'resources/js/bleep/posts/post.js',
+])
 
 <x-layout>
     <x-slot:title>
@@ -110,13 +113,10 @@
         </div>
     </div>
 
-    {{-- Floating Comments Modal --}}
-    <x-modals.posts.comments :bleepId="$bleeps->first()?->id" />
-
-    {{-- Overlay for closing modal --}}
-    <div id="comments-overlay" class="hidden fixed inset-0 bg-gray-600/20 z-40"></div>
-
-    {{-- Edit Bleep post Modal --}}
-    <x-modals.posts.edit />
-
 </x-layout>
+
+{{-- Media View Modal --}}
+<x-subcomponents.bleeps.mediamodal />
+
+{{-- Edit Bleep post Modal --}}
+<x-modals.posts.edit />

@@ -11,7 +11,7 @@
     }
 @endphp
 
-<div id="floating-comments-modal" class="hidden fixed z-50 bg-base-100 rounded-2xl shadow-2xl border border-base-200 flex flex-col overflow-hidden transition-all duration-300 ease-out backdrop-blur-xs">
+<div id="floating-comments-modal" class="hidden fixed z-50 bg-base-100 rounded-2xl shadow-2xl border border-base-200 flex flex-col overflow-hidden transition-all duration-300 ease-out">
     {{-- Sticky Header --}}
     <div id="floating-comments-header" class="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-base-200 bg-base-100/95 backdrop-blur-sm shrink-0">
         <h2 class="text-lg font-semibold flex items-center gap-2">
@@ -25,7 +25,7 @@
 
     {{-- Scrollable Content --}}
     <div id="floating-comments-scroll" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-200/80">
-        @if($bleep && $bleep->comments && $bleep->comments->count())
+        @if(isset($bleep) && $bleep && $bleep->comments && $bleep->comments->count())
             @php
                 $comments = $bleep->comments->sortByDesc('created_at');
                 $groups = $comments->groupBy(function($c) {
@@ -82,9 +82,9 @@
                         <div class="w-15 h-9 bg-base-300 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
                         <div id="toggle-indicator"
                             class="absolute top-1 left-1 size-7 rounded-full transition-all duration-300 peer-checked:left-7 bg-cover bg-center flex items-center justify-center"
-                            data-user-email="{{ $UserAvatarUrl ?? $defaultAvatarURL }}"
-                            data-user-avatar="{{ $UserAvatarUrl ?? $defaultAvatarURL }}"
-                            style="background-image: url('{{ $UserAvatarUrl ?? $defaultAvatarURL }}');">
+                            data-user-email="{{ Auth::user()->email ?? '' }}"
+                            data-user-avatar="{{ $UserAvatarUrl }}"
+                            style="background-image: url('{{ $UserAvatarUrl }}');">
                         </div>
                     </label>
                 </div>
