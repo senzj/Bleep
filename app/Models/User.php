@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -57,6 +58,36 @@ class User extends Authenticatable
     public function bleeps(): HasMany
     {
         return $this->hasMany(Bleep::class);
+    }
+
+    /**
+     * Get users that this user follows
+     */
+    public function following(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'followings', 'follower_id', 'followed_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get users that follow this user
+     */
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'followings', 'followed_id', 'follower_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Check if user follows another user
+     */
+    public function isFollowing(User $user): bool
+    {
+        if (!$user->getKey()) {
+            return false;
+        }
+
+        return $this->following()->where('users.id', $user->id)->exists();
     }
 
     // safe computed accessor — does not change DB value

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Bleep;
 use App\Models\BleepMedia;
+use App\Models\Repost;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -25,6 +26,14 @@ class BleepController extends Controller
         $bleeps = Bleep::with(['user', 'media'])
             ->latest()
             ->paginate(50);
+
+        // Attach repost data for authenticated users
+        if (Auth::check()) {
+            $bleeps->getCollection()->transform(function ($bleep) {
+                $bleep->followedReposts = Repost::visibleToUser(Auth::id(), $bleep->id);
+                return $bleep;
+            });
+        }
 
         return view('home', ['bleeps' => $bleeps]);
     }

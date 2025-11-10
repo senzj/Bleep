@@ -18,6 +18,7 @@ export default defineConfig({
                 'resources/js/bleep/posts/post.js',
                 'resources/js/bleep/posts/repost.js',
                 'resources/js/bleep/posts/share.js',
+                'resources/js/bleep/users/follow.js',
                 'resources/js/profile/profile-crop.js',
             ],
             refresh: true,

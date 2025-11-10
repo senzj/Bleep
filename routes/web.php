@@ -6,10 +6,11 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\Register;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\BleepController;
+use App\Http\Controllers\FollowingController;
 use App\Http\Controllers\Bleep\LikesController;
 use App\Http\Controllers\Bleep\ShareController;
-use App\Http\Controllers\Bleep\CommentsController;
 use App\Http\Controllers\Bleep\RepostController;
+use App\Http\Controllers\Bleep\CommentsController;
 
 // REGISTER
 Route::view('/register', 'auth.register')
@@ -79,5 +80,8 @@ Route::middleware('auth')->group((function () {
     // Reposts
     Route::post('/bleeps/{bleep}/repost', [RepostController::class, 'store'])->name('bleeps.repost.store');
     Route::delete('/bleeps/{bleep}/repost', [RepostController::class, 'destroy'])->name('bleeps.repost.destroy');
+
+    // Follow/Unfollow Routes
+    Route::post('/users/{user}/follow', [FollowingController::class, 'toggle']);
 }));
 

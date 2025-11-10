@@ -1,108 +1,103 @@
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.repost-btn');
-    if (!btn) return;
+document.addEventListener('DOMContentLoaded', () => {
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-    const bleepId = btn.dataset.bleepId;
-    if (!bleepId) return;
+    // Handle hover for repost button to show "Remove Repost"
+    document.body.addEventListener('mouseenter', (e) => {
+        const btn = e.target.closest('.repost-btn');
+        if (!btn) return;
 
-    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    const isReposted = btn.dataset.reposted === '1';
-    const method = isReposted ? 'DELETE' : 'POST';
+        const isReposted = btn.dataset.reposted === '1';
+        if (!isReposted) return;
 
-    btn.disabled = true;
+        const repostLabel = btn.querySelector('.repost-text-label');
+        const unrepostLabel = btn.querySelector('.unrepost-text-label');
 
-    fetch(`/bleeps/${bleepId}/repost`, {
-        method,
-        credentials: 'same-origin',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrf,
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json',
-        },
-        body: method === 'POST' ? JSON.stringify({}) : null,
-    })
-    .then(async (res) => {
-        if (res.status === 401) {
-            window.location.href = '/login';
-            return;
+        if (repostLabel) repostLabel.classList.add('hidden');
+        if (unrepostLabel) unrepostLabel.classList.remove('hidden');
+    }, true);
+
+    document.body.addEventListener('mouseleave', (e) => {
+        const btn = e.target.closest('.repost-btn');
+        if (!btn) return;
+
+        const isReposted = btn.dataset.reposted === '1';
+        if (!isReposted) return;
+
+        const repostLabel = btn.querySelector('.repost-text-label');
+        const unrepostLabel = btn.querySelector('.unrepost-text-label');
+
+        if (repostLabel) repostLabel.classList.remove('hidden');
+        if (unrepostLabel) unrepostLabel.classList.add('hidden');
+    }, true);
+
+    document.body.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.repost-btn');
+        if (!btn) return;
+
+        const bleepId = btn.dataset.bleepId;
+        const isReposted = btn.dataset.reposted === '1';
+
+        if (!bleepId) return;
+
+        try {
+            const endpoint = `/bleeps/${bleepId}/repost`;
+            const method = isReposted ? 'DELETE' : 'POST';
+
+            const res = await fetch(endpoint, {
+                method,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'X-CSRF-TOKEN': token } : {})
+                }
+            });
+
+            if (!res.ok) return;
+
+            const data = await res.json();
+
+            // Update all repost buttons for this bleep
+            updateRepostButtonState(bleepId, data.reposted, data.repostCount);
+
+            // No more page reload!
+            // The repost tag will show when the user refreshes naturally or navigates
+
+        } catch (err) {
+            console.error('Repost error:', err);
         }
-        if (!res.ok && res.status !== 204) {
-            const txt = await res.text();
-            throw new Error(txt || 'Request failed');
-        }
-        return res.status === 204 ? { reposts_count: null } : res.json();
-    })
-    .then((data) => {
-        // flip state
-        const newState = !isReposted;
-        updateRepostButtonState(bleepId, newState, data);
-    })
-    .catch((err) => {
-        console.error('Repost error', err);
-    })
-    .finally(() => {
-        btn.disabled = false;
     });
 });
 
-// Touch/long-press support for mobile
-document.addEventListener('touchstart', (e) => {
-    const btn = e.target.closest('.repost-btn');
-    if (!btn) return;
-
-    let touchTimer = setTimeout(() => {
-        const isReposted = btn.dataset.reposted === '1';
-        btn.title = isReposted ? 'Click to remove repost' : 'Click to repost';
-    }, 500);
-
-    const clearTimer = () => clearTimeout(touchTimer);
-    btn.addEventListener('touchend', clearTimer, { once: true });
-    btn.addEventListener('touchcancel', clearTimer, { once: true });
-}, true);
-
 // Helper function to update button state
-function updateRepostButtonState(bleepId, newState, data) {
+function updateRepostButtonState(bleepId, isReposted, repostCount) {
     document.querySelectorAll(`.repost-btn[data-bleep-id="${bleepId}"]`).forEach((btn) => {
-        btn.dataset.reposted = newState ? '1' : '0';
+        btn.dataset.reposted = isReposted ? '1' : '0';
 
         // Update classes
-        btn.classList.toggle('bg-green-100', newState);
-        btn.classList.toggle('text-green-700', newState);
-        btn.classList.toggle('shadow-sm', newState);
-        btn.classList.toggle('hover:bg-green-50', !newState);
-        btn.classList.toggle('hover:text-green-600', !newState);
-        btn.classList.toggle('text-gray-500', !newState);
-
-        // Update title for hover/long-press
-        btn.title = newState ? 'You reposted — click to remove' : 'Repost';
-
-        // Get repost count from response or default to 0
-        const repostCount = (data && data.reposts_count !== undefined) ? data.reposts_count : 0;
-
-        // Update desktop text
-        const repostText = btn.querySelector('.repost-text');
-        if (repostText) {
-            const label = repostText.querySelector('.repost-label');
-            if (label) {
-                if (newState) {
-                    label.innerHTML = `
-                        <span class="repost-count mr-0.5">${repostCount}</span>
-                        ${repostCount === 1 ? 'Repost' : 'Reposts'}
-                    `;
-                } else {
-                    label.innerHTML = `
-                        <span class="repost-count mr-0.5">${repostCount}</span>
-                        ${repostCount === 1 ? 'Repost' : 'Reposts'}
-                    `;
-                }
-            }
+        if (isReposted) {
+            btn.classList.add('bg-green-100', 'text-green-700', 'shadow-sm', 'hover:bg-red-100', 'hover:text-red-600');
+            btn.classList.remove('hover:bg-green-50', 'hover:text-green-600', 'text-gray-500');
+        } else {
+            btn.classList.remove('bg-green-100', 'text-green-700', 'shadow-sm', 'hover:bg-red-100', 'hover:text-red-600');
+            btn.classList.add('hover:bg-green-50', 'hover:text-green-600', 'text-gray-500');
         }
 
-        // Update mobile meta count
+        // Update mobile count
         const mobileMeta = btn.querySelector('.repost-meta-mobile');
         if (mobileMeta) {
             mobileMeta.textContent = repostCount;
+        }
+
+        // Update desktop text
+        const countSpan = btn.querySelector('.repost-count');
+        if (countSpan) {
+            countSpan.textContent = `${repostCount} `;
+        }
+
+        const textLabel = btn.querySelector('.repost-text-label');
+        if (textLabel) {
+            textLabel.textContent = isReposted ? 'Reposted' : (repostCount === 1 ? 'Repost' : 'Reposts');
         }
     });
 }

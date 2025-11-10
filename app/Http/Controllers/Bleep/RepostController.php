@@ -2,43 +2,62 @@
 
 namespace App\Http\Controllers\Bleep;
 
+use App\Http\Controllers\Controller;
 use App\Models\Bleep;
 use App\Models\Repost;
-use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 
 class RepostController extends Controller
 {
-
-    public function store(Bleep $bleep)
+    public function store(Request $request, Bleep $bleep)
     {
-        Repost::firstOrCreate([
+        $user = $request->user();
+
+        // Check if already reposted
+        $existing = Repost::where('bleep_id', $bleep->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'message' => 'Already reposted',
+                'reposted' => true,
+                'repostCount' => Repost::where('bleep_id', $bleep->id)->count()
+            ], 200);
+        }
+
+        Repost::create([
             'bleep_id' => $bleep->id,
-            'user_id'  => Auth::id(),
+            'user_id' => $user->id,
         ]);
 
-        return response()->json($this->totals($bleep));
+        return response()->json([
+            'reposted' => true,
+            'repostCount' => Repost::where('bleep_id', $bleep->id)->count()
+        ]);
     }
 
-    public function destroy(Bleep $bleep)
+    public function destroy(Request $request, Bleep $bleep)
     {
-        Repost::where('bleep_id', $bleep->id)
-            ->where('user_id', Auth::id())
-            ->delete();
+        $user = $request->user();
 
-        return response()->json($this->totals($bleep));
-    }
+        $repost = Repost::where('bleep_id', $bleep->id)
+            ->where('user_id', $user->id)
+            ->first();
 
-    protected function totals(Bleep $bleep): array
-    {
-        $shares = \App\Models\Share::where('bleep_id', $bleep->id)->count();
-        $reposts = Repost::where('bleep_id', $bleep->id)->count();
+        if (!$repost) {
+            return response()->json([
+                'message' => 'Repost not found',
+                'reposted' => false,
+                'repostCount' => Repost::where('bleep_id', $bleep->id)->count()
+            ], 404);
+        }
 
-        return [
-            'success' => true,
-            'shares_count' => $shares,
-            'reposts_count' => $reposts,
-            'total_shares' => $shares + $reposts,
-        ];
+        $repost->delete();
+
+        return response()->json([
+            'reposted' => false,
+            'repostCount' => Repost::where('bleep_id', $bleep->id)->count()
+        ]);
     }
 }

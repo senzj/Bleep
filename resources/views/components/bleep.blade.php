@@ -5,6 +5,7 @@
     'resources/js/bleep/posts/media.js',
     'resources/js/bleep/posts/repost.js',
     'resources/js/bleep/posts/share.js',
+    'resources/js/bleep/users/follow.js',
 ])
 
 {{-- Props --}}
@@ -32,12 +33,78 @@
 
     // counts and user repost state
     $shareCount = \App\Models\Share::where('bleep_id', $bleep->id)->count();
-    $repostCount = \App\Models\Repost::where('bleep_id', $bleep->id)->count();
-    $totalShareCount = $shareCount + $repostCount;
+    $totalRepostCount = \App\Models\Repost::where('bleep_id', $bleep->id)->count();
+    $totalShareCount = $shareCount + $totalRepostCount;
     $hasReposted = auth()->check() ? \App\Models\Repost::where('bleep_id', $bleep->id)->where('user_id', auth()->id())->exists() : false;
+
+    // Get reposts from followed users (for the repost tag)
+    $followedReposts = collect();
+    if (Auth::check()) {
+        $followedReposts = isset($bleep->followedReposts)
+            ? $bleep->followedReposts
+            : \App\Models\Repost::visibleToUser(Auth::id(), $bleep->id);
+    }
+
+    $followedRepostCount = $followedReposts->count();
+
+    $userProfileLink = "#";
 @endphp
 
 <article class="bg-base-100 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow duration-200">
+
+    {{-- Repost Tag (if reposted by followed users) --}}
+    @if($followedRepostCount > 0)
+        <div class="flex items-center gap-2 mb-3 text-xs text-base-content/60">
+            <i data-lucide="repeat" class="w-4 h-4"></i>
+
+            @if($followedRepostCount === 1)
+                {{-- Single reposter --}}
+                <span>
+                    <a href="{{ $userProfileLink }}" class="font-semibold hover:underline">{{ $followedReposts->first()->user->username }}</a> reposted
+                </span>
+            @elseif($followedRepostCount === 2)
+                {{-- Two reposters --}}
+                <span>
+                    <a href="{{ $userProfileLink }}" class="font-semibold hover:underline">{{ $followedReposts->first()->user->username }}</a> and
+                    <a href="{{ $userProfileLink }}" class="font-semibold hover:underline">{{ $followedReposts->skip(1)->first()->user->username }}</a> reposted
+                </span>
+            @else
+                {{-- Multiple reposters - show tooltip --}}
+                <div class="dropdown dropdown-bottom">
+                    <button tabindex="0" class="hover:underline cursor-pointer">
+                        <a href="#" class="font-semibold">{{ $followedReposts->first()->user->username }}</a>
+                        and {{ $followedRepostCount - 1 }} other{{ $followedRepostCount > 2 ? 's' : '' }} reposted
+                    </button>
+
+                    <div tabindex="0" class="dropdown-content z-10 card card-compact w-64 p-2 shadow-lg bg-base-100 border border-base-300 rounded-xl mt-1">
+                        <div class="card-body p-3">
+                            <h3 class="font-semibold text-sm mb-2">Reposted by</h3>
+                            <div class="space-y-2 max-h-48 overflow-y-auto">
+                                @foreach($followedReposts as $repost)
+                                    <div class="flex items-center gap-2 text-xs">
+                                        <div class="avatar">
+                                            <div class="w-6 h-6 rounded-full">
+                                                <img src="https://avatars.laravel.cloud/{{ urlencode($repost->user->email) }}"
+                                                     alt="{{ $repost->user->username }}">
+                                            </div>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <a href="#" class="font-semibold hover:underline truncate block">
+                                                {{ $repost->user->username }}
+                                            </a>
+                                            <span class="text-base-content/50 text-xs">
+                                                {{ $repost->created_at->diffForHumans() }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+    @endif
 
     {{-- Header: Avatar + Author Info --}}
     <div class="flex gap-3 mb-4">
@@ -75,10 +142,32 @@
                         </div>
 
                         {{-- Username (always show computed username) --}}
-                        <div class="text-gray-500 text-sm">
+                        <div class="text-gray-500 text-sm flex items-center gap-2">
                             <span class="text-base-content/60 text-sm truncate bleep-username" data-bleep-id="{{ $bleep->id }}">{{ $username }}</span>
                         </div>
                     </div>
+
+                    {{-- Follow/Unfollow Button --}}
+                    @if (! $isAnonymous && $bleep->user && Auth::check() && Auth::id() !== $bleep->user->id)
+                        <div class="mt-2 ml-1">
+                            @php
+                                $isFollowing = Auth::user()->isFollowing($bleep->user);
+                            @endphp
+                            <button type="button" data-user-id="{{ $bleep->user->id }}" data-following="{{ $isFollowing ? '1' : '0' }}"
+
+                                class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn rounded-full px-2.5 py-1 transition-all duration-200 ease-out
+                                    {{ $isFollowing ? 'bg-blue-100 text-blue-700 shadow-sm hover:bg-red-100 hover:text-red-600' : 'bg-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600 shadow-sm' }}">
+
+                                <i data-lucide="{{ $isFollowing ? 'user-round-check' : 'user-round-plus' }}" class="w-4 h-4 transition-transform duration-200 group-hover:scale-110 follow-icon"></i>
+                                <span class="follow-text">
+                                    {{ $isFollowing ? 'Following' : 'Follow' }}
+                                </span>
+                                <span class="unfollow-text hidden">
+                                    Unfollow
+                                </span>
+                            </button>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Right: Time posted & Actions --}}
@@ -320,88 +409,101 @@
 
             {{-- Right: Views --}}
             <div class="flex items-center gap-1 text-base-content/60 text-xs">
-                <i data-lucide="eye" class="w-3 h-3"></i>
                 <span>5.2k</span>
-                <span class="hidden sm:inline">Views</span>
+                <i data-lucide="banana" class="w-4 h-4"></i>
             </div>
         </div>
     </div>
 
     {{-- Engagement Footer --}}
-    <div class="flex items-center justify-between pt-3 border-t border-base-300 text-sm">
+    @if (Auth::user())
+        <div class="grid grid-cols-4 gap-2 pt-3 border-t border-base-300 text-sm">
+    @else
+        <div class="grid grid-cols-3 gap-2 pt-3 border-t border-base-300 text-sm">
+    @endif
 
         {{-- Likes --}}
-        <form method="POST" action="/bleeps/{{ $bleep->id }}/like" class="like-form inline">
-            @csrf
-            <button type="submit"
-                class="btn btn-ghost btn-xs gap-1 hover:bg-red-100/50 hover:text-red-600 transition-colors group like-btn
-                {{ Auth::check() && $bleep->isLikedBy(Auth::user()) ? 'text-red-600' : '' }}"
-                data-bleep-id="{{ $bleep->id }}">
+        <div class="flex justify-center">
+            <form method="POST" action="/bleeps/{{ $bleep->id }}/like" class="like-form inline">
+                @csrf
+                <button type="submit"
+                    class="btn btn-ghost btn-xs gap-1 hover:bg-red-100/50 hover:text-red-600 transition-colors group like-btn
+                    {{ Auth::check() && $bleep->isLikedBy(Auth::user()) ? 'text-red-600' : '' }}"
+                    data-bleep-id="{{ $bleep->id }}">
 
-                {{-- Heart Icon --}}
-                <i data-lucide="heart" class="w-5 h-5 group-hover:scale-110 transition-transform heart-icon"></i>
+                    {{-- Heart Icon --}}
+                    <i data-lucide="heart" class="w-5 h-5 group-hover:scale-110 transition-transform heart-icon"></i>
 
-                {{-- Count on mobile, text on desktop --}}
-                <span class="inline sm:hidden text-sm like-count" data-bleep-id="{{ $bleep->id }}">
-                    {{ $bleep->likes()->count() }}
-                </span>
+                    {{-- Count on mobile, text on desktop --}}
+                    <span class="inline sm:hidden text-sm like-count" data-bleep-id="{{ $bleep->id }}">
+                        {{ $bleep->likes()->count() }}
+                    </span>
 
-
-                <span class="hidden sm:inline text-xs like-text">
-                    @if (Auth::check() && $bleep->isLikedBy(Auth::user()))
-                        {{ $bleep->likes()->count() }} {{ $bleep->likes()->count() === 1 ? 'Liked' : 'Likes' }}
-                    @else
-                        {{ $bleep->likes()->count() }} {{ $bleep->likes()->count() === 1 ? 'Like' : 'Likes' }}
-                    @endif
-                </span>
-            </button>
-        </form>
+                    <span class="hidden sm:inline text-xs like-text">
+                        @if (Auth::check() && $bleep->isLikedBy(Auth::user()))
+                            {{ $bleep->likes()->count() }} {{ $bleep->likes()->count() === 1 ? 'Liked' : 'Likes' }}
+                        @else
+                            {{ $bleep->likes()->count() }} {{ $bleep->likes()->count() === 1 ? 'Like' : 'Likes' }}
+                        @endif
+                    </span>
+                </button>
+            </form>
+        </div>
 
         {{-- Comments --}}
-        @if($showCommentsButton)
-            <button class="btn btn-ghost btn-xs gap-1 hover:bg-blue-100/50 hover:text-blue-600 transition-colors group comment-btn"
-                data-bleep-id="{{ $bleep->id }}">
-                <i data-lucide="message-circle" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
-                {{-- Mobile: number only / Desktop: text label --}}
-                <span class="inline sm:hidden text-xs">{{ $bleep->comments()->count() }}</span>
-                <span class="hidden sm:inline text-xs">
-                    {{ $bleep->comments()->count() }} {{ $bleep->comments()->count() === 1 ? 'Comment' : 'Comments' }}
-                </span>
-            </button>
-        @endif
+        <div class="flex justify-center">
+            @if($showCommentsButton)
+                <button class="btn btn-ghost btn-xs gap-1 hover:bg-blue-100/50 hover:text-blue-600 transition-colors group comment-btn"
+                    data-bleep-id="{{ $bleep->id }}">
+                    <i data-lucide="message-circle" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+                    {{-- Mobile: number only / Desktop: text label --}}
+                    <span class="inline sm:hidden text-xs">{{ $bleep->comments()->count() }}</span>
+                    <span class="hidden sm:inline text-xs">
+                        {{ $bleep->comments()->count() }} {{ $bleep->comments()->count() === 1 ? 'Comment' : 'Comments' }}
+                    </span>
+                </button>
+            @endif
+        </div>
 
         {{-- Repost --}}
-        <button type="button" data-bleep-id="{{ $bleep->id }}" data-reposted="{{ $hasReposted ? '1' : '0' }}" title="{{ $hasReposted ? 'You reposted — click to remove' : 'Repost' }}"
-            class="cursor-pointer flex items-center gap-2 text-sm font-medium group repost-btn rounded-full px-3 py-1.5 transition-all duration-200 ease-out
-                {{ $hasReposted ? 'bg-green-100 text-green-700 shadow-sm' : 'hover:bg-green-50 hover:text-green-600 text-gray-500' }}">
-            <i data-lucide="repeat" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"></i>
+        @auth
+            <div class="flex justify-center">
+                <button type="button" data-bleep-id="{{ $bleep->id }}" data-reposted="{{ $hasReposted ? '1' : '0' }}"
+                    class="cursor-pointer flex items-center gap-2 text-sm font-medium group repost-btn rounded-full px-3 py-1.5 transition-all duration-200 ease-out
+                        {{ $hasReposted ? 'bg-green-100 text-green-700 shadow-sm hover:bg-red-100 hover:text-red-600' : 'hover:bg-green-50 hover:text-green-600 text-gray-500' }}">
+                    <i data-lucide="repeat" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110 repost-icon"></i>
 
-            {{-- Mobile: compact repost·share --}}
-            <span class="inline sm:hidden text-xs repost-meta-mobile" data-bleep-id="{{ $bleep->id }}">
-                {{ $repostCount }}
-            </span>
+                    {{-- Mobile: compact repost count --}}
+                    <span class="inline sm:hidden text-xs repost-meta-mobile" data-bleep-id="{{ $bleep->id }}">
+                        {{ $totalRepostCount }}
+                    </span>
 
-            {{-- Desktop: full text + share count --}}
-            <span class="hidden sm:inline text-xs repost-text" data-bleep-id="{{ $bleep->id }}">
-                <span class="repost-label">
-                    <span class="repost-share-count mr-0.5" data-bleep-id="{{ $bleep->id }}">{{ $repostCount }} </span>
-                    {{ $hasReposted ? 'Reposted' : ($repostCount === 1 ? 'Repost' : 'Reposts') }}
-                </span>
-            </span>
-        </button>
+                    {{-- Desktop: full text + count --}}
+                    <span class="hidden sm:inline text-xs repost-text" data-bleep-id="{{ $bleep->id }}">
+                        <span class="repost-label">
+                            <span class="repost-count mr-0.5" data-bleep-id="{{ $bleep->id }}">{{ $totalRepostCount }} </span>
+                            <span class="repost-text-label">{{ $hasReposted ? 'Reposted' : ($totalRepostCount === 1 ? 'Repost' : 'Reposts') }}</span>
+                            <span class="unrepost-text-label hidden">Remove Repost</span>
+                        </span>
+                    </span>
+                </button>
+            </div>
+        @endauth
 
         {{-- Share --}}
-        <button type="button" data-bleep-id="{{ $bleep->id }}" title="Share / Copy link"
-            class="cursor-pointer flex items-center gap-2 text-sm font-medium group share-btn rounded-full px-3 py-1.5 transition-all duration-200 ease-out hover:bg-primary/5">
+        <div class="flex justify-center">
+            <button type="button" data-bleep-id="{{ $bleep->id }}" title="Share / Copy link"
+                class="cursor-pointer flex items-center gap-2 text-sm font-medium group share-btn rounded-full px-3 py-1.5 transition-all duration-200 ease-out hover:bg-primary/5">
 
-            <i data-lucide="forward" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"></i>
+                <i data-lucide="forward" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"></i>
 
-            {{-- show only actual shares (not reposts) --}}
-            <span class="inline sm:hidden text-xs share-count" data-bleep-id="{{ $bleep->id }}">{{ $shareCount }}</span>
-            <span class="hidden sm:inline text-xs share-text" data-bleep-id="{{ $bleep->id }}">
-                {{ $shareCount }} {{ $shareCount === 1 ? 'Share' : 'Shares' }}
-            </span>
-        </button>
+                {{-- show only actual shares (not reposts) --}}
+                <span class="inline sm:hidden text-xs share-count" data-bleep-id="{{ $bleep->id }}">{{ $shareCount }}</span>
+                <span class="hidden sm:inline text-xs share-text" data-bleep-id="{{ $bleep->id }}">
+                    {{ $shareCount }} {{ $shareCount === 1 ? 'Share' : 'Shares' }}
+                </span>
+            </button>
+        </div>
     </div>
 </article>
 
