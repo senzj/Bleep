@@ -1,8 +1,3 @@
-@vite([
-    'resources/js/bleep/posts/like.js',
-    'resources/js/bleep/posts/post.js',
-    'resources/js/bleep/posts/media.js',
-])
 
 <x-layout>
     <x-slot:title>

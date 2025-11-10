@@ -11,7 +11,7 @@
     }
 @endphp
 
-<div id="floating-comments-modal" class="hidden fixed z-50 bg-base-100 rounded-2xl shadow-2xl border border-base-200 flex flex-col overflow-hidden transition-all duration-300 ease-out">
+<div id="floating-comments-modal" class="hidden fixed z-50 bg-base-100 rounded-2xl shadow-2xl border border-base-200 flex flex-col overflow-hidden transition-all duration-300 ease-out backdrop-blur-xs">
     {{-- Sticky Header --}}
     <div id="floating-comments-header" class="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-base-200 bg-base-100/95 backdrop-blur-sm shrink-0">
         <h2 class="text-lg font-semibold flex items-center gap-2">
@@ -28,17 +28,21 @@
         @if($bleep && $bleep->comments && $bleep->comments->count())
             @php
                 $comments = $bleep->comments->sortByDesc('created_at');
-                $groups = $comments->groupBy(function($c) { return $c->created_at->format('Y-m-d'); });
+                $groups = $comments->groupBy(function($c) {
+                    $tz = $c->user?->timezone ?? config('app.timezone', 'UTC');
+                    return $c->created_at->copy()->setTimezone($tz)->format('Y-m-d') . '|' . $tz;
+                });
             @endphp
 
-            @foreach($groups as $date => $group)
+            @foreach($groups as $key => $group)
                 @php
-                    $dt = \Carbon\Carbon::parse($date);
+                    [$date, $tz] = explode('|', $key);
+                    $dt = \Carbon\Carbon::createFromFormat('Y-m-d', $date, $tz);
                     $showYear = $dt->year !== now()->year;
                     $label = $dt->format('F j') . ($showYear ? ', ' . $dt->year : '');
                 @endphp
 
-                <div class="text-sm text-base-content/60 font-medium mt-4 mb-2">
+                <div class="text-sm text-base-content/60 font-medium mt-4 mb-2 first:mt-0">
                     {{ $label }}
                 </div>
 
@@ -80,7 +84,6 @@
                             class="absolute top-1 left-1 size-7 rounded-full transition-all duration-300 peer-checked:left-7 bg-cover bg-center flex items-center justify-center"
                             data-user-email="{{ $UserAvatarUrl ?? $defaultAvatarURL }}"
                             data-user-avatar="{{ $UserAvatarUrl ?? $defaultAvatarURL }}"
-
                             style="background-image: url('{{ $UserAvatarUrl ?? $defaultAvatarURL }}');">
                         </div>
                     </label>

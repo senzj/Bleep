@@ -156,26 +156,53 @@ class CommentsController extends Controller
      */
     public function commentsHtml(Bleep $bleep)
     {
-        $comments = $bleep->comments()
-            ->with('user')
-            ->latest()
-            ->get();
+        // Load comments with user relationships
+        $bleep->load(['comments.user']);
 
-        // Render each comment card and collect the HTML
-        $html = $comments->map(function($comment) use ($bleep) {
-            return view('components.subcomponents.comments.commentcard', [
-                'comment' => $comment,
-                'bleep' => $bleep
-            ])->render();
-        })->join('');
+        // Sort comments by created_at descending
+        $comments = $bleep->comments->sortByDesc('created_at');
 
-        // If no comments, return empty state
-        if ($comments->isEmpty()) {
-            $html = '<div class="flex flex-col items-center justify-center py-10 text-base-content/60">
-                <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>
-                <p class="text-sm font-semibold">No comments yet</p>
-                <p class="text-xs">Be the first to share your thoughts.</p>
-            </div>';
+        // Group by date with timezone
+        $groups = $comments->groupBy(function($c) {
+            $tz = $c->user?->timezone ?? config('app.timezone', 'UTC');
+            return $c->created_at->copy()->setTimezone($tz)->format('Y-m-d') . '|' . $tz;
+        });
+
+        // Build HTML
+        $html = '';
+
+        if ($groups->isEmpty()) {
+            $html = '
+                <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
+                    <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>
+                    <p class="text-sm font-semibold">No comments yet</p>
+                    <p class="text-xs">Be the first to share your thoughts.</p>
+                </div>
+            ';
+        } else {
+            $isFirst = true;
+            foreach ($groups as $key => $group) {
+                [$date, $tz] = explode('|', $key);
+                $dt = \Carbon\Carbon::createFromFormat('Y-m-d', $date, $tz);
+                $showYear = $dt->year !== now()->year;
+                $label = $dt->format('F j') . ($showYear ? ', ' . $dt->year : '');
+
+                // Date header
+                $marginTop = $isFirst ? '' : 'mt-4';
+                $html .= '<div class="text-sm text-base-content/60 font-medium ' . $marginTop . ' mb-2">' . $label . '</div>';
+
+                // Comments in this group
+                $html .= '<div class="space-y-3">';
+                foreach ($group as $comment) {
+                    $html .= view('components.subcomponents.comments.commentcard', [
+                        'comment' => $comment,
+                        'bleep' => $bleep
+                    ])->render();
+                }
+                $html .= '</div>';
+
+                $isFirst = false;
+            }
         }
 
         return response()->json(['html' => $html]);

@@ -108,76 +108,72 @@
 
     {{-- Header: Avatar + Author Info --}}
     <div class="flex gap-3 mb-4">
-        {{-- Avatar --}}
-        @if(! $isAnonymous && $bleep->user)
-            <a href="{{ route('user.profile', ['username' => $bleep->user->username]) }}">
-                <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
-                    <x-subcomponents.avatar :user="$bleep->user" :size="12" />
-                </div>
-            </a>
-        @elseif($isAnonymous)
-            {{-- Anonymous avatar --}}
-            <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
-                <div class="size-12 rounded-full bg-base-300 flex items-center justify-center overflow-hidden">
-                    <i data-lucide="hat-glasses" class="w-6 h-6 text-base-content/80"></i>
-                </div>
-            </div>
-        @else
-            <div class="avatar placeholder shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
-                <div class="size-12 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 bg-base-300">
-                    <span class="text-xl">?</span>
-                </div>
-            </div>
-        @endif
 
         {{-- Author Info + Actions --}}
         <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between gap-2">
-                {{-- Left: Name and username --}}
-                <div class="flex items-start space-x-3">
+                {{-- Left: Avatar, Name and username --}}
+                <div class="flex items-start gap-3">
 
-                    {{-- Name and username - Grouped hover area --}}
-                    <a href="{{ $userProfileLink }}" class="group">
-                        <div>
+                    {{-- Avatar + Name/Username - Grouped hover area --}}
+                    <a href="{{ $userProfileLink }}" class="group flex items-start gap-3">
+                        {{-- Avatar --}}
+                        @if(! $isAnonymous && $bleep->user)
+                            <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
+                                <x-subcomponents.avatar :user="$bleep->user" :size="12" />
+                            </div>
+                        @elseif($isAnonymous)
+                            {{-- Anonymous avatar --}}
+                            <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
+                                <div class="size-12 rounded-full bg-base-300 flex items-center justify-center overflow-hidden">
+                                    <i data-lucide="hat-glasses" class="w-6 h-6 text-base-content/80"></i>
+                                </div>
+                            </div>
+                        @else
+                            <div class="avatar placeholder shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
+                                <div class="size-12 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 bg-base-300">
+                                    <span class="text-xl">?</span>
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="min-w-0">
                             {{-- Display name --}}
-                            <div class="font-semibold text-gray-900">
-                                <span class="font-semibold text-sm truncate bleep-display-name group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ $displayName }}</span>
+                            <div class="font-semibold text-base-content">
+                                <span class="text-sm truncate bleep-display-name group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ $displayName }}</span>
                             </div>
 
-                            {{-- Username (always show computed username) --}}
-                            <div class="text-gray-500 text-sm flex items-center gap-2">
-                                <span class="text-base-content/60 text-sm truncate bleep-username group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ $username }}</span>
+                            {{-- Username --}}
+                            <div class="text-base-content/60 text-xs">
+                                <span class="truncate bleep-username group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ $username }}</span>
                             </div>
                         </div>
                     </a>
 
                     {{-- Follow/Unfollow Button --}}
                     @if (! $isAnonymous && $bleep->user && Auth::check() && Auth::id() !== $bleep->user->id)
-                        <div class="mt-2 ml-1">
-                            @php
-                                $isFollowing = Auth::user()->isFollowing($bleep->user);
-                            @endphp
-                            <button type="button" data-user-id="{{ $bleep->user->id }}" data-following="{{ $isFollowing ? '1' : '0' }}"
+                        @php
+                            $isFollowing = Auth::user()->isFollowing($bleep->user);
+                        @endphp
+                        <button type="button" data-user-id="{{ $bleep->user->id }}" data-following="{{ $isFollowing ? '1' : '0' }}"
+                            class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn rounded-full px-2.5 py-1 transition-all duration-200 ease-out
+                                {{ $isFollowing ? 'bg-blue-100 text-blue-700 shadow-sm hover:bg-red-100 hover:text-red-600' : 'bg-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600 shadow-sm' }}">
 
-                                class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn rounded-full px-2.5 py-1 transition-all duration-200 ease-out
-                                    {{ $isFollowing ? 'bg-blue-100 text-blue-700 shadow-sm hover:bg-red-100 hover:text-red-600' : 'bg-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600 shadow-sm' }}">
-
-                                <i data-lucide="{{ $isFollowing ? 'user-round-check' : 'user-round-plus' }}" class="w-4 h-4 transition-transform duration-200 group-hover:scale-110 follow-icon"></i>
-                                <span class="follow-text">
-                                    {{ $isFollowing ? 'Following' : 'Follow' }}
-                                </span>
-                                <span class="unfollow-text hidden">
-                                    Unfollow
-                                </span>
-                            </button>
-                        </div>
+                            <i data-lucide="{{ $isFollowing ? 'user-round-check' : 'user-round-plus' }}" class="w-4 h-4 transition-transform duration-200 group-hover:scale-110 follow-icon"></i>
+                            <span class="follow-text">
+                                {{ $isFollowing ? 'Following' : 'Follow' }}
+                            </span>
+                            <span class="unfollow-text hidden">
+                                Unfollow
+                            </span>
+                        </button>
                     @endif
                 </div>
 
                 {{-- Right: Time posted & Actions --}}
-                <div class="flex items-start space-x-3">
-                    <div class="text-gray-400 text-xs whitespace-nowrap mt-2">
-                        <div class="">
+                <div class="flex items-start gap-3">
+                    <div class="text-base-content/60 text-xs whitespace-nowrap">
+                        <div>
                             {{ $bleep->created_at->diffForHumans() }}
                         </div>
 
@@ -196,12 +192,12 @@
                         </button>
 
                         <ul tabindex="0"
-                            class="dropdown-content z-1 shadow-lg bg-base-100 rounded-xl w-52 border border-base-200 p-2 space-y-1">
+                            class="dropdown-content z-[1] shadow-lg bg-base-100 rounded-xl w-52 border border-base-200 p-2 space-y-1">
 
                             @can('update', $bleep)
                                 <li>
                                     <button type="button"
-                                        class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-base-200 transition edit-bleep-btn"
+                                        class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition edit-bleep-btn"
                                         data-bleep-id="{{ $bleep->id }}"
                                         data-bleep-message="{{ $bleep->message }}"
                                         data-bleep-anonymous="{{ $bleep->is_anonymous ? '1' : '0' }}">
@@ -233,7 +229,6 @@
                             </li>
                         </ul>
                     </div>
-
                 </div>
             </div>
         </div>

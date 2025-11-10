@@ -15,12 +15,15 @@
         <div class="bg-base-100 rounded-lg shadow-lg p-6 mb-6">
             <div class="flex flex-col sm:flex-row gap-6">
 
-                {{-- Avatar --}}
+                {{-- Avatar - Clickable for full view --}}
                 <div class="shrink-0">
-                    <div class="avatar">
-                        <div class="w-32 h-32 rounded-full shadow-lg overflow-hidden">
-                            <img src="{{ $user->profile_picture_url }}"
-                                alt="{{ $user->username }}"
+                    <div class="avatar cursor-pointer group" id="profile-avatar" data-bleep-media>
+                        <div class="w-32 h-32 rounded-full shadow-lg overflow-hidden ring-2 ring-transparent group-hover:ring-primary transition-all duration-200"
+                             data-media-index="0"
+                             data-media-type="image"
+                             data-media-src="{{ $user->profile_picture_url }}"
+                             data-media-alt="{{ '@' . $user->username }} profile picture">
+                            <img src="{{ $user->profile_picture_url }}" alt="{{ $user->username }}"
                                 onerror="this.src='{{ asset('images/avatar/default.jpg') }}'">
                         </div>
                     </div>
@@ -28,7 +31,7 @@
 
                 {{-- User Info --}}
                 <div class="flex-1 min-w-0">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                    <div class="flex justify-between sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
                         <div>
                             <h1 class="text-2xl font-bold text-base-content truncate">
                                 {{ $user->dname ?? $user->username }}
@@ -37,7 +40,7 @@
                         </div>
 
                         {{-- Follow/Edit Button --}}
-                        <div class="flex gap-2">
+                        <div class="flex justify-end gap-2">
                             @if($isOwnProfile)
                                 <a href="#" class="btn btn-outline btn-sm gap-2">
                                     <i data-lucide="settings" class="w-4 h-4"></i>
@@ -88,9 +91,13 @@
         </div>
 
         {{-- Tabs --}}
-        <div class="bg-base-100 rounded-lg shadow-lg">
-            <div role="tablist" class="tabs tabs-bordered w-full">
-                <input type="radio" name="profile_tabs" role="tab" class="tab flex-1 text-base font-semibold [--tab-border-color:hsl(var(--p))]" aria-label="Bleeps" checked />
+        <div class="bg-base-100 rounded-lg shadow-lg overflow-hidden">
+            <div role="tablist" class="tabs tabs-bordered w-full border-b border-base-300">
+                {{-- Bleeps Tab --}}
+                <input type="radio" name="profile_tabs" role="tab"
+                    class="tab flex-1 text-base font-semibold border-b-2 border-transparent
+                            data-[state=checked]:border-primary data-[state=checked]:text-primary"
+                    aria-label="Bleeps" checked />
                 <div role="tabpanel" class="tab-content p-6">
                     @if($bleeps->count() > 0)
                         <div class="space-y-4">
@@ -98,8 +105,6 @@
                                 <x-bleep :bleep="$bleep" />
                             @endforeach
                         </div>
-
-                        {{-- Pagination --}}
                         <div class="mt-6">
                             {{ $bleeps->links() }}
                         </div>
@@ -117,7 +122,11 @@
                     @endif
                 </div>
 
-                <input type="radio" name="profile_tabs" role="tab" class="tab flex-1 text-base font-semibold [--tab-border-color:hsl(var(--p))]" aria-label="Reposts" />
+                {{-- Reposts Tab --}}
+                <input type="radio" name="profile_tabs" role="tab"
+                    class="tab flex-1 text-base font-semibold border-b-2 border-transparent
+                            data-[state=checked]:border-primary data-[state=checked]:text-primary"
+                    aria-label="Reposts" />
                 <div role="tabpanel" class="tab-content p-6">
                     @if($reposts->count() > 0)
                         <div class="space-y-4">
@@ -141,8 +150,6 @@
                                 @endif
                             @endforeach
                         </div>
-
-                        {{-- Pagination --}}
                         <div class="mt-6">
                             {{ $reposts->links() }}
                         </div>
@@ -161,5 +168,9 @@
                 </div>
             </div>
         </div>
+
     </div>
 </x-layout>
+
+{{-- Media View Modal --}}
+<x-subcomponents.bleeps.mediamodal />
