@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('dname');
             $table->string('username')->unique();
+            $table->text('bio')->nullable();
             $table->string('email')->unique();
             $table->string('password');
             $table->string('timezone')->default('UTC');

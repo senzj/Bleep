@@ -47,7 +47,7 @@
 
     $followedRepostCount = $followedReposts->count();
 
-    $userProfileLink = "#";
+    $userProfileLink = $isAnonymous ? "#" : route('user.profile', ['username' => $bleep->user->username]);
 @endphp
 
 <article class="bg-base-100 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow duration-200">
@@ -110,9 +110,11 @@
     <div class="flex gap-3 mb-4">
         {{-- Avatar --}}
         @if(! $isAnonymous && $bleep->user)
-            <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
-                <x-subcomponents.avatar :user="$bleep->user" :size="12" />
-            </div>
+            <a href="{{ route('user.profile', ['username' => $bleep->user->username]) }}">
+                <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
+                    <x-subcomponents.avatar :user="$bleep->user" :size="12" />
+                </div>
+            </a>
         @elseif($isAnonymous)
             {{-- Anonymous avatar --}}
             <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
@@ -134,18 +136,20 @@
                 {{-- Left: Name and username --}}
                 <div class="flex items-start space-x-3">
 
-                    {{-- Name and username --}}
-                    <div>
-                        {{-- Display name --}}
-                        <div class="font-semibold text-gray-900">
-                            <span class="font-semibold text-sm truncate bleep-display-name" data-bleep-id="{{ $bleep->id }}">{{ $displayName }}</span>
-                        </div>
+                    {{-- Name and username - Grouped hover area --}}
+                    <a href="{{ $userProfileLink }}" class="group">
+                        <div>
+                            {{-- Display name --}}
+                            <div class="font-semibold text-gray-900">
+                                <span class="font-semibold text-sm truncate bleep-display-name group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ $displayName }}</span>
+                            </div>
 
-                        {{-- Username (always show computed username) --}}
-                        <div class="text-gray-500 text-sm flex items-center gap-2">
-                            <span class="text-base-content/60 text-sm truncate bleep-username" data-bleep-id="{{ $bleep->id }}">{{ $username }}</span>
+                            {{-- Username (always show computed username) --}}
+                            <div class="text-gray-500 text-sm flex items-center gap-2">
+                                <span class="text-base-content/60 text-sm truncate bleep-username group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ $username }}</span>
+                            </div>
                         </div>
-                    </div>
+                    </a>
 
                     {{-- Follow/Unfollow Button --}}
                     @if (! $isAnonymous && $bleep->user && Auth::check() && Auth::id() !== $bleep->user->id)
@@ -492,13 +496,20 @@
 
         {{-- Share --}}
         <div class="flex justify-center">
-            <button type="button" data-bleep-id="{{ $bleep->id }}" title="Share / Copy link"
-                class="cursor-pointer flex items-center gap-2 text-sm font-medium group share-btn rounded-full px-3 py-1.5 transition-all duration-200 ease-out hover:bg-primary/5">
+            <button
+                type="button"
+                data-bleep-id="{{ $bleep->id }}"
+                title="Share / Copy link"
+                class="cursor-pointer flex items-center gap-2 text-sm font-medium group share-btn rounded-full px-3 py-1.5
+                    transition-all duration-200 ease-out
+                    hover:bg-yellow-300/20 hover:text-yellow-600">
 
-                <i data-lucide="forward" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"></i>
+                <i data-lucide="forward" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110 group-hover:text-yellow-600"></i>
 
                 {{-- show only actual shares (not reposts) --}}
-                <span class="inline sm:hidden text-xs share-count" data-bleep-id="{{ $bleep->id }}">{{ $shareCount }}</span>
+                <span class="inline sm:hidden text-xs share-count" data-bleep-id="{{ $bleep->id }}">
+                    {{ $shareCount }}
+                </span>
                 <span class="hidden sm:inline text-xs share-text" data-bleep-id="{{ $bleep->id }}">
                     {{ $shareCount }} {{ $shareCount === 1 ? 'Share' : 'Shares' }}
                 </span>

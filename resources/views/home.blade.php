@@ -50,29 +50,42 @@
                             {{-- preview grid --}}
                             <div id="bleep-media-preview" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
 
-                            <div class="mt-4 flex items-center justify-between">
-                                {{-- anonymous toggle --}}
-                                <label class="cursor-pointer label flex items-center">
-                                    <span class="label-text mr-2">Post anonymously</span>
-                                    <input id="post-anonymous-toggle" type="checkbox" name="is_anonymous" value="1" class="toggle toggle-primary" {{ old('is_anonymous') ? 'checked' : '' }} />
-                                    <div id="post-toggle-indicator" class="ml-2 w-7 h-7 rounded-full transition-all duration-200 flex items-center justify-center overflow-hidden" aria-hidden="true"></div>
+                            <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                {{-- Anonymous toggle --}}
+                                <label class="cursor-pointer label flex items-center justify-between sm:justify-start w-full sm:w-auto">
+                                    <span class="label-text mr-2 text-sm sm:text-base">Post anonymously</span>
+                                    <div class="flex items-center">
+                                        <input id="post-anonymous-toggle"
+                                            type="checkbox"
+                                            name="is_anonymous"
+                                            value="1"
+                                            {{ old('is_anonymous') ? 'checked' : '' }}
+                                            class="toggle toggle-primary scale-90 sm:scale-100"/>
+                                        <div id="post-toggle-indicator" aria-hidden="true" class="ml-2 w-6 h-6 sm:w-7 sm:h-7 rounded-full transition-all duration-200 flex items-center justify-center overflow-hidden"></div>
+                                    </div>
                                 </label>
 
                                 {{-- Right buttons --}}
-                                <div class="flex items-center gap-2">
-                                    {{-- Add media button (single trigger) --}}
-                                    <button type="button" id="open-media-picker" class="btn btn-ghost btn-sm">
-                                        <i data-lucide="image-plus" class="w-4 h-4 mr-1"></i>
-                                        Add media
-                                        <span id="bleep-media-count" class="badge badge-neutral badge-sm ml-2 hidden">0/4</span>
-                                    </button>
+                                <div class="flex flex-col sm:flex-row items-center justify-end gap-2 w-full sm:w-auto">
+                                    {{-- Inner flex row for mobile side-by-side --}}
+                                    <div class="flex w-full sm:w-auto justify-between gap-2">
+                                        {{-- Add media button --}}
+                                        <button type="button" id="open-media-picker" class="btn btn-ghost btn-sm flex-1 sm:flex-none justify-center">
+                                            <i data-lucide="image-plus" class="w-4 h-4 mr-1"></i>
+                                            Add media
+                                            <span id="bleep-media-count" class="badge badge-neutral badge-sm ml-2 hidden">0/4</span>
+                                        </button>
 
-                                    {{-- submit post --}}
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        <i data-lucide="send" class="w-4 h-4"></i> Post
-                                    </button>
+                                        {{-- Submit post --}}
+                                        <button type="submit" class="btn btn-primary btn-sm flex-1 sm:flex-none justify-center">
+                                            <i data-lucide="send" class="w-4 h-4"></i>
+                                            Post
+                                        </button>
+                                    </div>
                                 </div>
+
                             </div>
+
 
                         </form>
                     </div>

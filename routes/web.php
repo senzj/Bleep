@@ -11,6 +11,7 @@ use App\Http\Controllers\Bleep\LikesController;
 use App\Http\Controllers\Bleep\ShareController;
 use App\Http\Controllers\Bleep\RepostController;
 use App\Http\Controllers\Bleep\CommentsController;
+use App\Http\Controllers\Users\ProfileController;
 
 // REGISTER
 Route::view('/register', 'auth.register')
@@ -55,6 +56,9 @@ Route::get('/s/{token}', [ShareController::class, 'redirect'])->name('shares.red
 Route::get('/bleeps/{id}', [PostController::class, 'index'])
     ->name('post');
 
+// Profile page
+Route::get('/bleeper/{username}', [ProfileController::class, 'index'])
+    ->name('user.profile');
 
 // Protected Auth Routes
 Route::middleware('auth')->group((function () {
@@ -82,6 +86,9 @@ Route::middleware('auth')->group((function () {
     Route::delete('/bleeps/{bleep}/repost', [RepostController::class, 'destroy'])->name('bleeps.repost.destroy');
 
     // Follow/Unfollow Routes
-    Route::post('/users/{user}/follow', [FollowingController::class, 'toggle']);
+    Route::post('/bleeper/{user}/follow', [FollowingController::class, 'toggle']);
+
+    // Profile Settings Route
+
 }));
 
