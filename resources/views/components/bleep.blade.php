@@ -1,8 +1,8 @@
 {{-- scripts --}}
 @vite([
-    'resources/js/bleep/modals/posts/edit.js',   // ensure edit handler is loaded
-    'resources/js/bleep/posts/like.js',
     'resources/js/bleep/posts/comment.js',
+    'resources/js/bleep/posts/like.js',
+    'resources/js/bleep/posts/media.js',
     'resources/js/bleep/posts/repost.js',
     'resources/js/bleep/posts/share.js',
 ])
@@ -149,8 +149,167 @@
     {{-- Message Content --}}
     <div class="mb-4">
         <p class="text-base leading-relaxed text-base-content bleep-message" data-bleep-id="{{ $bleep->id }}">
-            {{ $bleep->message }}
+            @if(!empty($bleep->message))
+                {{ $bleep->message }}
+            @endif
         </p>
+
+        @php
+            $mediaItems = ($bleep->media ?? collect())->take(4);
+        @endphp
+
+        @if($mediaItems->count() > 0)
+            @php $count = $mediaItems->count(); @endphp
+
+            <div class="mt-2 overflow-hidden rounded-xl border border-base-300" data-bleep-media>
+                {{-- ONE IMAGE --}}
+                @if ($count === 1)
+                    <div class="flex items-center justify-center bg-base-200">
+                        @php $m = $mediaItems->first(); @endphp
+                        <div class="relative cursor-pointer group"
+                             data-media-index="0"
+                             data-media-type="{{ $m->type }}"
+                             data-media-src="{{ asset('storage/'.$m->path) }}"
+                             data-media-alt="{{ $m->original_name }}"
+                             data-media-mime="{{ $m->mime_type }}">
+                            @if($m->type === 'image')
+                                <img src="{{ asset('storage/'.$m->path) }}"
+                                    alt="{{ $m->original_name }}"
+                                    class="max-h-96 w-auto rounded-lg object-cover"
+                                    loading="lazy">
+                            @else
+                                <video class="max-h-96 w-auto rounded-lg object-contain" controls preload="metadata">
+                                    <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                </video>
+                            @endif
+                        </div>
+                    </div>
+
+                {{-- TWO IMAGES --}}
+                @elseif ($count === 2)
+                    <div class="grid grid-cols-2 gap-1 bg-base-200">
+                        @foreach($mediaItems as $index => $m)
+                            <div class="flex items-center justify-center overflow-hidden">
+                                <div class="relative cursor-pointer group w-full"
+                                     data-media-index="{{ $index }}"
+                                     data-media-type="{{ $m->type }}"
+                                     data-media-src="{{ asset('storage/'.$m->path) }}"
+                                     data-media-alt="{{ $m->original_name }}"
+                                     data-media-mime="{{ $m->mime_type }}">
+                                    @if($m->type === 'image')
+                                        <img src="{{ asset('storage/'.$m->path) }}"
+                                            alt="{{ $m->original_name }}"
+                                            class="max-h-64 w-full object-cover rounded-lg"
+                                            loading="lazy">
+                                    @else
+                                        <video class="max-h-64 w-full rounded-lg object-contain" controls preload="metadata">
+                                            <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                        </video>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                {{-- THREE IMAGES --}}
+                @elseif ($count === 3)
+                    <div class="grid grid-cols-3 grid-rows-2 gap-1 bg-base-200">
+                        {{-- Left side: image 1 (top) --}}
+                        <div class="col-span-1 row-span-1">
+                            @php $m = $mediaItems[0]; @endphp
+                            <div class="relative cursor-pointer group h-full"
+                                 data-media-index="0"
+                                 data-media-type="{{ $m->type }}"
+                                 data-media-src="{{ asset('storage/'.$m->path) }}"
+                                 data-media-alt="{{ $m->original_name }}"
+                                 data-media-mime="{{ $m->mime_type }}">
+                                @if($m->type === 'image')
+                                    <img src="{{ asset('storage/'.$m->path) }}"
+                                        alt="{{ $m->original_name }}"
+                                        class="w-full h-40 object-cover rounded-lg"
+                                        loading="lazy">
+                                @else
+                                    <video class="w-full h-40 object-contain rounded-lg" controls preload="metadata">
+                                        <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                    </video>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Left side: image 2 (bottom) --}}
+                        <div class="col-span-1 row-span-1">
+                            @php $m = $mediaItems[1]; @endphp
+                            <div class="relative cursor-pointer group h-full"
+                                 data-media-index="1"
+                                 data-media-type="{{ $m->type }}"
+                                 data-media-src="{{ asset('storage/'.$m->path) }}"
+                                 data-media-alt="{{ $m->original_name }}"
+                                 data-media-mime="{{ $m->mime_type }}">
+                                @if($m->type === 'image')
+                                    <img src="{{ asset('storage/'.$m->path) }}"
+                                        alt="{{ $m->original_name }}"
+                                        class="w-full h-40 object-cover rounded-lg"
+                                        loading="lazy">
+                                @else
+                                    <video class="w-full h-40 object-contain rounded-lg" controls preload="metadata">
+                                        <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                    </video>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Right side: image 3 spans both rows --}}
+                        <div class="col-span-2 row-span-2">
+                            @php $m = $mediaItems[2]; @endphp
+                            <div class="relative cursor-pointer group h-full"
+                                 data-media-index="2"
+                                 data-media-type="{{ $m->type }}"
+                                 data-media-src="{{ asset('storage/'.$m->path) }}"
+                                 data-media-alt="{{ $m->original_name }}"
+                                 data-media-mime="{{ $m->mime_type }}">
+                                @if($m->type === 'image')
+                                    <img src="{{ asset('storage/'.$m->path) }}"
+                                        alt="{{ $m->original_name }}"
+                                        class="w-full h-full object-cover rounded-lg"
+                                        loading="lazy">
+                                @else
+                                    <video class="w-full h-full object-contain rounded-lg" controls preload="metadata">
+                                        <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                    </video>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                {{-- FOUR OR MORE (simple grid fallback) --}}
+                @else
+                    <div class="grid grid-cols-2 gap-1 bg-base-200">
+                        @foreach($mediaItems as $index => $m)
+                            <div class="relative overflow-hidden">
+                                <div class="relative cursor-pointer group"
+                                     data-media-index="{{ $index }}"
+                                     data-media-type="{{ $m->type }}"
+                                     data-media-src="{{ asset('storage/'.$m->path) }}"
+                                     data-media-alt="{{ $m->original_name }}"
+                                     data-media-mime="{{ $m->mime_type }}">
+                                    @if($m->type === 'image')
+                                        <img src="{{ asset('storage/'.$m->path) }}"
+                                            alt="{{ $m->original_name }}"
+                                            class="w-full h-40 object-cover rounded-lg"
+                                            loading="lazy">
+                                    @else
+                                        <video class="w-full h-40 rounded-lg object-contain" controls preload="metadata">
+                                            <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                        </video>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @endif
+
 
         {{-- date and time created + views --}}
         <div class="text-xs text-gray-400 mt-5 flex items-center justify-between">
@@ -284,6 +443,10 @@
         </div>
     </div>
 </div>
+
+{{-- Media View Modal --}}
+<x-subcomponents.bleeps.mediamodal />
+
 
 @push('script')
     <script>

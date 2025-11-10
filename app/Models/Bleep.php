@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\HasAnonymousName;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Bleep extends Model
 {
@@ -14,6 +15,7 @@ class Bleep extends Model
         'message',
         'is_anonymous',
         'deleted_by_author',
+        'media_path',
     ];
 
     protected $casts = [
@@ -60,29 +62,47 @@ class Bleep extends Model
         return $this->hasMany(Repost::class);
     }
 
-    /**
-     * Check if user liked this bleep
-     */
-    public function isLikedBy($user)
+    // New: media relation
+    public function media()
     {
+        return $this->hasMany(BleepMedia::class);
+    }
+
+    // Helper to check if a user liked this bleep
+    public function isLikedBy($user): bool
+    {
+        if (!$user) return false;
+
+        // Use loaded relation if available to avoid extra query
+        if ($this->relationLoaded('likes')) {
+            return $this->likes->where('user_id', $user->id)->isNotEmpty();
+        }
+
         return $this->likes()->where('user_id', $user->id)->exists();
     }
 
-    /**
-     * Boot method to handle cascading deletes
-     */
-    protected static function boot()
+    // Cleanup media files when bleep is deleted (soft delete)
+    protected static function booted()
     {
-        parent::boot();
+        static::deleting(function (Bleep $bleep) {
+            // Delete media files + rows (soft delete still triggers this)
+            foreach ($bleep->media as $m) {
+                Storage::disk('public')->delete($m->path);
+                $m->delete(); // hard delete (BleepMedia has no SoftDeletes)
+            }
 
-        static::deleting(function ($bleep) {
-            // Delete related records when bleep is deleted
+            // Remove legacy single media file if present
+            if ($bleep->media_path) {
+                Storage::disk('public')->delete($bleep->media_path);
+            }
+
+            // Other related cleanup
             $bleep->comments()->delete();
             $bleep->likes()->delete();
             $bleep->reposts()->delete();
 
-            // Set bleep_id to null in shares instead of deleting
-            $bleep->shares()->update(['bleep_id' => null]);
+            // Nullify shares so tokens remain but detach
+            $bleep->shares()->update(['bleep_id' => null, 'user_id' => null]);
         });
     }
 }

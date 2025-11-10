@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bleep;
+use App\Models\BleepMedia;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class BleepController extends Controller
 {
@@ -21,7 +22,7 @@ class BleepController extends Controller
      */
     public function index()
     {
-        $bleeps = Bleep::with('user')
+        $bleeps = Bleep::with(['user', 'media'])
             ->latest()
             ->paginate(50);
 
@@ -34,20 +35,72 @@ class BleepController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'message' => 'required|string|max:255',
+            // either message or media is required
+            'message' => 'nullable|string|max:255|required_without:media',
             'is_anonymous' => 'nullable|boolean',
+            'media' => 'nullable|array|max:4|required_without:message',
+            'media.*' => 'file|max:10240|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm',
         ], [
-            'message.required' => 'Thoughts cannot be empty! Write something to bleep about.',
-            'message.max' => 'Your bleep is too long! Keep it under 255 characters.',
+            'message.required_without' => 'Write something or attach media.',
+            'media.required_without' => 'Attach media or write a message.',
+            'media.max' => 'You can upload up to 4 files.',
+            'media.*.mimetypes' => 'Only images (jpg, png, webp, gif) or videos (mp4, webm) are allowed.',
+            'media.*.max' => 'Each file must be at most 10MB.',
         ]);
 
-
+        $user = Auth::user();
         $isAnonymous = $request->boolean('is_anonymous');
 
-        Auth::user()->bleeps()->create([
-            'message' => $validated['message'],
+        // Create the bleep first to get its ID
+        $bleep = $user->bleeps()->create([
+            'message' => $validated['message'] ?? null,
             'is_anonymous' => $isAnonymous,
         ]);
+
+        // Handle media files (if any)
+        if ($request->hasFile('media')) {
+            foreach ($request->file('media') as $file) {
+                if (!$file->isValid()) continue;
+
+                $mime = $file->getClientMimeType() ?? '';
+                // enum-safe mapping: only 'image' or 'video'
+                $type = str_starts_with($mime, 'video/') ? 'video' : 'image';
+
+                $username = $user->username ?? 'user';
+                $originalNameNoExt = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                $ext = strtolower($file->getClientOriginalExtension());
+
+                $fileName = sprintf(
+                    '%d_%s_%s.%s',
+                    $bleep->id,
+                    Str::slug($originalNameNoExt),
+                    Str::slug($user->username ?? 'op'),
+                    $ext
+                );
+
+                $dir = $username . '/bleep_post/' . $type;
+                $storedPath = $file->storeAs($dir, $fileName, 'public'); // returns relative path
+
+                // persist media row
+                BleepMedia::create([
+                    'bleep_id' => $bleep->id,
+                    'path' => $storedPath,
+                    'type' => $type,
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $mime,
+                    'size' => $file->getSize(),
+                ]);
+
+                // keep first media in legacy column for backwards compatibility
+                if (!$bleep->media_path) {
+                    $bleep->update(['media_path' => $storedPath]);
+                }
+            }
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'bleep_id' => $bleep->id]);
+        }
 
         return redirect('/')->with('success', 'Your bleep has been posted!');
     }

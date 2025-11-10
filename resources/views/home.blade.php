@@ -1,6 +1,7 @@
 @vite([
-    'resources/js/bleep/posts/likes.js',
+    'resources/js/bleep/posts/like.js',
     'resources/js/bleep/posts/post.js',
+    'resources/js/bleep/posts/media.js',
 ])
 
 <x-layout>
@@ -10,19 +11,19 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {{-- Left panel --}}
-        <div class="hidden lg:block lg:col-span-2">
+        <div class="hidden lg:block lg:col-span-3" id="left-panel">
             {{-- Left sidebar content --}}
         </div>
 
         {{-- Center panel --}}
-        <div class="lg:block lg:col-span-8">
+        <div class="lg:block lg:col-span-6">
             <h1 class="text-3xl font-bold mt-1">What's new on Bleep?</h1>
 
             {{-- Post Form --}}
             @auth
                 <div class="card bg-base-100 shadow mt-3">
                     <div class="card-body">
-                        <form method="POST" action="/bleeps">
+                        <form method="POST" action="/bleeps" enctype="multipart/form-data">
                             @csrf
                             <div class="form-control w-full">
                                 <textarea
@@ -31,15 +32,23 @@
                                     class="textarea textarea-bordered w-full resize-none @error('message') textarea-error @enderror"
                                     rows="2"
                                     maxlength="255"
-                                    required
                                 >{{ old('message') }}</textarea>
                             </div>
 
-                            @error('message')
-                                <div class="label">
-                                    <span class="label-text-alt text-error">{{ $message }}</span>
-                                </div>
-                            @enderror
+                            {{-- hidden media input (single trigger button will open this) --}}
+                            <input
+                                id="bleep-media-input"
+                                type="file"
+                                name="media[]"
+                                class="hidden"
+                                multiple
+                                accept="image/*,video/mp4,video/webm"
+                            />
+                            @error('media') <div class="text-error text-xs mt-1">{{ $message }}</div> @enderror
+                            @error('media.*') <div class="text-error text-xs mt-1">{{ $message }}</div> @enderror
+
+                            {{-- preview grid --}}
+                            <div id="bleep-media-preview" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
 
                             <div class="mt-4 flex items-center justify-between">
                                 {{-- anonymous toggle --}}
@@ -49,11 +58,22 @@
                                     <div id="post-toggle-indicator" class="ml-2 w-7 h-7 rounded-full transition-all duration-200 flex items-center justify-center overflow-hidden" aria-hidden="true"></div>
                                 </label>
 
-                                {{-- submit post --}}
-                                <button type="submit" class="btn btn-primary btn-sm">
-                                    <i data-lucide="send" class="w-4 h-4"></i> Post
-                                </button>
+                                {{-- Right buttons --}}
+                                <div class="flex items-center gap-2">
+                                    {{-- Add media button (single trigger) --}}
+                                    <button type="button" id="open-media-picker" class="btn btn-ghost btn-sm">
+                                        <i data-lucide="image-plus" class="w-4 h-4 mr-1"></i>
+                                        Add media
+                                        <span id="bleep-media-count" class="badge badge-neutral badge-sm ml-2 hidden">0/4</span>
+                                    </button>
+
+                                    {{-- submit post --}}
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i data-lucide="send" class="w-4 h-4"></i> Post
+                                    </button>
+                                </div>
                             </div>
+
                         </form>
                     </div>
                 </div>
@@ -77,7 +97,7 @@
         </div>
 
         {{-- Right panel --}}
-        <div class="hidden lg:block lg:col-span-2" id="right-panel">
+        <div class="hidden lg:block lg:col-span-3" id="right-panel">
             {{-- Right sidebar content --}}
         </div>
     </div>
