@@ -100,3 +100,6 @@
         </div>
     @endauth
 </div>
+
+{{-- Overlay for modals --}}
+<div id="comments-overlay" class="hidden fixed inset-0 z-40"></div>

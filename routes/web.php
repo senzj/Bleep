@@ -42,6 +42,10 @@ Route::post('/logout', Logout::class)
 // Bleep Home page
 Route::get('/', [BleepController::class, 'index']);
 
+// Bleep views
+Route::post('/bleeps/{bleep}/view', [BleepController::class, 'recordView'])
+    ->name('bleeps.view');
+
 // Comments
 Route::get('/bleeps/comments/{bleep}/comments', [CommentsController::class, 'index']);
 Route::get('/bleeps/comments/{bleep}/count', [CommentsController::class, 'count']);

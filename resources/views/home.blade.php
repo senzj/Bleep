@@ -120,3 +120,9 @@
 
 {{-- Edit Bleep post Modal --}}
 <x-modals.posts.edit />
+
+{{-- Comments Modal --}}
+<x-modals.posts.comments />
+
+{{-- Share Modal (from bleep component, but ensuring it's available) --}}
+<x-modals.posts.share />

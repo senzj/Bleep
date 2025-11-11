@@ -3,23 +3,26 @@
 namespace App\Models;
 
 use App\Traits\HasAnonymousName;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
 class Bleep extends Model
 {
-    use HasAnonymousName, SoftDeletes;
+    use HasAnonymousName, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'message',
         'is_anonymous',
         'deleted_by_author',
         'media_path',
+        'views',
     ];
 
     protected $casts = [
         'deleted_by_author' => 'boolean',
+        'views' => 'integer',
     ];
 
     /**
@@ -62,10 +65,40 @@ class Bleep extends Model
         return $this->hasMany(Repost::class);
     }
 
-    // New: media relation
+    // Media relation
     public function media()
     {
         return $this->hasMany(BleepMedia::class);
+    }
+
+    // Views relation
+    public function views()
+    {
+        return $this->hasMany(BleepViews::class);
+    }
+
+    // Helper to get view count (with caching)
+    public function viewCount(): int
+    {
+        return $this->views ?? $this->views()->count();
+    }
+
+    // Helper to record a view
+    public function recordView(?User $user = null, ?string $sessionId = null): void
+    {
+        // Try to create a new view record
+        $created = BleepViews::firstOrCreate([
+            'bleep_id' => $this->id,
+            'user_id' => $user?->id,
+            'session_id' => $user ? null : $sessionId,
+        ], [
+            'viewed_at' => now(),
+        ]);
+
+        // Only increment counter if a new view was created (not a duplicate)
+        if ($created->wasRecentlyCreated) {
+            $this->increment('views');
+        }
     }
 
     // Helper to check if a user liked this bleep

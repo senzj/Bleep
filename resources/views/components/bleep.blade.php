@@ -338,31 +338,42 @@
             </div>
         @endif
 
+        {{-- views --}}
         <div class="text-xs text-gray-400 mt-5 flex items-center justify-between">
             <span class="text-xs">
                 {{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y \| g:i:s A') }}
             </span>
             <div class="flex items-center gap-1 text-base-content/60 text-xs">
-                <span>5.2k</span>
-                <i data-lucide="banana" class="w-4 h-4"></i>
+                <span class="view-count">
+                    @if($bleep->views >= 1000000)
+                        {{ number_format($bleep->views / 1000000, 1) }}M
+                    @elseif($bleep->views >= 1000)
+                        {{ number_format($bleep->views / 1000, 1) }}k
+                    @else
+                        {{ $bleep->views }}
+                    @endif
+                </span>
+                <i data-lucide="eye" class="w-4 h-4"></i>
             </div>
         </div>
     </div>
 
     {{-- Engagement Footer --}}
-    @if (Auth::user() || !$showCommentsButton && request()->routeIs('post'))
-        @php
-            $cols = 2;
-            $cols += $showCommentsButton ? 1 : 0;
-            $cols += auth()->check() ? 1 : 0;
-            if ($cols < 2) $cols = 2;
-            if ($cols > 4) $cols = 4;
-            $colsClass = "grid-cols-{$cols}";
-        @endphp
+    @php
+        $cols = 2; // Likes + Share (always visible)
+        $cols += $showCommentsButton ? 1 : 0;
+        $cols += auth()->check() ? 1 : 0; // Repost button for authenticated users
 
-    <div class="grid {{ $colsClass }} gap-2 pt-3 border-t border-base-300 text-sm">
-    @endif
+        // Map to actual Tailwind classes
+        $gridClass = match($cols) {
+            2 => 'grid-cols-2',
+            3 => 'grid-cols-3',
+            4 => 'grid-cols-4',
+            default => 'grid-cols-2',
+        };
+    @endphp
 
+    <div class="grid {{ $gridClass }} gap-2 pt-3 border-t border-base-300 text-sm">
         {{-- Likes --}}
         <div class="flex justify-center">
             <form method="POST" action="/bleeps/{{ $bleep->id }}/like" class="like-form inline">
@@ -435,7 +446,6 @@
                 </span>
             </button>
         </div>
-
     </div>
 </article>
 

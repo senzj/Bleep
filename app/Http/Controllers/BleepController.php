@@ -35,7 +35,61 @@ class BleepController extends Controller
             });
         }
 
+        // Record views in batch for better performance
+        $user = Auth::user(); // null for guests
+        $sessionId = session()->getId(); // Always available for guests
+        $bleepIds = $bleeps->pluck('id')->toArray();
+
+        // Get existing views for this user/session
+        $existingViews = \App\Models\BleepViews::whereIn('bleep_id', $bleepIds)
+            ->where(function($q) use ($user, $sessionId) {
+                if ($user) {
+                    $q->where('user_id', $user->id); // Authenticated user
+                } else {
+                    $q->where('session_id', $sessionId); // Guest user
+                }
+            })
+            ->pluck('bleep_id')
+            ->toArray();
+
+        // Only record views for bleeps not yet viewed
+        $newViewBleepIds = array_diff($bleepIds, $existingViews);
+
+        if (!empty($newViewBleepIds)) {
+            $viewsData = [];
+            foreach ($newViewBleepIds as $bleepId) {
+                $viewsData[] = [
+                    'bleep_id' => $bleepId,
+                    'user_id' => $user?->id, // null for guests
+                    'session_id' => $user ? null : $sessionId, // only for guests
+                    'viewed_at' => now(),
+                ];
+            }
+
+            // Bulk insert new views
+            \App\Models\BleepViews::insert($viewsData);
+
+            // Increment view counters
+            Bleep::whereIn('id', $newViewBleepIds)->increment('views');
+        }
+
         return view('home', ['bleeps' => $bleeps]);
+    }
+
+    /**
+     * Record a view for a bleep (called via AJAX - keep for single post page)
+     */
+    public function recordView(Bleep $bleep)
+    {
+        $bleep->recordView(
+            Auth::user(),
+            session()->getId()
+        );
+
+        return response()->json([
+            'success' => true,
+            'views' => $bleep->views,
+        ]);
     }
 
     /**
