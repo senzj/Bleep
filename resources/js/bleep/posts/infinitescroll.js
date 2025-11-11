@@ -1,0 +1,125 @@
+// infinite scroll for bleeps cards on home page
+document.addEventListener('DOMContentLoaded', function() {
+    const bleepsContainer = document.getElementById('bleeps-container');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const endOfContent = document.getElementById('end-of-content');
+    const trigger = document.getElementById('infinite-scroll-trigger');
+
+    if (!bleepsContainer || !trigger) return;
+
+    let isLoading = false;
+    let currentPage = parseInt(trigger.dataset.page) || 2;
+    let hasMore = trigger.dataset.hasMore === 'true';
+    let loadMoreBtn = null; // Track button reference
+
+    // Intersection Observer for infinite scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && !isLoading && hasMore) {
+                loadMoreBleeps();
+            }
+        });
+    }, {
+        root: null,
+        rootMargin: '200px',
+        threshold: 0.1
+    });
+
+    // Start observing the trigger
+    observer.observe(trigger);
+
+    async function loadMoreBleeps() {
+        if (isLoading || !hasMore) return;
+
+        isLoading = true;
+        loadingIndicator.classList.remove('hidden');
+
+        // Hide load more button if it exists
+        if (loadMoreBtn) {
+            loadMoreBtn.classList.add('hidden');
+        }
+
+        try {
+            const response = await fetch(`/bleeps/lazy-load?page=${currentPage}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch bleeps');
+            }
+
+            const data = await response.json();
+
+            if (data.success && data.html) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = data.html;
+
+                while (tempDiv.firstChild) {
+                    bleepsContainer.appendChild(tempDiv.firstChild);
+                }
+
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+
+                hasMore = data.has_more;
+                currentPage = data.next_page;
+                trigger.dataset.page = currentPage;
+                trigger.dataset.hasMore = hasMore;
+
+                if (!hasMore) {
+                    endOfContent.classList.remove('hidden');
+                    observer.unobserve(trigger);
+                    // Remove load more button when reaching end
+                    if (loadMoreBtn) {
+                        loadMoreBtn.remove();
+                        loadMoreBtn = null;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading more bleeps:', error);
+
+            // Show error message
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-error shadow-lg my-4';
+            errorDiv.innerHTML = `
+                <div>
+                    <i data-lucide="alert-circle" class="w-6 h-6"></i>
+                    <span>Failed to load more bleeps. Please try again.</span>
+                </div>
+                <button class="btn btn-sm" onclick="this.parentElement.remove()">Dismiss</button>
+            `;
+            bleepsContainer.appendChild(errorDiv);
+
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+
+            // Show "Load More" button on error as fallback
+            if (!loadMoreBtn && hasMore) {
+                loadMoreBtn = document.createElement('button');
+                loadMoreBtn.id = 'load-more-btn';
+                loadMoreBtn.className = 'btn btn-primary btn-block mt-4';
+                loadMoreBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-5 h-5 mr-2"></i> Try Again';
+                loadMoreBtn.addEventListener('click', () => {
+                    loadMoreBleeps();
+                });
+                trigger.parentElement.insertBefore(loadMoreBtn, trigger);
+
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            } else if (loadMoreBtn && hasMore) {
+                // Show existing button if hidden
+                loadMoreBtn.classList.remove('hidden');
+            }
+        } finally {
+            isLoading = false;
+            loadingIndicator.classList.add('hidden');
+        }
+    }
+});

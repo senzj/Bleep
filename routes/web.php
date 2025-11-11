@@ -46,6 +46,10 @@ Route::get('/', [BleepController::class, 'index']);
 Route::post('/bleeps/{bleep}/view', [BleepController::class, 'recordView'])
     ->name('bleeps.view');
 
+// Bleep Lazy Load
+Route::get('/bleeps/lazy-load', [BleepController::class, 'lazyLoad'])
+    ->name('bleeps.lazyload');
+
 // Comments
 Route::get('/bleeps/comments/{bleep}/comments', [CommentsController::class, 'index']);
 Route::get('/bleeps/comments/{bleep}/count', [CommentsController::class, 'count']);
@@ -56,13 +60,23 @@ Route::post('/bleeps/{bleep}/share', [ShareController::class, 'store']);
 
 Route::get('/s/{token}', [ShareController::class, 'redirect'])->name('shares.redirect');
 
+
 // Bleep Posts (with soft-deleted support)
 Route::get('/bleeps/{id}', [PostController::class, 'index'])
     ->name('post');
 
+Route::get('/bleeps/{id}/comments/load-more', [PostController::class, 'loadMorePostComments'])
+    ->name('bleeps.comments.loadmore');
+
+
 // Profile page
 Route::get('/bleeper/{username}', [ProfileController::class, 'index'])
     ->name('user.profile');
+
+// Lazy fragments (AJAX)
+Route::get('/users/{username}/bleeps', [ProfileController::class, 'bleeps'])->name('user.bleeps');
+Route::get('/users/{username}/reposts', [ProfileController::class, 'reposts'])->name('user.reposts');
+
 
 // Protected Auth Routes
 Route::middleware('auth')->group((function () {

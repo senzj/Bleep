@@ -23,40 +23,12 @@
         </button>
     </div>
 
-    {{-- Scrollable Content --}}
+    {{-- Scrollable Content - Initially empty, populated by JavaScript --}}
     <div id="floating-comments-scroll" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-200/80">
-        @if(isset($bleep) && $bleep && $bleep->comments && $bleep->comments->count())
-            @php
-                $comments = $bleep->comments->sortByDesc('created_at');
-                $groups = $comments->groupBy(function($c) {
-                    $tz = $c->user?->timezone ?? config('app.timezone', 'UTC');
-                    return $c->created_at->copy()->setTimezone($tz)->format('Y-m-d') . '|' . $tz;
-                });
-            @endphp
-
-            @foreach($groups as $key => $group)
-                @php
-                    [$date, $tz] = explode('|', $key);
-                    $dt = \Carbon\Carbon::createFromFormat('Y-m-d', $date, $tz);
-                    $showYear = $dt->year !== now()->year;
-                    $label = $dt->format('F j') . ($showYear ? ', ' . $dt->year : '');
-                @endphp
-
-                <div class="text-sm text-base-content/60 font-medium mt-4 mb-2 first:mt-0">
-                    {{ $label }}
-                </div>
-
-                @foreach($group as $comment)
-                    <x-subcomponents.comments.commentcard :comment="$comment" :bleep="$bleep" />
-                @endforeach
-            @endforeach
-        @else
-            <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
-                <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>
-                <p class="text-sm font-semibold">No comments yet</p>
-                <p class="text-xs">Be the first to share your thoughts.</p>
-            </div>
-        @endif
+        {{-- Loading state will be injected by JavaScript --}}
+        <div class="flex justify-center items-center py-10">
+            <span class="loading loading-spinner loading-md"></span>
+        </div>
     </div>
 
     {{-- Sticky Input Footer --}}

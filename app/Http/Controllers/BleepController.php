@@ -21,70 +21,25 @@ class BleepController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $bleeps = Bleep::with(['user', 'media'])
-            ->latest()
-            ->paginate(50);
+        // fetch first page via reusable fetchBleeps
+        $bleeps = $this->fetchBleeps($request);
 
-        // Attach repost data for authenticated users
-        if (Auth::check()) {
-            $bleeps->getCollection()->transform(function ($bleep) {
-                $bleep->followedReposts = Repost::visibleToUser(Auth::id(), $bleep->id);
-                return $bleep;
-            });
-        }
+        // Record views for the fetched bleeps
+        $this->recordBleepsViews($bleeps);
 
-        // Record views in batch for better performance
-        $user = Auth::user(); // null for guests
-        $sessionId = session()->getId(); // Always available for guests
-        $bleepIds = $bleeps->pluck('id')->toArray();
-
-        // Get existing views for this user/session
-        $existingViews = \App\Models\BleepViews::whereIn('bleep_id', $bleepIds)
-            ->where(function($q) use ($user, $sessionId) {
-                if ($user) {
-                    $q->where('user_id', $user->id); // Authenticated user
-                } else {
-                    $q->where('session_id', $sessionId); // Guest user
-                }
-            })
-            ->pluck('bleep_id')
-            ->toArray();
-
-        // Only record views for bleeps not yet viewed
-        $newViewBleepIds = array_diff($bleepIds, $existingViews);
-
-        if (!empty($newViewBleepIds)) {
-            $viewsData = [];
-            foreach ($newViewBleepIds as $bleepId) {
-                $viewsData[] = [
-                    'bleep_id' => $bleepId,
-                    'user_id' => $user?->id, // null for guests
-                    'session_id' => $user ? null : $sessionId, // only for guests
-                    'viewed_at' => now(),
-                ];
-            }
-
-            // Bulk insert new views
-            \App\Models\BleepViews::insert($viewsData);
-
-            // Increment view counters
-            Bleep::whereIn('id', $newViewBleepIds)->increment('views');
-        }
-
+        // Remove the AJAX check since lazyLoad handles it
         return view('home', ['bleeps' => $bleeps]);
     }
+
 
     /**
      * Record a view for a bleep (called via AJAX - keep for single post page)
      */
     public function recordView(Bleep $bleep)
     {
-        $bleep->recordView(
-            Auth::user(),
-            session()->getId()
-        );
+        $bleep = $this->recordSingleView($bleep);
 
         return response()->json([
             'success' => true,
@@ -102,13 +57,13 @@ class BleepController extends Controller
             'message' => 'nullable|string|max:255|required_without:media',
             'is_anonymous' => 'nullable|boolean',
             'media' => 'nullable|array|max:4|required_without:message',
-            'media.*' => 'file|max:10240|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm',
+            'media.*' => 'file|max:102400|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm',
         ], [
             'message.required_without' => 'Write something or attach media.',
             'media.required_without' => 'Attach media or write a message.',
             'media.max' => 'You can upload up to 4 files.',
             'media.*.mimetypes' => 'Only images (jpg, png, webp, gif) or videos (mp4, webm) are allowed.',
-            'media.*.max' => 'Each file must be at most 10MB.',
+            'media.*.max' => 'Each file must be at most 100MB.',
         ]);
 
         $user = Auth::user();
@@ -204,7 +159,9 @@ class BleepController extends Controller
 
         $avatarUrl = $bleep->is_anonymous
             ? null
-            : 'https://avatars.laravel.cloud/' . urlencode($bleep->user->email);
+            : ($bleep->user->profile_picture
+                ? asset('storage/' . $bleep->user->profile_picture)
+                : asset('images/avatar/default.jpg'));
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -245,5 +202,121 @@ class BleepController extends Controller
         }
 
         return redirect('/')->with('success', 'Your bleep has been deleted!');
+    }
+
+    /**
+     * Lazy load more bleeps (for infinite scroll)
+     */
+    public function lazyLoad(Request $request)
+    {
+        $page = (int) $request->get('page', 2);
+
+        // fetch requested page via reusable fetchBleeps
+        $bleeps = $this->fetchBleeps($request, $page);
+
+        // Record views for the fetched bleeps
+        $this->recordBleepsViews($bleeps);
+
+        return response()->json([
+            'success' => true,
+            'html' => view('components.bleepslist', ['bleeps' => $bleeps])->render(),
+            'has_more' => $bleeps->hasMorePages(),
+            'next_page' => $bleeps->currentPage() + 1,
+            'current_page' => $bleeps->currentPage(),
+        ]);
+    }
+
+    /**
+     * Fetch bleeps with relations, pagination and attach reposts for auth users.
+     *
+     * @param Request $request
+     * @param int|null $page
+     * @param int $perPage
+     * @return \Illuminate\Pagination\LengthAwarePaginator
+     */
+    protected function fetchBleeps(Request $request, ?int $page = null, int $perPage = 10)
+    {
+        $query = Bleep::with(['user', 'media'])->latest();
+
+        if ($page) {
+            $bleeps = $query->paginate($perPage, ['*'], 'page', $page);
+        } else {
+            $bleeps = $query->paginate($perPage);
+        }
+
+        if (Auth::check()) {
+            $bleeps->getCollection()->transform(function ($bleep) {
+                $bleep->followedReposts = Repost::visibleToUser(Auth::id(), $bleep->id);
+                return $bleep;
+            });
+        }
+
+        return $bleeps;
+    }
+
+    /**
+     * Record views for a collection of bleeps
+     */
+    protected function recordBleepsViews($bleeps)
+    {
+        $user = Auth::user(); // null for guests
+        $sessionId = session()->getId(); // Always available for guests
+        $bleepIds = $bleeps->pluck('id')->toArray();
+
+        if (empty($bleepIds)) {
+            return;
+        }
+
+        // Get existing views for this user/session
+        $existingViews = \App\Models\BleepViews::whereIn('bleep_id', $bleepIds)
+            ->where(function($q) use ($user, $sessionId) {
+                if ($user) {
+                    $q->where('user_id', $user->id); // Authenticated user
+                } else {
+                    $q->where('session_id', $sessionId); // Guest user
+                }
+            })
+            ->pluck('bleep_id')
+            ->toArray();
+
+        // Only record views for bleeps not yet viewed
+        $newViewBleepIds = array_diff($bleepIds, $existingViews);
+
+        if (!empty($newViewBleepIds)) {
+            $viewsData = [];
+            foreach ($newViewBleepIds as $bleepId) {
+                $viewsData[] = [
+                    'bleep_id' => $bleepId,
+                    'user_id' => $user?->id, // null for guests
+                    'session_id' => $user ? null : $sessionId, // only for guests
+                    'viewed_at' => now(),
+                ];
+            }
+
+            // Bulk insert new views
+            \App\Models\BleepViews::insert($viewsData);
+
+            // Increment view counters
+            Bleep::whereIn('id', $newViewBleepIds)->increment('views');
+        }
+    }
+
+    /**
+     * Centralized single-bleep view recording so other controllers/actions can reuse.
+     *
+     * @param Bleep $bleep
+     * @return Bleep
+     */
+    protected function recordSingleView(Bleep $bleep): Bleep
+    {
+        $bleep->recordView(
+            Auth::user(),
+            session()->getId()
+        );
+
+        // refresh to get latest views count
+        $bleep->refresh();
+
+        return $bleep;
     }
 }

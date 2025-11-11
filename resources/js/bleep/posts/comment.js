@@ -8,11 +8,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const floatingContent = document.getElementById('floating-comments-scroll');
     const floatingForm = document.getElementById('floating-comment-form');
     const floatingTextarea = floatingForm?.querySelector('textarea[name="message"]');
-    // find toggle inside floating form OR on the page (single post layout)
     const anonymousToggle = (floatingForm && floatingForm.querySelector('#comment-anonymous-toggle')) || document.querySelector('#comment-anonymous-toggle');
     const overlay = document.getElementById('comments-overlay');
     const closeButton = document.getElementById('close-comments-btn');
     const viewerTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+    let isLoadingComments = false;
+    let currentCommentsPage = 1;
+    let hasMoreComments = true;
+
+    // Scroll-to-close state
+    let scrollStartX = 0;
+    let scrollStartY = 0;
+    let hasScrolledInModal = false;
 
     // Auto-grow textarea
     function autoGrow(element) {
@@ -37,19 +45,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Event listeners
-    document.querySelectorAll('.comment-btn').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            const bleepId = button.dataset.bleepId;
-            const bleepElement = button.closest('article');
+    // Define handleCommentsScroll BEFORE using it
+    function handleCommentsScroll() {
+        if (!floatingContent || isLoadingComments || !hasMoreComments || !currentOpenBleepId) return;
 
-            if (currentOpenBleepId === bleepId) {
-                closeComments();
-            } else {
-                openComments(bleepId, bleepElement);
-            }
-        });
+        const scrollTop = floatingContent.scrollTop;
+        const scrollHeight = floatingContent.scrollHeight;
+        const clientHeight = floatingContent.clientHeight;
+
+        // Load more when user scrolls to bottom (with 200px threshold)
+        if (scrollTop + clientHeight >= scrollHeight - 200) {
+            loadMoreComments(currentOpenBleepId);
+        }
+    }
+
+    // Event listeners - Use event delegation for dynamically loaded bleeps
+    document.body.addEventListener('click', (e) => {
+        const button = e.target.closest('.comment-btn');
+        if (!button) return;
+
+        e.preventDefault();
+        const bleepId = button.dataset.bleepId;
+        const bleepElement = button.closest('article');
+
+        if (currentOpenBleepId === bleepId) {
+            closeComments();
+        } else {
+            openComments(bleepId, bleepElement);
+        }
     });
 
     closeButton?.addEventListener('click', closeComments);
@@ -195,7 +218,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         currentOpenBleepId = bleepId;
 
+        // Reset pagination state
+        currentCommentsPage = 1;
+        hasMoreComments = true;
+
         loadComments(bleepId);
+
+        // Start monitoring bleep visibility
+        startBleepVisibilityCheck();
 
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
@@ -257,17 +287,93 @@ document.addEventListener('DOMContentLoaded', function() {
         window.removeEventListener('scroll', handleScroll);
         window.removeEventListener('resize', handleResize);
 
+        // Stop monitoring bleep visibility
+        stopBleepVisibilityCheck();
+
         currentOpenBleepId = null;
         currentBleepElement = null;
     }
 
-    // Load and render comments
+    // Add scroll listener for lazy loading comments
+    if (floatingContent) {
+        floatingContent.addEventListener('scroll', handleCommentsScroll);
+
+        // Track initial touch/mouse position
+        floatingContent.addEventListener('touchstart', (e) => {
+            scrollStartX = e.touches[0].clientX;
+            scrollStartY = e.touches[0].clientY;
+            hasScrolledInModal = false;
+        });
+
+        floatingContent.addEventListener('mousedown', (e) => {
+            scrollStartX = e.clientX;
+            scrollStartY = e.clientY;
+            hasScrolledInModal = false;
+        });
+
+        // Detect if user scrolled inside modal
+        floatingContent.addEventListener('touchmove', (e) => {
+            const deltaX = Math.abs(e.touches[0].clientX - scrollStartX);
+            const deltaY = Math.abs(e.touches[0].clientY - scrollStartY);
+            if (deltaY > 10 || deltaX > 10) {
+                hasScrolledInModal = true;
+            }
+        });
+
+        floatingContent.addEventListener('mousemove', (e) => {
+            if (e.buttons === 1) { // Left mouse button is pressed
+                const deltaX = Math.abs(e.clientX - scrollStartX);
+                const deltaY = Math.abs(e.clientY - scrollStartY);
+                if (deltaY > 10 || deltaX > 10) {
+                    hasScrolledInModal = true;
+                }
+            }
+        });
+    }
+
+    // Enhanced overlay click handler with scroll detection
+    overlay?.addEventListener('click', (e) => {
+        // Only close if user didn't scroll significantly inside modal
+        if (!hasScrolledInModal) {
+            closeComments();
+        }
+        hasScrolledInModal = false;
+    });
+
+    // Add touch/click outside modal detection
+    document.addEventListener('touchend', handleOutsideInteraction);
+    document.addEventListener('mouseup', handleOutsideInteraction);
+
+    function handleOutsideInteraction(e) {
+        if (!floatingModal || floatingModal.classList.contains('hidden')) return;
+
+        // Check if click/touch is outside modal
+        const modalRect = floatingModal.getBoundingClientRect();
+        const isOutside =
+            e.clientX < modalRect.left ||
+            e.clientX > modalRect.right ||
+            e.clientY < modalRect.top ||
+            e.clientY > modalRect.bottom;
+
+        if (isOutside) {
+            const deltaX = Math.abs(e.clientX - scrollStartX);
+            const deltaY = Math.abs(e.clientY - scrollStartY);
+
+            // Only close if movement is small (threshold: 15px)
+            if (deltaX < 15 && deltaY < 15 && !hasScrolledInModal) {
+                closeComments();
+            }
+        }
+
+        hasScrolledInModal = false;
+    }
+
+    // Load and render comments (first page)
     async function loadComments(bleepId) {
         if (!floatingContent) return;
 
         try {
-            // Fetch Blade-rendered HTML
-            const response = await fetch(`/bleeps/comments/${bleepId}/html`, {
+            const response = await fetch(`/bleeps/comments/${bleepId}/html?page=1`, {
                 headers: { 'Accept': 'application/json' }
             });
 
@@ -277,6 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p>Please <a href="/login" class="link link-primary">login</a> to view comments.</p>
                     </div>
                 `;
+                hasMoreComments = false;
                 return;
             }
 
@@ -287,14 +394,152 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             floatingContent.innerHTML = data.html;
 
+            // Update pagination state
+            currentCommentsPage = data.current_page || 1;
+            hasMoreComments = data.has_more || false;
+
+            // Add loading indicator if there are more comments
+            if (hasMoreComments) {
+                addCommentsLoadingIndicator();
+            }
+
             if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
                 lucide.createIcons();
             }
         } catch (error) {
             console.error('Error loading comments:', error);
-            floatingContent.innerHTML = renderErrorState();
+            const retryBtn = document.createElement('button');
+            retryBtn.className = 'btn btn-sm btn-primary mt-3';
+            retryBtn.textContent = 'Try Again';
+            retryBtn.onclick = () => loadComments(bleepId);
+
+            floatingContent.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
+                    <i data-lucide="alert-circle" class="w-8 h-8 mb-3 text-error"></i>
+                    <p class="text-sm font-semibold">Failed to load comments</p>
+                </div>
+            `;
+            floatingContent.querySelector('.flex').appendChild(retryBtn);
+
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
         }
     }
+
+    // Load more comments (for pagination)
+    async function loadMoreComments(bleepId) {
+        if (isLoadingComments || !hasMoreComments) return;
+
+        isLoadingComments = true;
+
+        const loadingIndicator = floatingContent.querySelector('#comments-loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.classList.remove('hidden');
+        }
+
+        try {
+            const nextPage = currentCommentsPage + 1;
+            const response = await fetch(`/bleeps/comments/${bleepId}/html?page=${nextPage}`, {
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load more comments');
+            }
+
+            const data = await response.json();
+
+            // Remove loading indicator
+            loadingIndicator?.remove();
+
+            if (data.html) {
+                // Create temporary container
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = data.html;
+
+                // Get existing date headers
+                const existingDates = new Set();
+                floatingContent.querySelectorAll('.comment-date-header').forEach(header => {
+                    existingDates.add(header.dataset.date);
+                });
+
+                // Append new comments, removing duplicate date headers
+                while (tempDiv.firstChild) {
+                    const child = tempDiv.firstChild;
+
+                    // Check if it's a date header
+                    if (child.classList && child.classList.contains('comment-date-header')) {
+                        const dateKey = child.dataset.date;
+
+                        // Skip if we already have this date header
+                        if (existingDates.has(dateKey)) {
+                            tempDiv.removeChild(child);
+                            continue;
+                        } else {
+                            existingDates.add(dateKey);
+                        }
+                    }
+
+                    floatingContent.appendChild(child);
+                }
+
+                // Update pagination state
+                currentCommentsPage = data.current_page || nextPage;
+                hasMoreComments = data.has_more || false;
+
+                // Add loading indicator if there are more comments
+                if (hasMoreComments) {
+                    addCommentsLoadingIndicator();
+                }
+
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            } else {
+                hasMoreComments = false;
+            }
+        } catch (error) {
+            console.error('Error loading more comments:', error);
+
+            // Show error message
+            if (loadingIndicator) {
+                const retryBtn = document.createElement('button');
+                retryBtn.className = 'btn btn-sm btn-ghost';
+                retryBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4 mr-1"></i> Try Again';
+                retryBtn.onclick = () => loadMoreComments(bleepId);
+
+                loadingIndicator.innerHTML = `
+                    <div class="text-center py-4">
+                        <p class="text-sm text-error mb-2">Failed to load more comments</p>
+                    </div>
+                `;
+                loadingIndicator.querySelector('div').appendChild(retryBtn);
+                loadingIndicator.classList.remove('hidden');
+
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }
+        } finally {
+            isLoadingComments = false;
+        }
+    }
+
+    function addCommentsLoadingIndicator() {
+        // Remove existing indicator if present
+        const existing = floatingContent.querySelector('#comments-loading-indicator');
+        if (existing) return;
+
+        const indicator = document.createElement('div');
+        indicator.id = 'comments-loading-indicator';
+        indicator.className = 'hidden flex justify-center items-center py-4';
+        indicator.innerHTML = '<span class="loading loading-spinner loading-sm"></span>';
+        floatingContent.appendChild(indicator);
+    }
+
+    // Make loadMoreComments globally accessible for retry button
+    window.loadMoreComments = loadMoreComments;
 
     // Close modal on Escape key
     document.addEventListener('keydown', (e) => {
@@ -707,12 +952,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
 
-                    // Update the edit button data attributes for next edit
-                    const editBtn = commentContainer.querySelector('.edit-comment-btn');
-                    if (editBtn) {
-                        editBtn.dataset.commentMessage = newMessage;
-                        editBtn.dataset.isAnonymous = newIsAnonymous ? '1' : '0';
-                    }
+                    // Toggle identity link/non-link to match anonymity
+                    updateCommentIdentity(commentContainer, newIsAnonymous, userUsername, newIsAnonymous ? (data.comment?.display_name || 'Anonymous User') : userName);
 
                     // Add/update compact "Edited" tag
                     try {
@@ -767,5 +1008,105 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Reinitialize lucide icons
         if (window.lucide) window.lucide.createIcons();
+    }
+
+    // Check if bleep is visible in viewport
+    function isBleepVisible() {
+        if (!currentBleepElement) return true;
+
+        const rect = currentBleepElement.getBoundingClientRect();
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+        const bleepHeight = rect.height;
+        const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
+        const visibilityPercentage = visibleHeight > 0 ? (visibleHeight / bleepHeight) * 100 : 0;
+
+        return visibilityPercentage > 20; // Close if less than 20% visible
+    }
+
+    // Start checking bleep visibility on scroll
+    function startBleepVisibilityCheck() {
+        stopBleepVisibilityCheck(); // Clear any existing listener
+
+        // Check immediately
+        if (!isBleepVisible()) {
+            closeComments();
+            return;
+        }
+
+        // Check on scroll with throttling
+        let scrollTimeout;
+        const scrollHandler = () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                if (!isBleepVisible()) {
+                    closeComments();
+                }
+            }, 100); // Throttle to 100ms
+        };
+
+        window.addEventListener('scroll', scrollHandler, { passive: true });
+
+        // Store handler for cleanup
+        window._bleepScrollHandler = scrollHandler;
+    }
+
+    // Stop checking bleep visibility
+    function stopBleepVisibilityCheck() {
+        if (window._bleepScrollHandler) {
+            window.removeEventListener('scroll', window._bleepScrollHandler);
+            window._bleepScrollHandler = null;
+        }
+    }
+
+    // Helper: toggle profile navigation for a comment card
+    function updateCommentIdentity(commentContainer, isAnonymous, userUsername, displayName) {
+        const displayNameEl = commentContainer.querySelector('.comment-display-name');
+        const usernameEl = commentContainer.querySelector('.comment-username');
+        if (!displayNameEl || !usernameEl) return;
+
+        // The identity block is either an <a> (non-anon) or a <div> (anon)
+        const anchorWithName = displayNameEl.closest('a');
+        const identityBlock = anchorWithName || displayNameEl.closest('div');
+
+        if (!identityBlock) return;
+
+        if (isAnonymous) {
+            // Ensure it's a non-clickable div
+            if (anchorWithName) {
+                const div = document.createElement('div');
+                div.className = 'flex flex-col min-w-0';
+                div.setAttribute('aria-label', 'Anonymous user');
+                div.innerHTML = anchorWithName.innerHTML;
+
+                // Remove hover-underline classes on children
+                div.querySelectorAll('.group-hover\\:underline').forEach(el => el.classList.remove('group-hover:underline'));
+
+                anchorWithName.replaceWith(div);
+            }
+
+            displayNameEl.textContent = displayName || 'Anonymous User';
+            usernameEl.textContent = '@anonymous';
+        } else {
+            // Ensure it is an <a href="/bleeper/:username">
+            if (!anchorWithName && identityBlock) {
+                const a = document.createElement('a');
+                a.className = 'group flex flex-col min-w-0';
+                a.title = 'View profile';
+                const uname = (userUsername || '').replace(/^@/, '');
+                a.href = `/bleeper/${uname}`;
+                a.innerHTML = identityBlock.innerHTML;
+
+                // Re-apply hover underline to spans
+                a.querySelectorAll('.comment-display-name, .comment-username').forEach(el => {
+                    el.classList.add('group-hover:underline');
+                });
+
+                identityBlock.replaceWith(a);
+            }
+
+            displayNameEl.textContent = displayName || displayNameEl.textContent;
+            usernameEl.textContent = '@' + (userUsername || usernameEl.textContent.replace(/^@/, ''));
+        }
     }
 });

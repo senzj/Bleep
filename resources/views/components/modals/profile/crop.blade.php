@@ -1,8 +1,9 @@
-@vite([
-    'resources/js/profile/profile-crop.js',
-    'resources/css/profile-crop.css',
+@push('scripts')
+    @vite([
+        'resources/js/profile/profile-crop.js',
+        'resources/css/profile-crop.css',
     ])
-
+@endpush
 
 <input type="checkbox" id="cropper_modal" class="modal-toggle" />
 <div class="modal">

@@ -46,6 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }));
 
         currentIndex = parseInt(mediaItem.dataset.mediaIndex);
+
+        // Reset all state before showing
+        resetZoom();
+
         showMedia(currentIndex);
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -70,14 +74,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Navigation
     prevBtn.addEventListener('click', () => {
         currentIndex = (currentIndex - 1 + mediaItems.length) % mediaItems.length;
-        showMedia(currentIndex);
         resetZoom();
+        showMedia(currentIndex);
     });
 
     nextBtn.addEventListener('click', () => {
         currentIndex = (currentIndex + 1) % mediaItems.length;
-        showMedia(currentIndex);
         resetZoom();
+        showMedia(currentIndex);
     });
 
     // Keyboard navigation
@@ -85,8 +89,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!modal.classList.contains('flex')) return;
 
         if (e.key === 'Escape') closeModal();
-        if (e.key === 'ArrowLeft' && currentIndex > 0) prevBtn.click();
-        if (e.key === 'ArrowRight' && currentIndex < mediaItems.length - 1) nextBtn.click();
+        if (e.key === 'ArrowLeft' && currentIndex > 0) {
+            resetZoom();
+            prevBtn.click();
+        }
+        if (e.key === 'ArrowRight' && currentIndex < mediaItems.length - 1) {
+            resetZoom();
+            nextBtn.click();
+        }
     });
 
     // Zoom functionality
@@ -102,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
             image.style.cursor = 'default';
             currentTranslateX = 0;
             currentTranslateY = 0;
+            updateTransform();
         }
     }
 
@@ -109,9 +120,11 @@ document.addEventListener('DOMContentLoaded', () => {
         currentZoom = 1;
         currentTranslateX = 0;
         currentTranslateY = 0;
+        isDragging = false;
+        image.style.cursor = 'default';
+        image.style.transition = 'transform 0.2s ease';
         updateTransform();
         zoomLevel.textContent = '100%';
-        image.style.cursor = 'default';
     }
 
     function updateTransform() {
@@ -142,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
         startX = x - currentTranslateX;
         startY = y - currentTranslateY;
         image.style.cursor = 'grabbing';
-        // Remove transition during drag for smooth movement
         image.style.transition = 'none';
     }
 
@@ -154,10 +166,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function endDrag() {
+        if (!isDragging) return;
         isDragging = false;
         if (currentZoom > 1) {
             image.style.cursor = 'grab';
         }
+        image.style.transition = 'transform 0.2s ease';
     }
 
     // Mouse events
@@ -240,15 +254,24 @@ document.addEventListener('DOMContentLoaded', () => {
     function showMedia(index) {
         const item = mediaItems[index];
 
+        // Reset transform before showing new media
+        image.style.transform = 'translate(0, 0) scale(1)';
+        image.style.transition = 'transform 0.2s ease';
+
         // Hide both elements first
         image.classList.add('hidden');
         video.classList.add('hidden');
         video.pause();
 
         if (item.type === 'image') {
-            image.src = item.src;
-            image.alt = item.alt;
-            image.classList.remove('hidden');
+            // Wait for image to load before showing
+            const tempImg = new Image();
+            tempImg.onload = () => {
+                image.src = item.src;
+                image.alt = item.alt;
+                image.classList.remove('hidden');
+            };
+            tempImg.src = item.src;
         } else {
             videoSource.src = item.src;
             videoSource.type = item.mime;

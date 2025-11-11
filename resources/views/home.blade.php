@@ -1,6 +1,11 @@
-@vite([
-    'resources/js/bleep/posts/post.js',
-])
+
+@push('scripts')
+    @vite([
+        'resources/js/bleep/posts/post.js',
+        'resources/js/bleep/modals/posts/edit.js',
+        'resources/js/bleep/posts/infinitescroll.js',
+    ])
+@endpush
 
 <x-layout>
     <x-slot:title>
@@ -81,17 +86,14 @@
                                         </button>
                                     </div>
                                 </div>
-
                             </div>
-
-
                         </form>
                     </div>
                 </div>
             @endauth
 
-            {{-- bleeps --}}
-            <div class="space-y-4 mt-8">
+            {{-- bleeps container --}}
+            <div id="bleeps-container" class="space-y-4 mt-8">
                 @forelse ($bleeps as $bleep)
                     <x-bleep :bleep="$bleep" />
                 @empty
@@ -105,6 +107,21 @@
                     </div>
                 @endforelse
             </div>
+
+            {{-- Loading indicator --}}
+            <div id="loading-indicator" class="hidden text-center py-8">
+                <span class="loading loading-spinner loading-lg text-primary"></span>
+                <p class="mt-2 text-base-content/60">Loading more bleeps...</p>
+            </div>
+
+            {{-- End of content indicator --}}
+            <div id="end-of-content" class="hidden text-center py-8">
+                <i data-lucide="circle-check" class="w-8 h-8 mx-auto text-base-content/40"></i>
+                <p class="mt-2 text-base-content/60">You've reached the end of the bleeps!</p>
+            </div>
+
+            {{-- Infinite scroll trigger --}}
+            <div id="infinite-scroll-trigger" data-page="2" data-has-more="{{ $bleeps->hasMorePages() ? 'true' : 'false' }}"></div>
         </div>
 
         {{-- Right panel --}}

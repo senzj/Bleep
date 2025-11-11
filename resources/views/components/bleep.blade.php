@@ -73,7 +73,7 @@
                                     <div class="flex items-center gap-2 text-xs">
                                         <div class="avatar">
                                             <div class="w-6 h-6 rounded-full">
-                                                <img src="https://avatars.laravel.cloud/{{ urlencode($repost->user->email) }}"
+                                                <img src="{{ $repost->user->profile_picture ? asset('storage/' . $repost->user->profile_picture) : asset('images/avatar/default.jpg') }}"
                                                      alt="{{ $repost->user->username }}">
                                             </div>
                                         </div>
@@ -100,34 +100,37 @@
         <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between gap-2">
                 <div class="flex items-start gap-3">
-                    <a href="{{ $userProfileLink }}" class="group flex items-start gap-3">
-                        @if(! $isAnonymous && $bleep->user)
-                            <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
-                                <x-subcomponents.avatar :user="$bleep->user" :size="12" />
-                            </div>
-                        @elseif($isAnonymous)
+                    @if($isAnonymous)
+                        <div class="group flex items-start gap-3">
                             <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
                                 <div class="size-12 rounded-full bg-base-300 flex items-center justify-center overflow-hidden">
                                     <i data-lucide="hat-glasses" class="w-6 h-6 text-base-content/80"></i>
                                 </div>
                             </div>
-                        @else
-                            <div class="avatar placeholder shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
-                                <div class="size-12 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 bg-base-300">
-                                    <span class="text-xl">?</span>
+                            <div class="min-w-0">
+                                <div class="font-semibold text-base-content">
+                                    <span class="text-sm truncate bleep-display-name" data-bleep-id="{{ $bleep->id }}">{{ $displayName }}</span>
+                                </div>
+                                <div class="text-base-content/60 text-xs">
+                                    <span class="truncate bleep-username" data-bleep-id="{{ $bleep->id }}">@anonymous</span>
                                 </div>
                             </div>
-                        @endif
-
-                        <div class="min-w-0">
-                            <div class="font-semibold text-base-content">
-                                <span class="text-sm truncate bleep-display-name group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ $displayName }}</span>
-                            </div>
-                            <div class="text-base-content/60 text-xs">
-                                <span class="truncate bleep-username group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ $username }}</span>
-                            </div>
                         </div>
-                    </a>
+                    @else
+                        <a href="{{ route('user.profile', ['username' => $bleep->user->username]) }}" class="group flex items-start gap-3">
+                            <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
+                                <x-subcomponents.avatar :user="$bleep->user" :size="12" />
+                            </div>
+                            <div class="min-w-0">
+                                <div class="font-semibold text-base-content">
+                                    <span class="text-sm truncate bleep-display-name group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ $displayName }}</span>
+                                </div>
+                                <div class="text-base-content/60 text-xs">
+                                    <span class="truncate bleep-username group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ '@' . $bleep->user->username }}</span>
+                                </div>
+                            </div>
+                        </a>
+                    @endif
 
                     @if (! $isAnonymous && $bleep->user && Auth::check() && Auth::id() !== $bleep->user->id)
                         @php
@@ -338,8 +341,8 @@
             </div>
         @endif
 
-        {{-- views --}}
-        <div class="text-xs text-gray-400 mt-5 flex items-center justify-between">
+        {{-- views - with min-height to prevent CLS --}}
+        <div class="text-xs text-gray-400 mt-5 flex items-center justify-between min-h-5">
             <span class="text-xs">
                 {{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y \| g:i:s A') }}
             </span>
@@ -358,7 +361,7 @@
         </div>
     </div>
 
-    {{-- Engagement Footer --}}
+    {{-- Engagement Footer - with min-height to prevent CLS --}}
     @php
         $cols = 2; // Likes + Share (always visible)
         $cols += $showCommentsButton ? 1 : 0;
@@ -372,8 +375,7 @@
             default => 'grid-cols-2',
         };
     @endphp
-
-    <div class="grid {{ $gridClass }} gap-2 pt-3 border-t border-base-300 text-sm">
+    <div class="grid {{ $gridClass }} gap-2 pt-3 border-t border-base-300 text-sm min-h-[44px]">
         {{-- Likes --}}
         <div class="flex justify-center">
             <form method="POST" action="/bleeps/{{ $bleep->id }}/like" class="like-form inline">
@@ -386,7 +388,7 @@
                     <span class="inline sm:hidden text-sm like-count" data-bleep-id="{{ $bleep->id }}">
                         {{ $bleep->likes()->count() }}
                     </span>
-                    <span class="hidden sm:inline text-xs like-text">
+                    <span class="hidden sm:inline text-xs like-text whitespace-nowrap">
                         @if (Auth::check() && $bleep->isLikedBy(Auth::user()))
                             {{ $bleep->likes()->count() }} {{ $bleep->likes()->count() === 1 ? 'Liked' : 'Likes' }}
                         @else
@@ -404,7 +406,7 @@
                     data-bleep-id="{{ $bleep->id }}">
                     <i data-lucide="message-circle" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
                     <span class="inline sm:hidden text-xs">{{ $bleep->comments()->count() }}</span>
-                    <span class="hidden sm:inline text-xs">
+                    <span class="hidden sm:inline text-xs whitespace-nowrap">
                         {{ $bleep->comments()->count() }} {{ $bleep->comments()->count() === 1 ? 'Comment' : 'Comments' }}
                     </span>
                 </button>
@@ -421,7 +423,7 @@
                     <span class="inline sm:hidden text-xs repost-meta-mobile" data-bleep-id="{{ $bleep->id }}">
                         {{ $totalRepostCount }}
                     </span>
-                    <span class="hidden sm:inline text-xs repost-text" data-bleep-id="{{ $bleep->id }}">
+                    <span class="hidden sm:inline text-xs repost-text whitespace-nowrap" data-bleep-id="{{ $bleep->id }}">
                         <span class="repost-label">
                             <span class="repost-count mr-0.5" data-bleep-id="{{ $bleep->id }}">{{ $totalRepostCount }} </span>
                             <span class="repost-text-label">{{ $hasReposted ? 'Reposted' : ($totalRepostCount === 1 ? 'Repost' : 'Repost') }}</span>
@@ -441,35 +443,28 @@
                 <span class="inline sm:hidden text-xs share-count" data-bleep-id="{{ $bleep->id }}">
                     {{ $shareCount }}
                 </span>
-                <span class="hidden sm:inline text-xs share-text" data-bleep-id="{{ $bleep->id }}">
+                <span class="hidden sm:inline text-xs share-text whitespace-nowrap" data-bleep-id="{{ $bleep->id }}">
                     {{ $shareCount }} {{ $shareCount === 1 ? 'Share' : 'Shares' }}
                 </span>
             </button>
         </div>
     </div>
+
 </article>
 
-{{-- Page-level scripts (load once) --}}
+
+
 @once
-    @vite([
-        'resources/js/bleep/posts/like.js',
-        'resources/js/bleep/posts/media.js',
-        'resources/js/bleep/posts/repost.js',
-        'resources/js/bleep/posts/share.js',
-        'resources/js/bleep/users/follow.js',
-    ])
-
-    {{-- Only load comment script when NOT on the single-post route --}}
-    @if(!request()->routeIs('post'))
-        @vite(['resources/js/bleep/posts/comment.js'])
-    @endif
+    @push('scripts')
+        @vite([
+            'resources/js/bleep/posts/like.js',
+            'resources/js/bleep/posts/media.js',
+            'resources/js/bleep/posts/repost.js',
+            'resources/js/bleep/posts/share.js',
+            'resources/js/bleep/users/follow.js',
+        ])
+        @if(!request()->routeIs('post'))
+            @vite('resources/js/bleep/posts/comment.js')
+        @endif
+    @endpush
 @endonce
-
-@push('script')
-    <script>
-        function autoGrow(element) {
-            element.style.height = "auto";
-            element.style.height = (element.scrollHeight) + "px";
-        }
-    </script>
-@endpush

@@ -1,5 +1,9 @@
+@push('scripts')
+    @vite('resources/js/post/lazyload.js')
+@endpush
+
 <x-layout>
-    <x-slot:title>Bleep Post</x-slot:title>
+    <x-slot:title>Bleep | {{ $bleep->message ?? '' }}</x-slot:title>
 
     @php
         $viewerSeed = Auth::check() ? Auth::id() : request()->session()->getId();
@@ -19,7 +23,7 @@
         }
     @endphp
 
-    <div class="max-w-4xl mx-auto my-2">
+    <div class="max-w-4xl mx-auto">
         <a href="/" class="text-md link link-ghost mb-4 inline-block">
             <i data-lucide="arrow-left" class="w-5 h-5 inline-block"></i>
             Back
@@ -31,7 +35,7 @@
         </div>
 
         {{-- Comments Section --}}
-        <div class="bg-base-100/70 rounded-lg shadow-md p-6">
+        <div class="bg-base-100/70 rounded-lg shadow-md p-4 mt-3">
             {{-- Comments input (textarea) + anonymity toggle + send button --}}
             @auth
                 <div class="mt-1">
@@ -76,10 +80,12 @@
             @endauth
 
             {{-- Comments display --}}
-            <div class="mt-6 space-y-4">
+            <div class="mt-6 space-y-4" id="comments-container"
+                 data-load-more-url="{{ route('bleeps.comments.loadmore', $bleep->id) }}"
+                 data-next-page="{{ $comments->currentPage() + 1 }}"
+                 data-has-more="{{ $comments->hasMorePages() ? '1' : '0' }}">
                 @php
-                    $comments = $bleep->comments->sortByDesc('created_at');
-                    $groups = $comments->groupBy(function($c) {
+                    $groups = $comments->getCollection()->groupBy(function($c) {
                         $tz = $c->user?->timezone ?? config('app.timezone', 'UTC');
                         return $c->created_at->copy()->setTimezone($tz)->format('Y-m-d') . '|' . $tz;
                     });
@@ -92,11 +98,9 @@
                         $showYear = $dt->year !== now()->year;
                         $label = $dt->format('F j') . ($showYear ? ', ' . $dt->year : '');
                     @endphp
-
-                    <div class="text-sm text-base-content/60 font-medium mt-4 mb-2">
+                    <div class="text-sm text-base-content/60 font-medium mt-4 mb-2 comment-date-header" data-date="{{ $date }}">
                         {{ $label }}
                     </div>
-
                     @foreach($group as $comment)
                         <x-subcomponents.comments.commentcard :comment="$comment" :bleep="$bleep" />
                     @endforeach
@@ -108,6 +112,10 @@
                     </div>
                 @endforelse
             </div>
+
+            @if($comments->hasMorePages())
+                <div id="comments-sentinel" class="h-8"></div>
+            @endif
         </div>
     </div>
 
@@ -116,4 +124,10 @@
 
     {{-- Edit Bleep Modal (needed for edit button) --}}
     <x-modals.posts.edit />
+
+    {{-- share modal --}}
+    <x-modals.posts.share />
+
+    {{-- Media Modal --}}
+    <x-subcomponents.bleeps.mediamodal />
 </x-layout>

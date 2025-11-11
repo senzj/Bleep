@@ -1,69 +1,65 @@
 /**
  * Likes Functionality
  */
-document.querySelectorAll('.like-form').forEach(form => {
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+// Use event delegation so forms added later also work
+document.addEventListener('submit', async (e) => {
+    const form = e.target.closest('.like-form');
+    if (!form) return;
 
-        const button = form.querySelector('.like-btn');
-        const bleepId = button.dataset.bleepId;
-        const csrfToken = form.querySelector('input[name="_token"]')?.value;
+    e.preventDefault();
 
-        if (!csrfToken) {
-            console.error('CSRF token not found');
-            return;
+    const button = form.querySelector('.like-btn');
+    const bleepId = button?.dataset.bleepId;
+    const csrfToken = form.querySelector('input[name="_token"]')?.value
+        || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    if (!bleepId || !csrfToken) return;
+
+    try {
+        const response = await fetch(`/bleeps/${bleepId}/like`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({})
+        });
+
+        if (response.status === 401) {
+        window.location.href = '/login';
+        return;
+        }
+        if (!response.ok) {
+        // optional: console.warn(await response.text());
+        return;
         }
 
-        try {
-            const response = await fetch(`/bleeps/${bleepId}/like`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({})
-            });
+        const data = await response.json();
+        if (!data?.success) return;
 
-            if (response.status === 401) {
-                window.location.href = '/login';
-                return;
-            }
+        // Toggle color
+        button.classList.toggle('text-red-600');
 
-            if (!response.ok) {
-                const errorData = await response.text();
-                console.error('Response error:', errorData);
-                return;
-            }
+        // Refresh count
+        const countResponse = await fetch(`/bleeps/${bleepId}/likes-count`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        });
+        const countData = await countResponse.json();
+        const count = parseInt(countData.count ?? 0, 10);
 
-            const data = await response.json();
+        const mobileElem = form.querySelector('.like-count');
+        const desktopElem = form.querySelector('.like-text');
 
-            if (data.success) {
-                // Toggle the red color
-                button.classList.toggle('text-red-600');
-
-                // Fetch updated like count
-                const countResponse = await fetch(`/bleeps/${bleepId}/likes-count`);
-                const countData = await countResponse.json();
-
-                // Update mobile-only number and desktop text separately
-                const mobileElem = form.querySelector('.like-count'); // mobile: show only number
-                const desktopElem = form.querySelector('.like-text'); // desktop: show "N Like/Liked/Likes"
-                const count = parseInt(countData.count ?? 0, 10);
-
-                if (mobileElem) {
-                    mobileElem.textContent = String(count);
-                }
-
-                if (desktopElem) {
-                    const suffix = count === 1
-                        ? (button.classList.contains('text-red-600') ? 'Liked' : 'Like')
-                        : 'Likes';
-                    desktopElem.textContent = `${count} ${suffix}`;
-                }
-            }
-        } catch (error) {
-            console.error('Error:', error);
+        if (mobileElem) mobileElem.textContent = String(count);
+        if (desktopElem) {
+        const suffix = count === 1
+            ? (button.classList.contains('text-red-600') ? 'Liked' : 'Like')
+            : 'Likes';
+        desktopElem.textContent = `${count} ${suffix}`;
         }
-    });
+    } catch (error) {
+        console.error('Error liking bleep:', error);
+    }
 });

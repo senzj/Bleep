@@ -1,7 +1,9 @@
-@vite('resources/js/bleep/modals/mediamodal.js')
+@push('scripts')
+    @vite('resources/js/bleep/modals/mediamodal.js')
+@endpush
 
 {{-- Media Viewer Modal --}}
-<div id="media-modal" class="!m-0 hidden fixed inset-0 z-50 items-center justify-center bg-black/95 backdrop-blur-sm">
+<div id="media-modal" class="!m-0 hidden fixed inset-0 z-50 items-center justify-center bg-black/95 backdrop-blur-sm media-modal">
     {{-- Top controls --}}
     <div class="absolute top-4 right-4 z-50 flex items-center gap-2">
         {{-- Zoom controls --}}
@@ -39,15 +41,17 @@
         <img id="media-modal-image"
              src=""
              alt=""
-             class="hidden max-w-full max-h-full object-contain"
+             class="hidden w-auto h-auto max-w-[95vw] max-h-[85vh] object-contain"
              draggable="false"
-             style="transform-origin: center center;">
+             style="transform-origin: center center; width: auto !important; height: auto !important; max-width: 95vw !important; max-height: 85vh !important; object-fit: contain !important;">
 
         {{-- Video --}}
         <video id="media-modal-video"
-               class="hidden max-w-full max-h-full object-contain"
+               class="hidden w-auto h-auto max-w-[95vw] max-h-[85vh] object-contain"
                controls
-               autoplay>
+               autoplay
+               playsinline
+               style="width: auto !important; height: auto !important; max-width: 95vw !important; max-height: 85vh !important; object-fit: contain !important;">
             <source id="media-modal-video-source" src="" type="">
         </video>
     </div>

@@ -1,8 +1,19 @@
-@vite([
-    'resources/js/bleep/users/profile.js',
-])
+@push('scripts')
+    @vite([
+        'resources/js/bleep/users/profile-lazyload.js',
+        'resources/js/bleep/users/profile.js',
+        ])
+@endpush
+
+@push('styles')
+    @vite('resources/css/profile.css')
+@endpush
+
+
 
 <x-layout>
+    <x-slot:title>Profile | {{ "@" . $user->username }}</x-slot:title>
+
     <div class="container mx-auto px-4 max-w-4xl">
 
         {{-- back to home page --}}
@@ -91,23 +102,28 @@
         </div>
 
         {{-- Tabs --}}
-        <div class="bg-base-100 rounded-lg shadow-lg overflow-hidden">
-            <div role="tablist" class="tabs tabs-bordered w-full border-b border-base-300">
+        <div class="bg-transparent">
+            <div role="tablist"
+                 class="tabs tabs-boxed w-full bg-base-100 p-1 gap-2 rounded-t-lg border border-base-300">
                 {{-- Bleeps Tab --}}
                 <input type="radio" name="profile_tabs" role="tab"
-                    class="tab flex-1 text-base font-semibold border-b-2 border-transparent
-                            data-[state=checked]:border-primary data-[state=checked]:text-primary"
+                    class="tab flex-1 text-base font-semibold
+                           data-[state=checked]:bg-base-300 data-[state=checked]:text-base-content"
                     aria-label="Bleeps" checked />
-                <div role="tabpanel" class="tab-content p-6">
+                <div role="tabpanel"
+                     class="tab-content p-6 bg-base-100 border border-base-300 border-t-0 rounded-b-lg">
                     @if($bleeps->count() > 0)
-                        <div class="space-y-4">
+                        <div id="bleeps-list" class="space-y-4"
+                             data-next-url="{{ $bleeps->hasMorePages() ? route('user.bleeps', ['username' => $user->username, 'page' => $bleeps->currentPage() + 1]) : '' }}">
                             @foreach($bleeps as $bleep)
                                 <x-bleep :bleep="$bleep" />
                             @endforeach
                         </div>
-                        <div class="mt-6">
-                            {{ $bleeps->links() }}
-                        </div>
+                        <button id="bleeps-load-more"
+                                class="btn btn-outline btn-sm mt-4 w-full {{ $bleeps->hasMorePages() ? '' : 'hidden' }}">
+                            Load more
+                        </button>
+                        <div id="bleeps-sentinel" class="h-4"></div>
                     @else
                         <div class="text-center py-12">
                             <i data-lucide="message-square" class="w-16 h-16 mx-auto text-base-content/30 mb-4"></i>
@@ -124,16 +140,17 @@
 
                 {{-- Reposts Tab --}}
                 <input type="radio" name="profile_tabs" role="tab"
-                    class="tab flex-1 text-base font-semibold border-b-2 border-transparent
-                            data-[state=checked]:border-primary data-[state=checked]:text-primary"
+                    class="tab flex-1 text-base font-semibold
+                           data-[state=checked]:bg-base-300 data-[state=checked]:text-base-content"
                     aria-label="Reposts" />
-                <div role="tabpanel" class="tab-content p-6">
+                <div role="tabpanel"
+                     class="tab-content p-6 bg-base-100 border border-base-300 border-t-0 rounded-b-lg">
                     @if($reposts->count() > 0)
-                        <div class="space-y-4">
+                        <div id="reposts-list" class="space-y-4"
+                             data-next-url="{{ $reposts->hasMorePages() ? route('user.reposts', ['username' => $user->username, 'page' => $reposts->currentPage() + 1]) : '' }}">
                             @foreach($reposts as $repost)
                                 @if($repost->bleep && !$repost->bleep->deleted_at)
                                     <div class="relative">
-                                        {{-- Repost indicator --}}
                                         <div class="flex items-center gap-2 mb-2 text-xs text-base-content/60 pl-2">
                                             <i data-lucide="repeat" class="w-4 h-4"></i>
                                             <span>
@@ -150,9 +167,11 @@
                                 @endif
                             @endforeach
                         </div>
-                        <div class="mt-6">
-                            {{ $reposts->links() }}
-                        </div>
+                        <button id="reposts-load-more"
+                                class="btn btn-outline btn-sm mt-4 w-full {{ $reposts->hasMorePages() ? '' : 'hidden' }}">
+                            Load more
+                        </button>
+                        <div id="reposts-sentinel" class="h-4"></div>
                     @else
                         <div class="text-center py-12">
                             <i data-lucide="repeat" class="w-16 h-16 mx-auto text-base-content/30 mb-4"></i>
@@ -175,8 +194,6 @@
     <x-subcomponents.bleeps.mediamodal />
     <x-modals.posts.comments />
     <x-modals.posts.edit />
-
-    {{-- Share Modal (from bleep component, but ensuring it's available) --}}
     <x-modals.posts.share />
 
 </x-layout>

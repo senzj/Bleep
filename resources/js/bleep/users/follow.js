@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!userId) return;
 
         try {
-            const res = await fetch(`/users/${userId}/follow`, {
+            const res = await fetch(`/bleeper/${userId}/follow`, {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',

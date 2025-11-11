@@ -152,18 +152,21 @@ class CommentsController extends Controller
     }
 
     /**
-     * Get comments as rendered HTML
+     * Get comments as rendered HTML with pagination
      */
-    public function commentsHtml(Bleep $bleep)
+    public function commentsHtml(Request $request, Bleep $bleep)
     {
-        // Load comments with user relationships
-        $bleep->load(['comments.user']);
+        $page = (int) $request->get('page', 1);
+        $perPage = 10;
 
-        // Sort comments by created_at descending
-        $comments = $bleep->comments->sortByDesc('created_at');
+        // Paginate comments
+        $comments = $bleep->comments()
+            ->with('user')
+            ->latest()
+            ->paginate($perPage, ['*'], 'page', $page);
 
         // Group by date with timezone
-        $groups = $comments->groupBy(function($c) {
+        $groups = $comments->getCollection()->groupBy(function($c) {
             $tz = $c->user?->timezone ?? config('app.timezone', 'UTC');
             return $c->created_at->copy()->setTimezone($tz)->format('Y-m-d') . '|' . $tz;
         });
@@ -180,16 +183,14 @@ class CommentsController extends Controller
                 </div>
             ';
         } else {
-            $isFirst = true;
             foreach ($groups as $key => $group) {
                 [$date, $tz] = explode('|', $key);
                 $dt = \Carbon\Carbon::createFromFormat('Y-m-d', $date, $tz);
                 $showYear = $dt->year !== now()->year;
                 $label = $dt->format('F j') . ($showYear ? ', ' . $dt->year : '');
 
-                // Date header
-                $marginTop = $isFirst ? '' : 'mt-4';
-                $html .= '<div class="text-sm text-base-content/60 font-medium ' . $marginTop . ' mb-2">' . $label . '</div>';
+                // Date header with unique data attribute for deduplication
+                $html .= '<div class="text-sm text-base-content/60 font-medium mb-2 comment-date-header" data-date="' . $date . '">' . $label . '</div>';
 
                 // Comments in this group
                 $html .= '<div class="space-y-3">';
@@ -200,12 +201,16 @@ class CommentsController extends Controller
                     ])->render();
                 }
                 $html .= '</div>';
-
-                $isFirst = false;
             }
         }
 
-        return response()->json(['html' => $html]);
+        return response()->json([
+            'html' => $html,
+            'has_more' => $comments->hasMorePages(),
+            'next_page' => $comments->currentPage() + 1,
+            'current_page' => $comments->currentPage(),
+            'total' => $comments->total(),
+        ]);
     }
 
     protected function transformComment(Comments $comment, ?Bleep $bleep = null, $viewerSeed = null): array

@@ -1,6 +1,6 @@
-@vite([
-    'resources/js/bleep/posts/comment.js',
-])
+@push('scripts')
+    @vite('resources/js/bleep/posts/comment.js')
+@endpush
 
 @props([
     'comment',
@@ -30,6 +30,11 @@
     } else {
         $userAvatarUrl = asset('images/avatar/default.jpg');
     }
+
+    // profile link (only for non-anonymous)
+    $userProfileLink = (! $isAnonymous && $user)
+        ? route('user.profile', ['username' => $user->username])
+        : '#';
 @endphp
 
 <div class="flex gap-3 p-4 rounded-lg bg-base-100 shadow-md hover:shadow-lg transition-shadow duration-200"
@@ -43,17 +48,27 @@
                 <i data-lucide="hat-glasses" class="w-5 h-5 text-base-content"></i>
             </div>
         @else
-            <x-subcomponents.avatar :user="$user" size="10" />
+            <a href="{{ $userProfileLink }}" class="group" title="View profile: {{ $username }}">
+                <x-subcomponents.avatar :user="$user" size="10" />
+            </a>
         @endif
     </div>
 
     {{-- Content --}}
     <div class="flex-1 min-w-0">
         <div class="flex items-start justify-between gap-2">
-            <div class="flex flex-col min-w-0">
-                <span class="font-semibold text-sm truncate comment-display-name">{{ $displayName }}</span>
-                <span class="text-xs text-base-content/50 truncate comment-username">{{ $usernameLine }}</span>
-            </div>
+            {{-- Name/username -> link to profile when not anonymous --}}
+            @if(!$isAnonymous && $user)
+                <a href="{{ $userProfileLink }}" class="group flex flex-col min-w-0" title="View profile">
+                    <span class="font-semibold text-sm truncate comment-display-name group-hover:underline">{{ $displayName }}</span>
+                    <span class="text-xs text-base-content/50 truncate comment-username group-hover:underline">{{ $usernameLine }}</span>
+                </a>
+            @else
+                <div class="flex flex-col min-w-0" aria-label="Anonymous user">
+                    <span class="font-semibold text-sm truncate comment-display-name">{{ $displayName }}</span>
+                    <span class="text-xs text-base-content/50 truncate comment-username">@anonymous</span>
+                </div>
+            @endif
 
             {{-- date and actions --}}
             <div class="flex items-center gap-2 shrink-0">
@@ -62,7 +77,6 @@
                     @php
                         // timezone: prefer the comment author timezone (or fallback to app timezone)
                         $tz = $user?->timezone ?? config('app.timezone', 'UTC');
-
                         $createdAt = $comment->created_at->setTimezone($tz);
                         $nowTz = \Carbon\Carbon::now($tz);
                         $ageSeconds = $nowTz->diffInSeconds($createdAt);
@@ -78,24 +92,17 @@
                         $createdTimeLabel = $createdAt->format('g:i A');
                         $createdHuman = $within7Days ? $createdAt->diffForHumans() : null;
                     @endphp
-
                     <span title="{{ $isAnonymous ? 'Posting time hidden for anonymous users' : $createdAt->toIso8601String() }}">
                         @if($isToday)
-                            {{-- show relative (mins/hours ago) when today --}}
                             {{ $createdHuman }}
                         @else
-                            {{-- show absolute local time when not today --}}
-                            {{ $createdTimeLabel }}
-                            @if($within7Days)
-                                · {{ $createdHuman }}
-                            @endif
+                            {{ $createdTimeLabel }} @if($within7Days) · {{ $createdHuman }} @endif
                         @endif
                     </span>
 
                     @php
                         $edited = $comment->updated_at && $comment->updated_at->gt($comment->created_at);
                     @endphp
-
                     @if($edited)
                         @php
                             $updatedAt = $comment->updated_at->setTimezone($tz);
@@ -104,14 +111,8 @@
                             $updatedTimeLabel = $updatedAt->format('g:i A');
                             $updatedHuman = $updatedWithin7 ? $updatedAt->diffForHumans() : null;
                         @endphp
-
                         <span class="comment-edited-tag text-xs text-base-content/50" title="Edited: {{ $updatedAt->format('M d, Y | g:i A') }}">
-                            Edited ·
-                            @if($updatedWithin7)
-                                {{ ' ' . $updatedHuman }}
-                            @else
-                                {{ ' ' . $updatedTimeLabel }}
-                            @endif
+                            Edited · @if($updatedWithin7) {{ ' ' . $updatedHuman }} @else {{ ' ' . $updatedTimeLabel }} @endif
                         </span>
                     @endif
                 </div>
@@ -121,7 +122,7 @@
                     <button tabindex="0" class="btn btn-ghost btn-xs btn-circle hover:bg-base-300" title="More options">
                         <i data-lucide="more-vertical" class="w-4 h-4"></i>
                     </button>
-                    <ul tabindex="0" class="dropdown-content z-10 shadow-lg bg-base-100 rounded-xl w-48 border border-base-200 p-2 space-y-1">
+                    <ul tabindex="0" class="dropdown-content z-10 shadow-lg bg-base-100 rounded-xl w-48 border border-base-200 p-2 space-y-1 max-h-60 overflow-auto">
                         @auth
                             @if (auth()->id() === $comment->user_id)
                                 <li>

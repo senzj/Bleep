@@ -1,6 +1,6 @@
-@vite([
-    'resources/js/bleep/modals/posts/edit.js',
-])
+@push('scripts')
+    @vite('resources/js/bleep/modals/posts/edit.js')
+@endpush
 
 <div id="edit-bleep-modal" class="hidden fixed inset-0 z-50 items-center justify-center">
     <div id="edit-bleep-modal-overlay" class="absolute inset-0 bg-black/40"></div>

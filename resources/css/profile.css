@@ -1,0 +1,5 @@
+.tab[data-state=checked] {
+    background-color: hsl(var(--b3)) !important;
+    border: 1px solid hsl(var(--bc) / 0.2);
+    box-shadow: inset 0 0 0 1px hsl(var(--bc) / 0.15);
+}

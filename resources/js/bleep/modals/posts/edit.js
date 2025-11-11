@@ -78,13 +78,25 @@ document.addEventListener('click', (e) => {
 
             const avatarEl = document.querySelector(`.bleep-avatar[data-bleep-id="${b.id}"]`);
             if (avatarEl) {
-              if (b.avatar_url) {
-                avatarEl.innerHTML = `<div class="size-12 rounded-full overflow-hidden"><img src="${b.avatar_url}" alt=""></div>`;
-              } else {
-                avatarEl.innerHTML = `<div class="size-12 rounded-full bg-base-300 flex items-center justify-center overflow-hidden"><i data-lucide="hat-glasses" class="w-6 h-6 text-base-content/80"></i></div>`;
+                if (b.is_anonymous) {
+                    avatarEl.innerHTML = `
+                        <div class="size-12 rounded-full bg-base-300 flex items-center justify-center overflow-hidden">
+                            <i data-lucide="hat-glasses" class="w-6 h-6 text-base-content/80"></i>
+                        </div>
+                    `;
+                } else {
+                    const avatarSrc = b.avatar_url || '/images/avatar/default.jpg';
+                    avatarEl.innerHTML = `
+                        <div class="size-12 rounded-full overflow-hidden">
+                            <img src="${avatarSrc}" alt="${b.display_name}'s avatar" class="w-full h-full object-cover">
+                        </div>
+                    `;
+                }
                 if (window.createLucideIcons) window.createLucideIcons();
-              }
             }
+
+            // Toggle header link wrapper to match anonymity
+            updateBleepIdentityWrapper(b.id, !!b.is_anonymous, b.username);
 
             const likesEl = document.querySelector(`.like-count[data-bleep-id="${b.id}"]`);
             if (likesEl) likesEl.textContent = b.likes_count;
@@ -163,3 +175,31 @@ document.addEventListener('click', (e) => {
         }
     }
 });
+
+// Helper: toggle the bleep header wrapper (<a> vs <div>) based on anonymity
+function updateBleepIdentityWrapper(bleepId, isAnonymous, usernameText) {
+    const nameEl = document.querySelector(`.bleep-display-name[data-bleep-id="${bleepId}"]`);
+    if (!nameEl) return;
+
+    // The wrapper that contains avatar + names is either <a.group.flex.items-start.gap-3> or <div.group.flex.items-start.gap-3>
+    const wrapper = nameEl.closest('.group.flex.items-start.gap-3');
+    if (!wrapper) return;
+
+    if (isAnonymous) {
+        if (wrapper.tagName.toLowerCase() === 'a') {
+            const div = document.createElement('div');
+            div.className = wrapper.className;
+            div.innerHTML = wrapper.innerHTML;
+            wrapper.replaceWith(div);
+        }
+    } else {
+        if (wrapper.tagName.toLowerCase() !== 'a') {
+            const a = document.createElement('a');
+            a.className = wrapper.className;
+            const uname = (usernameText || '').replace(/^@/, '');
+            a.href = `/bleeper/${uname}`;
+            a.innerHTML = wrapper.innerHTML;
+            wrapper.replaceWith(a);
+        }
+    }
+}
