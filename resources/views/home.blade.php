@@ -1,4 +1,3 @@
-
 @push('scripts')
     @vite([
         'resources/js/bleep/posts/post.js',
@@ -26,7 +25,7 @@
             @auth
                 <div class="card bg-base-100 shadow mt-3">
                     <div class="card-body">
-                        <form method="POST" action="/bleeps" enctype="multipart/form-data">
+                        <form method="POST" action="/bleeps" enctype="multipart/form-data" id="bleep-form">
                             @csrf
                             <div class="form-control w-full">
                                 <textarea
@@ -52,6 +51,15 @@
 
                             {{-- preview grid --}}
                             <div id="bleep-media-preview" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+
+                            {{-- upload progress --}}
+                            <div id="upload-progress" class="mt-3 hidden">
+                                <div class="flex items-center gap-2">
+                                    <progress id="upload-progress-bar" class="progress progress-primary flex-1" value="0" max="100"></progress>
+                                    <span id="upload-progress-percent" class="text-xs w-10 text-right">0%</span>
+                                </div>
+                                <div id="upload-status" class="text-xs mt-1 text-base-content/60">Starting upload...</div>
+                            </div>
 
                             <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 {{-- Anonymous toggle --}}
@@ -80,7 +88,7 @@
                                         </button>
 
                                         {{-- Submit post --}}
-                                        <button type="submit" class="btn btn-primary btn-sm flex-1 sm:flex-none justify-center">
+                                        <button type="submit" class="btn btn-primary btn-sm flex-1 sm:flex-none justify-center" id="post-submit-btn">
                                             <i data-lucide="send" class="w-4 h-4"></i>
                                             Post
                                         </button>
