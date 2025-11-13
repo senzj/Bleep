@@ -6,7 +6,7 @@ export default defineConfig({
     plugins: [
         laravel({
             input: [
-                'resources/js/themeinit.js',
+                'resources/js/init.js',
                 'resources/css/app.css',
                 'resources/css/profile-crop.css',
                 'resources/js/app.js',

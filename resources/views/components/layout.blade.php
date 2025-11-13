@@ -1,12 +1,25 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="lofi">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         {{-- Prevent flash: set theme before CSS paints --}}
-        @vite(['resources/js/themeinit.js','resources/css/app.css','resources/js/app.js'])
+        <script>
+            // Run before ANY styles load to prevent flash
+            (() => {
+                const DEFAULT = 'lofi';
+                let t = localStorage.getItem('theme') || DEFAULT;
+                if (t === 'system') {
+                    try {
+                        t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                    } catch (e) {}
+                }
+                document.documentElement.setAttribute('data-theme', t);
+            })();
+        </script>
+        @vite(['resources/js/init.js','resources/css/app.css','resources/js/app.js'])
         <title>{{ isset($title) ? $title : 'Bleep' }}</title>
-        <link rel="preconnect" href="<https://fonts.bunny.net>">
+        <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
         <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
         <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />

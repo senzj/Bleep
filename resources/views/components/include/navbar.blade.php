@@ -76,8 +76,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#"
-                           class="flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
+                        <a href="{{ route('settings') }}" class="flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
                             <i data-lucide="settings" class="w-4 h-4"></i>
                             <span>Settings</span>
                         </a>

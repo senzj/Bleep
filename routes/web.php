@@ -106,7 +106,18 @@ Route::middleware('auth')->group((function () {
     // Follow/Unfollow Routes
     Route::post('/bleeper/{user}/follow', [FollowingController::class, 'toggle']);
 
-    // Profile Settings Route
+    // Settings Routes
+    Route::get('/settings', fn () => redirect()->route('settings.profile'))
+        ->name('settings');
 
+    Route::get('/settings/profile', [\App\Http\Controllers\SettingsController::class, 'editProfile'])
+        ->name('settings.profile');
+    Route::put('/settings/profile', [\App\Http\Controllers\SettingsController::class, 'updateProfile'])
+        ->name('settings.profile.update');
+
+    Route::get('/settings/password', [\App\Http\Controllers\SettingsController::class, 'editPassword'])
+        ->name('settings.password');
+    Route::put('/settings/password', [\App\Http\Controllers\SettingsController::class, 'updatePassword'])
+        ->name('settings.password.update');
 }));
 

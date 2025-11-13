@@ -24,7 +24,7 @@
     </div>
 
     {{-- Scrollable Content - Initially empty, populated by JavaScript --}}
-    <div id="floating-comments-scroll" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-200/80">
+    <div id="floating-comments-scroll" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-base-300/80">
         {{-- Loading state will be injected by JavaScript --}}
         <div class="flex justify-center items-center py-10">
             <span class="loading loading-spinner loading-md"></span>

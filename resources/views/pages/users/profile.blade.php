@@ -54,7 +54,7 @@
                         {{-- Follow/Edit Button --}}
                         <div class="flex justify-end gap-2">
                             @if($isOwnProfile)
-                                <a href="#" class="btn btn-outline btn-sm gap-2">
+                                <a href="{{ route("settings") }}" class="btn btn-outline btn-sm gap-2">
                                     <i data-lucide="settings" class="w-4 h-4"></i>
                                     Edit Profile
                                 </a>
