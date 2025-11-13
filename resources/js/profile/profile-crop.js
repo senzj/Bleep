@@ -21,50 +21,52 @@ document.addEventListener('DOMContentLoaded', () => {
     let sourceImageDataUrl = '';
     let isSaving = false;
 
-    let scale = 1;
-    let minScale = 1;
-    let maxScale = 5;
-    let offsetX = 0;
-    let offsetY = 0;
+    let scale = 1, minScale = 1, maxScale = 5;
+    let offsetX = 0, offsetY = 0;
     let isDragging = false;
-    let dragStartX = 0;
-    let dragStartY = 0;
-    let originOffsetX = 0;
-    let originOffsetY = 0;
+    let dragStartX = 0, dragStartY = 0;
+    let originOffsetX = 0, originOffsetY = 0;
     let lastPinchDistance = null;
-    let imageNaturalWidth = 0;
-    let imageNaturalHeight = 0;
+    let imageNaturalWidth = 0, imageNaturalHeight = 0;
 
-    const initialData = (profilePictureData?.value || '').trim();
-    if (isValidImageData(initialData)) {
-        setPreview(initialData);
-        sourceImageDataUrl = initialData;
+    // Respect base64 value OR an existing server-rendered src
+    const initialBase64 = (profilePictureData?.value || '').trim();
+    const existingSrc = (profilePreview?.getAttribute('src') || '').trim();
+
+    if (isDataUrl(initialBase64)) {
+        setPreview(initialBase64);
+        sourceImageDataUrl = initialBase64;
+        recropButton?.classList.remove('hidden');
+    } else if (existingSrc) {
+        // Keep the rendered image; allow recrop (convert on demand)
+        showPreviewOnly();
+        sourceImageDataUrl = existingSrc;
+        recropButton?.classList.remove('hidden');
     } else {
-        showDefaultAvatar();
+        showDefaultOnly();
     }
 
-    profileInput.addEventListener('click', () => {
-        profileInput.value = '';
-    });
+    profileInput.addEventListener('click', () => { profileInput.value = ''; });
 
-    profileInput.addEventListener('change', handleFileSelection);
-    cropButton?.addEventListener('click', handleCropSave);
-    cancelButton?.addEventListener('click', handleCropCancel);
-    recropButton?.addEventListener('click', () => {
+    profileInput.addEventListener('change', onFileSelect);
+    cropButton?.addEventListener('click', onCropSave);
+    cancelButton?.addEventListener('click', onCropCancel);
+    recropButton?.addEventListener('click', async () => {
         if (!sourceImageDataUrl) return;
-        pendingImageDataUrl = sourceImageDataUrl;
-        openCropperWithData(pendingImageDataUrl);
+        let dataUrl = sourceImageDataUrl;
+        if (!isDataUrl(dataUrl)) {
+            try { dataUrl = await fetchToDataUrl(dataUrl); }
+            catch { alert('Failed to load image for cropping.'); return; }
+            sourceImageDataUrl = dataUrl;
+        }
+        pendingImageDataUrl = dataUrl;
+        openCropper(dataUrl);
     });
 
-    zoomInButton?.addEventListener('click', () => {
-        applyZoom(scale * 1.1, 0, 0);
-    });
+    zoomInButton?.addEventListener('click', () => applyZoom(scale * 1.1, 0, 0));
+    zoomOutButton?.addEventListener('click', () => applyZoom(scale * 0.9, 0, 0));
 
-    zoomOutButton?.addEventListener('click', () => {
-        applyZoom(scale * 0.9, 0, 0);
-    });
-
-    cropperModal.addEventListener('change', handleModalToggle);
+    cropperModal.addEventListener('change', onModalToggle);
 
     cropperContainer.addEventListener('mousedown', startDrag);
     document.addEventListener('mousemove', drag);
@@ -75,126 +77,71 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('touchend', onTouchEnd);
     document.addEventListener('touchcancel', onTouchEnd);
 
-    cropperContainer.addEventListener('wheel', onWheelZoom, { passive: false });
+    cropperContainer.addEventListener('wheel', onWheel, { passive: false });
 
-    function handleFileSelection(event) {
-        const file = event.target.files?.[0];
+    function onFileSelect(e) {
+        const file = e.target.files?.[0];
         if (!file) return;
-
-        if (!file.type.startsWith('image/')) {
-            alert('Please choose an image file.');
-            resetInput();
-            return;
-        }
-
-        if (file.size > 5 * 1024 * 1024) {
-            alert('Image must be less than 5MB.');
-            resetInput();
-            return;
-        }
-
+        if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); profileInput.value=''; return; }
+        if (file.size > 5 * 1024 * 1024) { alert('Image must be less than 5MB.'); profileInput.value=''; return; }
         const reader = new FileReader();
-        reader.onload = e => {
-            pendingImageDataUrl = String(e.target?.result || '');
-            if (!pendingImageDataUrl) {
-                alert('Failed to read the selected image.');
-                resetInput();
-                return;
-            }
-            openCropperWithData(pendingImageDataUrl);
+        reader.onload = ev => {
+            pendingImageDataUrl = String(ev.target?.result || '');
+            if (!pendingImageDataUrl) { alert('Failed to read image.'); profileInput.value=''; return; }
+            openCropper(pendingImageDataUrl);
         };
         reader.readAsDataURL(file);
     }
 
-    function openCropperWithData(dataUrl) {
+    function openCropper(dataUrl) {
         if (!dataUrl) return;
-
         cropperModal.checked = true;
         cropperContainer.style.cursor = 'grab';
         cropperImage.style.opacity = '0';
 
-        const handleLoad = () => {
-            cropperImage.onload = null;
-            cropperImage.onerror = null;
-
+        const onLoad = () => {
+            cropperImage.onload = null; cropperImage.onerror = null;
             imageNaturalWidth = cropperImage.naturalWidth;
             imageNaturalHeight = cropperImage.naturalHeight;
-
-            if (!imageNaturalWidth || !imageNaturalHeight) {
-                alert('Unable to load the selected image.');
-                cropperModal.checked = false;
-                return;
-            }
-
-            requestAnimationFrame(() => {
-                resetCropper();
-                updateImageTransform();
-            });
+            if (!imageNaturalWidth || !imageNaturalHeight) { alert('Unable to load image.'); cropperModal.checked = false; return; }
+            resetCropper();
+            updateTransform();
         };
+        const onError = () => { cropperImage.onload = null; cropperImage.onerror = null; alert('Unable to load image.'); cropperModal.checked = false; };
 
-        const handleError = () => {
-            cropperImage.onload = null;
-            cropperImage.onerror = null;
-            alert('Unable to load the selected image.');
-            cropperModal.checked = false;
-        };
-
-        cropperImage.onload = handleLoad;
-        cropperImage.onerror = handleError;
+        cropperImage.onload = onLoad;
+        cropperImage.onerror = onError;
         cropperImage.src = dataUrl;
-        if (cropperImage.complete && cropperImage.naturalWidth) {
-            handleLoad();
-        }
+        if (cropperImage.complete && cropperImage.naturalWidth) onLoad();
     }
 
-    function handleCropSave() {
+    function onCropSave() {
         if (!imageNaturalWidth || !imageNaturalHeight) return;
-
-        const containerRect = cropperContainer.getBoundingClientRect();
-        if (!containerRect) return;
-
-        const containerSize = Math.min(containerRect.width, containerRect.height);
-        if (!containerSize) return;
+        const rect = cropperContainer.getBoundingClientRect();
+        const size = Math.min(rect.width, rect.height);
+        if (!size) return;
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        const outputSize = 512;
+        const out = 512;
+        canvas.width = out; canvas.height = out;
 
-        canvas.width = outputSize;
-        canvas.height = outputSize;
+        const scaledW = imageNaturalWidth * scale;
+        const scaledH = imageNaturalHeight * scale;
+        const cropX = (scaledW - size) / 2 - offsetX;
+        const cropY = (scaledH - size) / 2 - offsetY;
 
-        // Calculate the visible portion of the image
-        const scaledWidth = imageNaturalWidth * scale;
-        const scaledHeight = imageNaturalHeight * scale;
+        const sx = cropX / scale;
+        const sy = cropY / scale;
+        const sSize = size / scale;
 
-        // Calculate crop area in scaled coordinates
-        const cropX = (scaledWidth - containerSize) / 2 - offsetX;
-        const cropY = (scaledHeight - containerSize) / 2 - offsetY;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0,0,out,out);
+        ctx.drawImage(cropperImage, sx, sy, sSize, sSize, 0, 0, out, out);
 
-        // Convert back to natural image coordinates
-        const sourceX = cropX / scale;
-        const sourceY = cropY / scale;
-        const sourceSize = containerSize / scale;
-
-        // Draw the cropped area to canvas
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, outputSize, outputSize);
-
-        ctx.drawImage(
-            cropperImage,
-            sourceX,
-            sourceY,
-            sourceSize,
-            sourceSize,
-            0,
-            0,
-            outputSize,
-            outputSize
-        );
-
-        const croppedDataUrl = canvas.toDataURL('image/png');
-        profilePictureData.value = croppedDataUrl;
-        setPreview(croppedDataUrl);
+        const dataUrl = canvas.toDataURL('image/png');
+        profilePictureData.value = dataUrl;
+        setPreview(dataUrl);
 
         sourceImageDataUrl = pendingImageDataUrl || sourceImageDataUrl;
         pendingImageDataUrl = '';
@@ -203,262 +150,155 @@ document.addEventListener('DOMContentLoaded', () => {
         cropperModal.checked = false;
     }
 
-    function handleCropCancel() {
-        pendingImageDataUrl = '';
-        resetInput();
-    }
+    function onCropCancel() { pendingImageDataUrl = ''; profileInput.value=''; }
 
-    function handleModalToggle() {
+    function onModalToggle() {
         if (this.checked) return;
         if (!isSaving) pendingImageDataUrl = '';
         isSaving = false;
-        resetTransformState();
+        resetState();
     }
 
     function resetCropper() {
-        const containerRect = cropperContainer.getBoundingClientRect();
-        if (!containerRect || !imageNaturalWidth || !imageNaturalHeight) return;
-
-        const containerSize = Math.min(containerRect.width, containerRect.height);
-
-        // Calculate minimum scale to completely fill the container (no gaps)
-        const scaleX = containerSize / imageNaturalWidth;
-        const scaleY = containerSize / imageNaturalHeight;
-        const baseMinScale = Math.max(scaleX, scaleY);
-
-        // Set initial scale with 5% extra zoom to prevent gaps
-        scale = baseMinScale * 1.05;
-
-        // Set minScale to the initial scale so users can't zoom out beyond it
+        const rect = cropperContainer.getBoundingClientRect();
+        const size = Math.min(rect.width, rect.height);
+        const sx = size / imageNaturalWidth;
+        const sy = size / imageNaturalHeight;
+        const base = Math.max(sx, sy);
+        scale = base * 1.05;
         minScale = scale;
-
-        // Maximum scale - reasonable zoom limit
         maxScale = minScale * 2.5;
-
-        offsetX = 0;
-        offsetY = 0;
+        offsetX = 0; offsetY = 0;
         lastPinchDistance = null;
         cropperContainer.style.cursor = 'grab';
-
-        // Set image dimensions
         cropperImage.style.width = `${imageNaturalWidth}px`;
         cropperImage.style.height = `${imageNaturalHeight}px`;
     }
 
-    function startDrag(event) {
+    function startDrag(e) {
         if (!imageNaturalWidth) return;
-        if (event.touches && event.touches.length > 1) return;
-
+        if (e.touches && e.touches.length > 1) return;
         isDragging = true;
-        const point = getEventPoint(event);
-        dragStartX = point.x;
-        dragStartY = point.y;
-        originOffsetX = offsetX;
-        originOffsetY = offsetY;
+        const p = point(e);
+        dragStartX = p.x; dragStartY = p.y;
+        originOffsetX = offsetX; originOffsetY = offsetY;
         cropperContainer.style.cursor = 'grabbing';
-        event.preventDefault();
+        e.preventDefault();
     }
-
-    function drag(event) {
+    function drag(e) {
         if (!isDragging) return;
-        if (event.touches && event.touches.length > 1) return;
-
-        const point = getEventPoint(event);
-        offsetX = originOffsetX + (point.x - dragStartX);
-        offsetY = originOffsetY + (point.y - dragStartY);
-        updateImageTransform();
-        event.preventDefault();
+        if (e.touches && e.touches.length > 1) return;
+        const p = point(e);
+        offsetX = originOffsetX + (p.x - dragStartX);
+        offsetY = originOffsetY + (p.y - dragStartY);
+        updateTransform();
+        e.preventDefault();
     }
+    function endDrag() { if (!isDragging) return; isDragging = false; cropperContainer.style.cursor = 'grab'; }
 
-    function endDrag() {
-        if (!isDragging) return;
-        isDragging = false;
-        cropperContainer.style.cursor = 'grab';
-    }
-
-    function onWheelZoom(event) {
+    function onWheel(e) {
         if (!imageNaturalWidth) return;
-        event.preventDefault();
-
-        const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
-        const rect = cropperContainer.getBoundingClientRect();
-        const centerX = event.clientX - rect.left - rect.width / 2;
-        const centerY = event.clientY - rect.top - rect.height / 2;
-
-        applyZoom(scale * zoomFactor, centerX, centerY);
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 0.9 : 1.1;
+        const r = cropperContainer.getBoundingClientRect();
+        const cx = e.clientX - r.left - r.width / 2;
+        const cy = e.clientY - r.top - r.height / 2;
+        applyZoom(scale * factor, cx, cy);
     }
 
-    function onTouchStart(event) {
+    function onTouchStart(e) {
         if (!imageNaturalWidth) return;
-
-        if (event.touches.length === 2) {
-            lastPinchDistance = getTouchDistance(event.touches);
-        } else if (event.touches.length === 1) {
-            startDrag(event);
-        }
+        if (e.touches.length === 2) lastPinchDistance = dist(e.touches);
+        else if (e.touches.length === 1) startDrag(e);
     }
-
-    function onTouchMove(event) {
+    function onTouchMove(e) {
         if (!imageNaturalWidth) return;
-
-        if (event.touches.length === 2) {
-            event.preventDefault();
-            const distance = getTouchDistance(event.touches);
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            const cur = dist(e.touches);
             if (lastPinchDistance) {
-                const rect = cropperContainer.getBoundingClientRect();
-                const center = getTouchCenter(event.touches);
-                const centerX = center.x - rect.left - rect.width / 2;
-                const centerY = center.y - rect.top - rect.height / 2;
-                const zoomFactor = distance / lastPinchDistance;
-                applyZoom(scale * zoomFactor, centerX, centerY);
+                const r = cropperContainer.getBoundingClientRect();
+                const c = center(e.touches);
+                const cx = c.x - r.left - r.width / 2;
+                const cy = c.y - r.top - r.height / 2;
+                const factor = cur / lastPinchDistance;
+                applyZoom(scale * factor, cx, cy);
             }
-            lastPinchDistance = distance;
-        } else if (event.touches.length === 1 && isDragging) {
-            event.preventDefault();
-            drag(event);
+            lastPinchDistance = cur;
+        } else if (e.touches.length === 1 && isDragging) {
+            e.preventDefault();
+            drag(e);
         }
     }
+    function onTouchEnd(e) { if (e.touches.length === 0) endDrag(); if (e.touches.length < 2) lastPinchDistance = null; }
 
-    function onTouchEnd(event) {
-        if (event.touches.length === 0) endDrag();
-        if (event.touches.length < 2) lastPinchDistance = null;
+    function applyZoom(next, fx, fy) {
+        const clamped = Math.min(Math.max(next, minScale), maxScale);
+        if (clamped === scale) return;
+        const diff = clamped / scale;
+        offsetX = fx - (fx - offsetX) * diff;
+        offsetY = fy - (fy - offsetY) * diff;
+        scale = clamped;
+        updateTransform();
     }
 
-    function applyZoom(nextScale, focusX, focusY) {
-        const clampedScale = clamp(nextScale, minScale, maxScale);
-        if (clampedScale === scale) return;
-
-        // Zoom towards the focus point
-        const scaleDiff = clampedScale / scale;
-        offsetX = focusX - (focusX - offsetX) * scaleDiff;
-        offsetY = focusY - (focusY - offsetY) * scaleDiff;
-
-        scale = clampedScale;
-        updateImageTransform();
-    }
-
-    function updateImageTransform() {
-        constrainOffsets();
+    function updateTransform() {
+        constrain();
         cropperImage.style.transform = `translate(-50%, -50%) translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
-        if (cropperImage.style.opacity !== '1') {
-            cropperImage.style.opacity = '1';
-        }
+        cropperImage.style.opacity = '1';
     }
 
-    function constrainOffsets() {
+    function constrain() {
         const rect = cropperContainer.getBoundingClientRect();
-        if (!rect) return;
-
-        const containerSize = Math.min(rect.width, rect.height);
-        const scaledWidth = imageNaturalWidth * scale;
-        const scaledHeight = imageNaturalHeight * scale;
-
-        // Calculate maximum offset to prevent gaps
-        const maxX = Math.max(0, (scaledWidth - containerSize) / 2);
-        const maxY = Math.max(0, (scaledHeight - containerSize) / 2);
-
+        const size = Math.min(rect.width, rect.height);
+        const sW = imageNaturalWidth * scale;
+        const sH = imageNaturalHeight * scale;
+        const maxX = Math.max(0, (sW - size) / 2);
+        const maxY = Math.max(0, (sH - size) / 2);
         offsetX = clamp(offsetX, -maxX, maxX);
         offsetY = clamp(offsetY, -maxY, maxY);
     }
 
-    function getEventPoint(event) {
-        if (event.touches && event.touches.length) {
-            return {
-                x: event.touches[0].clientX,
-                y: event.touches[0].clientY
-            };
-        }
-        return {
-            x: event.clientX,
-            y: event.clientY
-        };
-    }
-
-    function getTouchDistance(touches) {
-        const [a, b] = touches;
-        return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
-    }
-
-    function getTouchCenter(touches) {
-        const [a, b] = touches;
-        return {
-            x: (a.clientX + b.clientX) / 2,
-            y: (a.clientY + b.clientY) / 2
-        };
-    }
-
-    function resetTransformState() {
-        isDragging = false;
-        dragStartX = 0;
-        dragStartY = 0;
-        originOffsetX = 0;
-        originOffsetY = 0;
-        offsetX = 0;
-        offsetY = 0;
-        scale = 1;
-        minScale = 1;
-        maxScale = 5;
-        imageNaturalWidth = 0;
-        imageNaturalHeight = 0;
-        lastPinchDistance = null;
-        cropperContainer.style.cursor = 'grab';
-        cropperImage.style.transform = 'translate(-50%, -50%)';
-        cropperImage.style.opacity = '0';
-        cropperImage.style.width = '';
-        cropperImage.style.height = '';
-    }
-
-    function resetInput() {
-        profileInput.value = '';
-    }
-
-    function setPreview(dataUrl) {
-        if (!isValidImageData(dataUrl)) {
-            showDefaultAvatar();
-            return;
-        }
-        // Force exclusive visibility
-        profilePreview.src = dataUrl;
-        profilePreview.classList.remove('hidden');
-        profilePreview.style.display = 'block';
-        defaultAvatar?.classList.add('hidden');
-        if (defaultAvatar) defaultAvatar.style.display = 'none';
+    // Preview helpers
+    function setPreview(src) {
+        // Show preview whether data URL or remote URL
+        if (!profilePreview) return;
+        profilePreview.src = src;
+        showPreviewOnly();
         recropButton?.classList.remove('hidden');
     }
-
-    function showDefaultAvatar() {
-        // Ensure preview is fully hidden and does not show alt text
-        profilePreview.classList.add('hidden');
-        profilePreview.style.display = 'none';
-        // Remove src so browser does not render failed image showing alt
-        profilePreview.removeAttribute('src');
-
+    function showPreviewOnly() {
+        if (profilePreview) {
+            profilePreview.classList.remove('hidden');
+            profilePreview.style.display = 'block';
+        }
+        if (defaultAvatar) {
+            defaultAvatar.classList.add('hidden');
+            defaultAvatar.style.display = 'none';
+        }
+    }
+    function showDefaultOnly() {
+        if (profilePreview) {
+            profilePreview.classList.add('hidden');
+            profilePreview.style.display = 'none';
+            profilePreview.removeAttribute('src');
+        }
         if (defaultAvatar) {
             defaultAvatar.classList.remove('hidden');
             defaultAvatar.style.display = 'flex';
         }
         recropButton?.classList.add('hidden');
-
-        if (window.createLucideIcons) window.createLucideIcons();
     }
 
-    // Initial state enforcement after DOM ready
-    (function enforceInitialState() {
-        const val = (profilePictureData?.value || '').trim();
-        if (isValidImageData(val)) {
-            setPreview(val);
-        } else {
-            showDefaultAvatar();
-        }
-    })();
-
-    function isValidImageData(val) {
-        return typeof val === 'string'
-            && val.startsWith('data:image/')
-            && val.includes(';base64,');
-    }
-
-    function clamp(value, min, max) {
-        return Math.min(Math.max(value, min), max);
+    // Utils
+    function point(e){ return e.touches?.length ? {x:e.touches[0].clientX,y:e.touches[0].clientY}:{x:e.clientX,y:e.clientY}; }
+    function dist(ts){ const [a,b]=ts; return Math.hypot(b.clientX-a.clientX, b.clientY-a.clientY); }
+    function center(ts){ const [a,b]=ts; return { x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2 }; }
+    function clamp(v,mn,mx){ return Math.min(Math.max(v,mn),mx); }
+    function isDataUrl(v){ return typeof v==='string' && v.startsWith('data:image/') && v.includes(';base64,'); }
+    function fetchToDataUrl(url){
+        return fetch(url).then(r=>r.blob()).then(b=>new Promise(res=>{
+            const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(b);
+        }));
     }
 });

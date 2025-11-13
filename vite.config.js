@@ -25,6 +25,7 @@ export default defineConfig({
                 'resources/js/bleep/users/profile.js',
                 'resources/js/post/lazyload.js',
                 'resources/js/profile/profile-crop.js',
+                'resources/js/settings/password.js',
             ],
             refresh: true,
         }),

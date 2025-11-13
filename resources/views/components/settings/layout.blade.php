@@ -2,14 +2,29 @@
     <x-slot:title>Settings</x-slot:title>
 
     <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
-        <aside class="md:col-span-4 lg:col-span-3">
-            <div class="bg-base-100 rounded-lg p-3 shadow">
-                <x-settings.nav />
-            </div>
+        <aside class="md:col-span-4 lg:col-span-3 md:sticky md:top-20 self-start">
+            <x-settings.nav />
         </aside>
 
         <main class="md:col-span-8 lg:col-span-9">
-            <div class="bg-base-100 rounded-lg p-6 shadow">
+            @if (session('success') || session('status') || $errors->any())
+                <div class="mb-4 space-y-2">
+                    @if (session('success') || session('status'))
+                        <div class="alert alert-success">
+                            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                            <span>{{ session('success') ?? session('status') }}</span>
+                        </div>
+                    @endif
+                    @if ($errors->any())
+                        <div class="alert alert-error">
+                            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                            <span>There were some problems with your submission. Please review the fields below.</span>
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            <div class="bg-base-100 rounded-lg p-6 shadow-sm">
                 {{ $slot }}
             </div>
         </main>
