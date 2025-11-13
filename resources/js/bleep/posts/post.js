@@ -33,6 +33,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusText = document.getElementById('upload-status');
 
   form.addEventListener('submit', (e) => {
+    // Only use AJAX + show loading indicator when there's media uploaded.
+    const fileInputs = Array.from(form.querySelectorAll('input[type="file"]'));
+    const hasFiles = fileInputs.some(input => input.files && input.files.length > 0);
+
+    if (!hasFiles) {
+      // No media -> let the form submit normally (no preventDefault)
+      return;
+    }
+
+    // Media present -> handle via XHR and show progress UI
     e.preventDefault();
     if (form.dataset.uploading === '1') return;
 
