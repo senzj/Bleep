@@ -1,4 +1,3 @@
-
 <x-layout>
     <x-slot:title>
         Sign In
@@ -13,9 +12,9 @@
                     <form method="POST" action="/login">
                         @csrf
 
-                        {{-- Email --}}
+                        {{-- Username --}}
                         <label class="floating-label mb-6">
-                            <input type="username"
+                            <input type="text"
                                    name="username"
                                    placeholder="Username"
                                    value="{{ old('username') }}"
@@ -50,7 +49,9 @@
                             <label class="label cursor-pointer justify-end">
                                 <input type="checkbox"
                                        name="remember"
-                                       class="checkbox">
+                                       value="1"
+                                       class="checkbox"
+                                       {{ old('remember') ? 'checked' : '' }}>
                                 <span class="label-text ml-1">Remember me</span>
                             </label>
                         </div>
