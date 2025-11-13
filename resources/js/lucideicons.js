@@ -1,14 +1,15 @@
 import { createIcons, icons } from 'lucide';
 
-// Expose a safe global initializer that always passes the icons object
-window.createLucideIcons = (opts = {}) => createIcons({ icons, ...opts });
-
-// Also expose a minimal lucide-like object so older code referencing window.lucide.createIcons works
+// Expose both createIcons and icons on window.lucide
 window.lucide = {
-    createIcons: (...args) => window.createLucideIcons(...args)
+    createIcons: (opts = {}) => createIcons({ icons, ...opts }),
+    icons
 };
+
+// Optional helper
+window.createLucideIcons = (opts = {}) => window.lucide.createIcons(opts);
 
 // Initialize icons after DOM load
 document.addEventListener('DOMContentLoaded', () => {
-    window.createLucideIcons();
+    window.lucide.createIcons();
 });

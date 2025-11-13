@@ -1,90 +1,97 @@
 // Add this to your main JavaScript file
 document.addEventListener('DOMContentLoaded', function() {
-    const themeToggles = document.querySelectorAll('.theme-toggle');
-    const themeIcon = document.querySelector('.theme-icon');
+    // only set default if nothing saved
+    const DEFAULT_THEME = 'lofi';
+    let savedTheme = localStorage.getItem('theme');
+    if (!savedTheme) {
+        savedTheme = DEFAULT_THEME;
+        localStorage.setItem('theme', savedTheme);
+    }
 
-    // map theme -> lucide icon (choose icons available in lucide)
-    const themeIcons = {
-        'light': 'sun',
-        'dark': 'moon',
-        'system': 'laptop',
-        'lofi': 'star'
-    };
+    const themeMenu = document.getElementById('theme-menu');
+    const themeToggles = themeMenu ? themeMenu.querySelectorAll('.theme-toggle') : [];
+    const themeButton = document.querySelector('.theme-button');
 
-    // prefer saved theme, otherwise use current document theme (set in layout) or fallback to 'system'
-    const savedTheme = localStorage.getItem('theme') || document.documentElement.getAttribute('data-theme') || 'system';
+    const themeIcons = { light: 'sun', dark: 'moon', system: 'laptop', lofi: 'star' };
+    const themeLabels = { light: 'Light', dark: 'Dark', system: 'System', lofi: 'Lofi' };
+    const SHOW_EFFECTIVE_ICON_FOR_SYSTEM = false;
 
-    // resolve 'system' into an actual theme name used by daisyUI (light/dark)
     function resolveEffective(theme) {
         if (theme === 'system') {
-            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            return prefersDark ? 'dark' : 'light';
+            return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
         }
         return theme;
     }
 
-    // apply saved theme to document (if system -> set to resolved light/dark)
     function applyTheme(theme) {
-        if (theme === 'system') {
-            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', resolveEffective(theme));
+    }
+
+    function setLucideIcon(el, name) {
+        if (!el) return;
+        el.setAttribute('data-lucide', name);
+        el.classList.add('w-5', 'h-5', 'theme-icon');
+        const lib = window.lucide?.icons;
+        if (lib?.[name]?.toSvg) {
+            el.innerHTML = lib[name].toSvg({ class: 'w-5 h-5 theme-icon' });
         } else {
-            document.documentElement.setAttribute('data-theme', theme);
+            el.innerHTML = '';
+            window.lucide?.createIcons?.();
         }
     }
 
-    // update small navbar icon using the effective theme (so system shows sun/moon)
-    function updateThemeButton(effectiveTheme) {
+    function updateThemeButton(selectedTheme) {
+        const themeIcon = document.querySelector('.theme-button .theme-icon') || document.querySelector('.theme-icon');
         if (!themeIcon) return;
-        const icon = themeIcons[effectiveTheme] || themeIcons['light'];
-        themeIcon.setAttribute('data-lucide', icon);
-        if (window.lucide) window.lucide.createIcons();
+        const effective = resolveEffective(selectedTheme);
+        const iconKey = (selectedTheme === 'system' && SHOW_EFFECTIVE_ICON_FOR_SYSTEM) ? effective : selectedTheme;
+        setLucideIcon(themeIcon, themeIcons[iconKey] || 'sun');
+
+        const label = themeLabels[selectedTheme] || selectedTheme;
+        const effLabel = selectedTheme === 'system' ? `${label} (${effective === 'dark' ? 'Dark' : 'Light'})` : label;
+        themeButton?.setAttribute('aria-label', `Current theme: ${effLabel}. Click to change.`);
+        themeButton?.setAttribute('title', `Theme: ${effLabel}`);
     }
 
-    // highlight the saved selection button in the dropdown
-    function updateActiveToggle(saved) {
+    function updateActiveToggle(selected) {
         themeToggles.forEach(btn => {
-            if (btn.getAttribute('data-theme') === saved) {
-                btn.classList.add('border-primary', 'bg-base-200');
-            } else {
-                btn.classList.remove('border-primary', 'bg-base-200');
-            }
+            const isActive = btn.dataset.themeName === selected;
+            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            btn.classList.toggle('border', isActive);
+            btn.classList.toggle('border-primary', isActive);
+            btn.classList.toggle('bg-base-200', isActive);
         });
     }
 
-    // initialize
-    const effective = resolveEffective(savedTheme);
+    // init
     applyTheme(savedTheme);
-    updateThemeButton(effective);
+    updateThemeButton(savedTheme);
     updateActiveToggle(savedTheme);
+    requestAnimationFrame(() => document.documentElement.classList.add('theme-transition'));
 
-    // click handlers
-    themeToggles.forEach(toggle => {
-        toggle.addEventListener('click', function() {
-            const theme = this.getAttribute('data-theme');
-            localStorage.setItem('theme', theme);
-            applyTheme(theme);
-
-            const eff = resolveEffective(theme);
-            updateThemeButton(eff);
-            updateActiveToggle(theme);
-        });
+    // clicks
+    themeMenu?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.theme-toggle');
+        if (!btn) return;
+        const theme = btn.dataset.themeName;
+        localStorage.setItem('theme', theme);
+        applyTheme(theme);
+        updateThemeButton(theme);
+        updateActiveToggle(theme);
+        window.dispatchEvent(new CustomEvent('theme:change', { detail: { selected: theme, effective: resolveEffective(theme) } }));
     });
 
-    // watch OS preference changes (update effective theme if user selected 'system')
+    // OS changes while on system
     if (window.matchMedia) {
         const mq = window.matchMedia('(prefers-color-scheme: dark)');
         const onChange = () => {
-            const current = localStorage.getItem('theme') || document.documentElement.getAttribute('data-theme') || 'system';
+            const current = localStorage.getItem('theme') || 'system';
             if (current === 'system') {
                 applyTheme('system');
-                updateThemeButton(resolveEffective('system'));
+                updateThemeButton('system');
+                updateActiveToggle('system');
             }
         };
-        if (mq.addEventListener) {
-            mq.addEventListener('change', onChange);
-        } else if (mq.addListener) {
-            mq.addListener(onChange);
-        }
+        mq.addEventListener?.('change', onChange) ?? mq.addListener?.(onChange);
     }
 });
