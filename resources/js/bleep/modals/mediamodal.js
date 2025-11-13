@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('media-modal-container');
 
     // Zoom controls
+    const zoomControls = document.querySelector('.flex.items-center.gap-1.bg-black\\/50');
     const zoomInBtn = document.getElementById('media-modal-zoom-in');
     const zoomOutBtn = document.getElementById('media-modal-zoom-out');
     const zoomResetBtn = document.getElementById('media-modal-zoom-reset');
@@ -99,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Zoom functionality
+    // Zoom functionality (images only)
     function setZoom(zoom) {
         currentZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
         updateTransform();
@@ -141,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     zoomResetBtn.addEventListener('click', resetZoom);
 
-    // Mouse wheel zoom
+    // Mouse wheel zoom (images only)
     image.addEventListener('wheel', (e) => {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
@@ -203,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     image.addEventListener('touchend', endDrag);
 
-    // Pinch to zoom for mobile
+    // Pinch to zoom for mobile (images only)
     let initialDistance = 0;
     let initialZoom = 1;
 
@@ -234,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, { passive: false });
 
-    // Double tap to zoom on mobile
+    // Double tap to zoom on mobile (images only)
     let lastTap = 0;
     image.addEventListener('touchend', (e) => {
         const currentTime = new Date().getTime();
@@ -263,7 +264,9 @@ document.addEventListener('DOMContentLoaded', () => {
         video.classList.add('hidden');
         video.pause();
 
+        // Show/hide zoom controls based on media type
         if (item.type === 'image') {
+            zoomControls.classList.remove('hidden');
             // Wait for image to load before showing
             const tempImg = new Image();
             tempImg.onload = () => {
@@ -273,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             tempImg.src = item.src;
         } else {
+            zoomControls.classList.add('hidden');
             videoSource.src = item.src;
             videoSource.type = item.mime;
             video.load();

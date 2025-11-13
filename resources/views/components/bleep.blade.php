@@ -462,6 +462,7 @@
             'resources/js/bleep/posts/repost.js',
             'resources/js/bleep/posts/share.js',
             'resources/js/bleep/users/follow.js',
+            'resources/js/bleep/modals/mediamodal.js',
         ])
         @if(!request()->routeIs('post'))
             @vite('resources/js/bleep/posts/comment.js')

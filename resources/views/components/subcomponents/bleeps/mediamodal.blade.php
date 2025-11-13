@@ -1,7 +1,3 @@
-@push('scripts')
-    @vite('resources/js/bleep/modals/mediamodal.js')
-@endpush
-
 {{-- Media Viewer Modal --}}
 <div id="media-modal" class="!m-0 hidden fixed inset-0 z-50 items-center justify-center bg-black/95 backdrop-blur-sm media-modal">
     {{-- Top controls --}}
