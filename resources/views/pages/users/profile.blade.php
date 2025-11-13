@@ -2,6 +2,7 @@
     @vite([
         'resources/js/bleep/users/profile-lazyload.js',
         'resources/js/bleep/users/profile.js',
+        'resources/js/bleep/modals/mediamodal.js',
         ])
 @endpush
 

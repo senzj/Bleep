@@ -1,6 +1,41 @@
 /**
- * Likes Functionality
+ * Likes Functionality with Optimistic UI
  */
+
+// Handle hover effect for liked buttons
+document.addEventListener('mouseover', (e) => {
+    const button = e.target.closest('.like-btn');
+    if (!button) return;
+
+    const isLiked = button.classList.contains('text-red-600');
+    const heartIcon = button.querySelector('.heart-icon');
+
+    // Only show heart-crack on hover if already liked
+    if (isLiked && heartIcon) {
+        heartIcon.setAttribute('data-lucide', 'heart-crack');
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+});
+
+// Handle mouse leave to restore heart icon
+document.addEventListener('mouseout', (e) => {
+    const button = e.target.closest('.like-btn');
+    if (!button) return;
+
+    const isLiked = button.classList.contains('text-red-600');
+    const heartIcon = button.querySelector('.heart-icon');
+
+    // Restore heart icon when mouse leaves if still liked
+    if (isLiked && heartIcon) {
+        heartIcon.setAttribute('data-lucide', 'heart');
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+});
+
 // Use event delegation so forms added later also work
 document.addEventListener('submit', async (e) => {
     const form = e.target.closest('.like-form');
@@ -15,51 +50,116 @@ document.addEventListener('submit', async (e) => {
 
     if (!bleepId || !csrfToken) return;
 
+    // Prevent double-clicks
+    if (button.disabled) return;
+    button.disabled = true;
+
+    // Get current state
+    const isLiked = button.classList.contains('text-red-600');
+    const mobileElem = form.querySelector('.like-count');
+    const desktopElem = form.querySelector('.like-text');
+    const heartIcon = button.querySelector('.heart-icon');
+
+    // Get current count
+    let currentCount = parseInt(mobileElem?.textContent || '0', 10);
+
+    // Optimistic update - toggle immediately
+    const newIsLiked = !isLiked;
+    const newCount = newIsLiked ? currentCount + 1 : Math.max(0, currentCount - 1);
+
+    // Update UI immediately
+    button.classList.toggle('text-red-600', newIsLiked);
+
+    // Always show heart icon on click and add animation
+    heartIcon?.setAttribute('data-lucide', 'heart');
+    heartIcon?.classList.add('animate-like-heart');
+    setTimeout(() => heartIcon?.classList.remove('animate-like-heart'), 600);
+
+    // Re-create the lucide icon immediately
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+
+    // Update counts
+    if (mobileElem) {
+        mobileElem.textContent = String(newCount);
+    }
+    if (desktopElem) {
+        const suffix = newCount === 1
+            ? (newIsLiked ? 'Liked' : 'Like')
+            : 'Likes';
+        desktopElem.textContent = `${newCount} ${suffix}`;
+    }
+
     try {
         const response = await fetch(`/bleeps/${bleepId}/like`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
-        body: JSON.stringify({})
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({})
         });
 
         if (response.status === 401) {
-        window.location.href = '/login';
-        return;
+            window.location.href = '/login';
+            return;
         }
+
         if (!response.ok) {
-        // optional: console.warn(await response.text());
-        return;
+            // Revert on error
+            button.classList.toggle('text-red-600', isLiked);
+            heartIcon?.setAttribute('data-lucide', 'heart');
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+            if (mobileElem) mobileElem.textContent = String(currentCount);
+            if (desktopElem) {
+                const suffix = currentCount === 1
+                    ? (isLiked ? 'Liked' : 'Like')
+                    : 'Likes';
+                desktopElem.textContent = `${currentCount} ${suffix}`;
+            }
+            return;
         }
 
         const data = await response.json();
-        if (!data?.success) return;
 
-        // Toggle color
-        button.classList.toggle('text-red-600');
-
-        // Refresh count
+        // Fetch actual count to ensure consistency
         const countResponse = await fetch(`/bleeps/${bleepId}/likes-count`, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         });
         const countData = await countResponse.json();
-        const count = parseInt(countData.count ?? 0, 10);
+        const serverCount = parseInt(countData.count ?? 0, 10);
 
-        const mobileElem = form.querySelector('.like-count');
-        const desktopElem = form.querySelector('.like-text');
-
-        if (mobileElem) mobileElem.textContent = String(count);
-        if (desktopElem) {
-        const suffix = count === 1
-            ? (button.classList.contains('text-red-600') ? 'Liked' : 'Like')
-            : 'Likes';
-        desktopElem.textContent = `${count} ${suffix}`;
+        // Update with server count if different
+        if (serverCount !== newCount) {
+            if (mobileElem) mobileElem.textContent = String(serverCount);
+            if (desktopElem) {
+                const suffix = serverCount === 1
+                    ? (newIsLiked ? 'Liked' : 'Like')
+                    : 'Likes';
+                desktopElem.textContent = `${serverCount} ${suffix}`;
+            }
         }
     } catch (error) {
         console.error('Error liking bleep:', error);
+        // Revert on error
+        button.classList.toggle('text-red-600', isLiked);
+        heartIcon?.setAttribute('data-lucide', 'heart');
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+        if (mobileElem) mobileElem.textContent = String(currentCount);
+        if (desktopElem) {
+            const suffix = currentCount === 1
+                ? (isLiked ? 'Liked' : 'Like')
+                : 'Likes';
+            desktopElem.textContent = `${currentCount} ${suffix}`;
+        }
+    } finally {
+        button.disabled = false;
     }
 });
