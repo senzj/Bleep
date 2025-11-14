@@ -55,6 +55,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'banned_until' => 'datetime',
         ];
     }
 
@@ -115,5 +116,27 @@ class User extends Authenticatable
     public function hasAdminAccess(): bool
     {
         return in_array($this->role, ['admin', 'moderator']);
+    }
+
+    /**
+     * Check if user is currently banned
+     */
+    public function isBanned(): bool
+    {
+        if (!$this->is_banned) {
+            return false;
+        }
+
+        // Auto-unban if temporary ban expired
+        if ($this->banned_until && now()->isAfter($this->banned_until)) {
+            $this->update([
+                'is_banned' => false,
+                'banned_until' => null,
+                'ban_reason' => null,
+            ]);
+            return false;
+        }
+
+        return true;
     }
 }

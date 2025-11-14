@@ -1,34 +1,57 @@
-<div id="report-comment-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm close-report-comment-modal"></div>
-    <div class="relative bg-base-100 rounded-2xl shadow-xl border border-base-300 p-6 max-w-md w-full mx-4 space-y-4 z-10">
-        <h3 class="text-lg font-semibold">Report Comment</h3>
-        <form method="POST" class="space-y-4">
-            @csrf
-            <div class="space-y-3">
-                <label class="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-base-200">
-                    <input type="radio" name="reason" value="spam" class="radio" checked>
-                    <span class="text-sm">Spam</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-base-200">
-                    <input type="radio" name="reason" value="offensive" class="radio">
-                    <span class="text-sm">Offensive content</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-base-200">
-                    <input type="radio" name="reason" value="harassment" class="radio">
-                    <span class="text-sm">Harassment</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-base-200">
-                    <input type="radio" name="reason" value="misinformation" class="radio">
-                    <span class="text-sm">Misinformation</span>
-                </label>
-            </div>
+<input type="checkbox" id="report_modal" class="modal-toggle" />
+<div class="modal">
+    <div class="modal-box relative max-w-md">
+        {{-- Close button --}}
+        <label for="report_modal" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
 
-            <textarea name="description" maxlength="500" rows="3" class="textarea textarea-bordered w-full resize-none text-sm" placeholder="Tell us more (optional)..."></textarea>
+        <h3 class="font-bold text-lg mb-4">Report Bleep</h3>
 
-            <div class="flex gap-2 justify-end">
-                <button type="button" class="btn btn-ghost btn-sm close-report-comment-modal">Cancel</button>
-                <button type="submit" class="btn btn-error btn-sm">Submit Report</button>
-            </div>
+        <form id="report-form" class="space-y-4">
+        @csrf
+        <input type="hidden" id="report_bleep_id" name="bleep_id" />
+
+        <div class="form-control">
+            <label class="label" for="category">
+            <span class="label-text">Category</span>
+            </label>
+            <select
+            name="category"
+            id="category"
+            class="select select-bordered w-full"
+            required
+            >
+            <option value="">Select a category</option>
+            <option value="spam">Spam</option>
+            <option value="harassment">Harassment</option>
+            <option value="hate">Hate Speech</option>
+            <option value="nsfw">NSFW Content</option>
+            <option value="illegal">Illegal Content</option>
+            <option value="other">Other</option>
+            </select>
+        </div>
+
+        <div class="form-control">
+            <label class="label" for="reason">
+            <span class="label-text">Reason</span>
+            </label>
+            <textarea
+            name="reason"
+            id="reason"
+            class="textarea textarea-bordered w-full"
+            rows="4"
+            maxlength="500"
+            placeholder="Explain why you're reporting this..."
+            required
+            ></textarea>
+            <p class="text-xs text-base-content/50 mt-1" id="reason-counter">0 / 500</p>
+        </div>
+
+        <div class="modal-action pt-2">
+            <label for="report_modal" class="btn btn-ghost">Cancel</label>
+            <button type="submit" class="btn btn-primary" id="submit-report-btn">
+            Submit Report
+            </button>
+        </div>
         </form>
     </div>
 </div>

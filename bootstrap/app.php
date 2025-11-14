@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CheckUserBan;
 use App\Http\Middleware\UpdateUserTimezone;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -12,12 +13,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Add timezone middleware to web group
-        $middleware->web(append: [
-            // apply middleware globally to web routes
-            UpdateUserTimezone::class,
+        // Specific middleware with alias
+        $middleware->alias([
+            'check.banned' => CheckUserBan::class,
+        ]);
 
-            // specified middleware for web group
+        // Apply to web group globally
+        $middleware->web(append: [
+            UpdateUserTimezone::class,
+            CheckUserBan::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

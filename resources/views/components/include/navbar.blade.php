@@ -83,7 +83,7 @@
                     </li>
                     @can('is_admin')
                         <li>
-                            <a href="#" class="flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
+                            <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
                                 <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
                                 <span>Admin Dashboard</span>
                             </a>

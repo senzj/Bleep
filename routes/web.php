@@ -1,17 +1,20 @@
 <?php
 
 use App\Http\Controllers\Auth\Login;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Auth\Logout;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\Register;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BleepController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\FollowingController;
 use App\Http\Controllers\Bleep\LikesController;
 use App\Http\Controllers\Bleep\ShareController;
 use App\Http\Controllers\Bleep\RepostController;
-use App\Http\Controllers\Bleep\CommentsController;
 use App\Http\Controllers\Users\ProfileController;
+use App\Http\Controllers\Bleep\CommentsController;
 
 // REGISTER
 Route::view('/register', 'auth.register')
@@ -78,6 +81,15 @@ Route::get('/users/{username}/bleeps', [ProfileController::class, 'bleeps'])->na
 Route::get('/users/{username}/reposts', [ProfileController::class, 'reposts'])->name('user.reposts');
 
 
+// Banned User Page (must be outside auth group)
+Route::get('/banned', function () {
+    if (!Auth::check() || !Auth::user()->is_banned) {
+        return redirect('/');
+    }
+    return view('pages.banned');
+})->middleware('auth')->name('banned');
+
+
 // Protected Auth Routes
 Route::middleware('auth')->group((function () {
 
@@ -119,5 +131,36 @@ Route::middleware('auth')->group((function () {
         ->name('settings.password');
     Route::put('/settings/password', [\App\Http\Controllers\SettingsController::class, 'updatePassword'])
         ->name('settings.password.update');
+
+    // User report submission
+    Route::post('/reports', [ReportsController::class, 'store'])->middleware('auth')->name('reports.store');
+
+
+    // Admin/Mod routes
+    Route::middleware(['auth', 'can:is_admin'])->group(function () {
+        // Admin Dashboard
+        Route::get('/admin/dashboard', [AdminController::class, 'index'])
+            ->name('admin.dashboard');
+
+
+        // Reports Dashboard
+        Route::get('/admin/reports', [ReportsController::class, 'index'])
+            ->name('admin.reports');
+
+        Route::post('/admin/reports/{report}/mark-reviewed', [ReportsController::class, 'markReviewed'])
+            ->name('admin.reports.markReviewed');
+
+        Route::post('/admin/reports/{report}/delete-bleep', [ReportsController::class, 'deleteBleep'])
+            ->name('admin.reports.deleteBleep');
+
+        Route::post('/admin/reports/{report}/ban-reporter', [ReportsController::class, 'banReporter'])
+            ->name('admin.reports.banReporter');
+
+        Route::post('/admin/reports/{report}/dismiss', [ReportsController::class, 'dismiss'])
+            ->name('admin.reports.dismiss');
+
+
+        //
+    });
 }));
 

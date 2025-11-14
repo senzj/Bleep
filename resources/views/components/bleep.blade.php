@@ -147,11 +147,11 @@
                     @if (! $isAnonymous && $bleep->user)
                         <div class="flex items-center mt-0.5">
                             @if ($bleep->user->role === 'admin')
-                                <span class="px-1.5 py-0.5 text-xs font-semibold rounded bg-blue-600/10 text-blue-600 border border-blue-600/20 ml-2">
+                                <span class="px-1 py-0.5 text-xs font-extrabold rounded bg-blue-500/20 text-blue-500 border border-blue-600/20 ml-2">
                                     ADMIN
                                 </span>
                             @elseif ($bleep->user->role === 'moderator')
-                                <span class="px-1.5 py-0.5 text-xs font-semibold rounded bg-yellow-500/10 text-yellow-600 border border-yellow-600/20 ml-2">
+                                <span class="px-1 py-0.5 text-xs font-extrabold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-600/20 ml-2">
                                     MOD
                                 </span>
                             @endif
@@ -220,12 +220,14 @@
                                     </form>
                                 </li>
                             @endcan
-                            <li>
-                                <button class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-orange-500 rounded-md hover:bg-orange-50 transition">
-                                    <i data-lucide="flag" class="w-4 h-4"></i>
-                                    <span>Report</span>
-                                </button>
-                            </li>
+                            @if (Auth::check() && Auth::user()->id !== $bleep->user->id)
+                                <li>
+                                    <button type="button" class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-orange-500 rounded-md hover:bg-orange-50 transition report-bleep-btn" data-bleep-id="{{ $bleep->id }}">
+                                        <i data-lucide="flag" class="w-4 h-4"></i>
+                                        <span>Report</span>
+                                    </button>
+                                </li>
+                            @endif
                         </ul>
                     </div>
                 </div>
@@ -484,7 +486,8 @@
 
 </article>
 
-
+{{-- Report Modal --}}
+<x-modals.posts.report />
 
 @once
     @push('scripts')
@@ -495,6 +498,7 @@
             'resources/js/bleep/posts/share.js',
             'resources/js/bleep/users/follow.js',
             'resources/js/bleep/modals/mediamodal.js',
+            'resources/js/bleep/modals/posts/reports.js',
         ])
         @if(!request()->routeIs('post'))
             @vite('resources/js/bleep/posts/comment.js')
