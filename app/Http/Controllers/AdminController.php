@@ -47,37 +47,57 @@ class AdminController extends Controller
 
     public function updateUsers(Request $request, User $user)
     {
-        // Only ban fields editable here (keep it simple)
         $validated = $request->validate([
-            'is_banned'     => ['required', 'boolean'],
-            'ban_reason'    => ['nullable', 'string', 'max:500'],
-            'banned_until'  => ['nullable', 'date'], // client sends ISO (UTC) or null
+            'role'          => ['required', \Illuminate\Validation\Rule::in(['admin','moderator','user'])],
+            'is_verified'   => ['required','boolean'],
+
+            'is_banned'     => ['required','boolean'],
+            'ban_reason'    => ['nullable','string','max:500'],
+            'duration_type' => ['nullable', \Illuminate\Validation\Rule::in(['temporary','permanent'])],
+            'banned_until'  => ['nullable','date'],
         ]);
 
-        // If unbanning, wipe fields
-        if (!$validated['is_banned']) {
+        // Always update role + verification
+        $user->role = $validated['role'];
+        $user->is_verified = (bool) $validated['is_verified'];
+
+        if (! $validated['is_banned']) {
+            // Unban
             $user->is_banned = false;
             $user->banned_until = null;
             $user->ban_reason = null;
             $user->save();
-
-            return response()->json(['message' => 'User unbanned.']);
+            return response()->json(['message' => 'User updated (unbanned).']);
         }
 
-        // Banning
+        // Ban
         $user->is_banned = true;
         $user->ban_reason = $validated['ban_reason'] ?? 'Banned by admin';
 
-        // Normalize to app timezone (configurable), if provided
         $bannedUntil = null;
-        if (!empty($validated['banned_until'])) {
-            // Parse incoming (UTC ISO or local ISO) safely and convert to app timezone
-            $bannedUntil = Carbon::parse($validated['banned_until'])
+        if (($validated['duration_type'] ?? null) === 'temporary' && !empty($validated['banned_until'])) {
+            $bannedUntil = \Illuminate\Support\Carbon::parse($validated['banned_until'])
                 ->setTimezone(config('app.timezone'));
         }
+        // If permanent, keep banned_until as null
         $user->banned_until = $bannedUntil;
         $user->save();
 
         return response()->json(['message' => 'User updated.']);
+    }
+
+    public function devices(Request $request)
+    {
+        // List of active sessions with user info
+        $sessions = DB::table('sessions')
+            ->whereNotNull('user_id')
+            ->orderByDesc('last_activity')
+            ->paginate(24);
+
+        // Load user info
+        $userIds = $sessions->pluck('user_id')->unique()->filter()->values();
+        $users = User::whereIn('id', $userIds)->get()->keyBy('id');
+
+        return view('admin.devices', compact('sessions', 'users'));
     }
 }

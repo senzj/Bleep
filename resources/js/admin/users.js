@@ -12,6 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const euBanReasonCounter = document.getElementById('eu_ban_reason_counter');
     const euBannedUntil = document.getElementById('eu_banned_until');
 
+    const euRole = document.getElementById('eu_role');
+    const euIsVerified = document.getElementById('eu_is_verified');
+
+    const euBanTypeTemp = document.getElementById('eu_ban_type_temp');
+    const euBanTypePerm = document.getElementById('eu_ban_type_perm');
+    const euBanUntilWrap = document.getElementById('eu_ban_until_wrap');
+
+    let lastBanChecked = false;
+
     function toast(type, text) {
         const old = document.querySelector('.toast[data-users="1"]');
         if (old) old.remove();
@@ -36,31 +45,20 @@ document.addEventListener('DOMContentLoaded', () => {
         euBannedUntil.min = fmtLocal(now);
     }
 
-    function openModalWithUser(user) {
-        euId.value = user.id;
-        euUsername.value = user.username ?? `User #${user.id}`;
-        euEmail.value = user.email ?? '';
-
-        euIsBanned.checked = !!user.is_banned;
-        toggleBanFields();
-
-        euBanReason.value = user.ban_reason ?? '';
-        updateReasonCounter();
-
-        setMinNow();
-        if (user.banned_until) {
-            // Convert server ISO (UTC) to local datetime-local value
-            const dt = new Date(user.banned_until);
-            euBannedUntil.value = fmtLocal(dt);
-        } else {
-            euBannedUntil.value = '';
-        }
-
-        modal.checked = true;
+    function updateBanTypeUI() {
+        const temp = euBanTypeTemp?.checked;
+        if (euBanUntilWrap) euBanUntilWrap.classList.toggle('hidden', !temp);
+        if (!temp && euBannedUntil) euBannedUntil.value = '';
     }
 
     function toggleBanFields() {
-        banFields.classList.toggle('hidden', !euIsBanned.checked);
+        const show = euIsBanned.checked;
+        banFields.classList.toggle('hidden', !show);
+        if (!show) {
+            euBanReason.value = '';
+            euBannedUntil.value = '';
+        }
+        updateBanTypeUI();
     }
 
     function updateReasonCounter() {
@@ -69,27 +67,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     euBanReason?.addEventListener('input', updateReasonCounter);
-    euIsBanned?.addEventListener('change', toggleBanFields);
+    euIsBanned?.addEventListener('change', () => {
+        // Soft guard to avoid accidental bans
+        if (euIsBanned.checked && !lastBanChecked) {
+            const ok = confirm('Are you sure you want to ban this user?');
+            if (!ok) {
+                euIsBanned.checked = false;
+            }
+        }
+        lastBanChecked = euIsBanned.checked;
+        toggleBanFields();
+    });
+
+    euBanTypeTemp?.addEventListener('change', updateBanTypeUI);
+    euBanTypePerm?.addEventListener('change', updateBanTypeUI);
 
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('.edit-user-btn');
         if (btn) {
             e.preventDefault();
-            let user;
-            if (btn.dataset.user) {
-                // Backward compatibility (if JSON attribute exists)
-                user = JSON.parse(btn.dataset.user);
-            } else {
-                // Build from individual data-* attributes (safe)
-                user = {
-                    id: parseInt(btn.dataset.userId, 10),
-                    username: btn.dataset.username || `User #${btn.dataset.userId}`,
-                    email: btn.dataset.email || '',
-                    is_banned: btn.dataset.isBanned === '1',
-                    ban_reason: btn.dataset.banReason || '',
-                    banned_until: btn.dataset.bannedUntil || null,
-                };
-            }
+            const user = {
+                id: parseInt(btn.dataset.userId, 10),
+                username: btn.dataset.username || `User #${btn.dataset.userId}`,
+                email: btn.dataset.email || '',
+                role: btn.dataset.role || 'user',
+                is_verified: btn.dataset.verified === '1',
+                is_banned: btn.dataset.isBanned === '1',
+                ban_reason: btn.dataset.banReason || '',
+                banned_until: btn.dataset.bannedUntil || null,
+            };
             openModalWithUser(user);
         }
 
@@ -98,6 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const hrs = parseInt(preset.dataset.hours, 10);
             const t = new Date(Date.now() + hrs * 3600 * 1000);
             euBannedUntil.value = fmtLocal(t);
+            if (euBanTypeTemp) euBanTypeTemp.checked = true;
+            updateBanTypeUI();
         }
     });
 
@@ -105,17 +113,22 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const id = euId.value;
 
-        // Prepare payload
+        // Build payload
         const isBanned = euIsBanned.checked;
+        const durationType = (euBanTypePerm?.checked) ? 'permanent' : 'temporary';
+
         let bannedUntil = null;
-        if (isBanned && euBannedUntil.value) {
-            // Convert local to UTC for API
+        if (isBanned && durationType === 'temporary' && euBannedUntil.value) {
             const local = new Date(euBannedUntil.value);
-            bannedUntil = local.toISOString();
+            bannedUntil = local.toISOString(); // send UTC
         }
 
         const payload = {
+            role: euRole?.value || 'user',
+            is_verified: euIsVerified?.checked ? true : false,
+
             is_banned: isBanned,
+            duration_type: isBanned ? durationType : null,
             ban_reason: euBanReason.value || null,
             banned_until: bannedUntil,
         };
@@ -133,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 toast('success', json.message || 'Saved.');
                 modal.checked = false;
-                // Reload to refresh the card values
                 setTimeout(() => location.reload(), 300);
             } else {
                 toast('error', json.message || 'Update failed.');
@@ -143,15 +155,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Enhance any “Until:” labels on page with local timezone
+    function openModalWithUser(user) {
+        euId.value = user.id;
+        euUsername.value = user.username ?? `User #${user.id}`;
+        euEmail.value = user.email ?? '';
+
+        // Role + Verified
+        if (euRole) euRole.value = user.role || 'user';
+        if (euIsVerified) euIsVerified.checked = user.is_verified === true || user.is_verified === '1';
+
+        // Ban state
+        euIsBanned.checked = !!user.is_banned;
+        lastBanChecked = euIsBanned.checked;
+        banFields.classList.toggle('hidden', !euIsBanned.checked);
+
+        euBanReason.value = user.ban_reason ?? '';
+        updateReasonCounter();
+
+        setMinNow();
+        // Decide ban type from data
+        const hasTemp = !!user.banned_until;
+        if (euBanTypeTemp && euBanTypePerm) {
+            euBanTypeTemp.checked = !!hasTemp;
+            euBanTypePerm.checked = !hasTemp;
+        }
+        if (hasTemp) {
+            const dt = new Date(user.banned_until);
+            euBannedUntil.value = fmtLocal(dt);
+        } else {
+            euBannedUntil.value = '';
+        }
+        updateBanTypeUI();
+
+        // Collapse moderation closed by default unless already banned
+        const modToggle = document.getElementById('eu_mod_collapse');
+        if (modToggle) modToggle.checked = !!user.is_banned;
+
+        modal.checked = true;
+    }
+
+    // Remove GMT/PST suffix by dropping timeZoneName
     document.querySelectorAll('[data-unban][data-utc]').forEach(el => {
         const iso = el.getAttribute('data-utc');
         if (!iso) return;
         const dt = new Date(iso);
         el.textContent = dt.toLocaleString(undefined, {
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit', second: '2-digit',
-            timeZoneName: 'short'
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+            // no timeZoneName
         });
     });
 });
