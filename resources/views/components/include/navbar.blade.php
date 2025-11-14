@@ -81,11 +81,19 @@
                             <span>Settings</span>
                         </a>
                     </li>
-                    <li class="pt-1 border-t border-base-200">
+                    @can('is_admin')
+                        <li>
+                            <a href="#" class="flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
+                                <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                                <span>Admin Dashboard</span>
+                            </a>
+                        </li>
+                    @endcan
+                    <li class="pt-1 border-t border-base-400/80">
                         <form method="POST" action="/logout" class="w-full">
                             @csrf
                             <button type="submit"
-                                    class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 rounded-md hover:bg-red-50 transition">
+                                    class="flex cursor-pointer items-center gap-2 w-full px-3 py-2 text-sm text-red-600 rounded-md hover:bg-red-200 transition">
                                 <i data-lucide="log-out" class="w-4 h-4"></i>
                                 <span>Logout</span>
                             </button>

@@ -110,4 +110,10 @@ class User extends Authenticatable
         }
         return asset('images/avatar/default.jpg');
     }
+
+    // checks if user is admin/moderator
+    public function hasAdminAccess(): bool
+    {
+        return in_array($this->role, ['admin', 'moderator']);
+    }
 }

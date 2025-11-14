@@ -6,6 +6,7 @@ use App\Models\Bleep;
 use App\Models\Comments;
 use App\Policies\BleepPolicy;
 use App\Policies\CommentsPolicy;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -33,6 +34,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Admin or Moderator Gate
+        Gate::define('is_admin', function ($user) {
+            return $user->hasAdminAccess();
+        });
     }
 }
