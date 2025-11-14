@@ -26,7 +26,12 @@ class User extends Authenticatable
         'bio',
         'email',
         'password',
+        'role',
         'timezone',
+        'is_verified',
+        'is_banned',
+        'banned_until',
+        'ban_reason',
         'profile_picture',
     ];
 

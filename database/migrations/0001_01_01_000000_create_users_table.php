@@ -18,9 +18,14 @@ return new class extends Migration
             $table->text('bio')->nullable();
             $table->string('email')->unique();
             $table->string('password');
+            $table->enum('role', ['admin', 'moderator', 'user'])->default('user');
             $table->string('timezone')->default('UTC');
             $table->string('profile_picture')->nullable();
             $table->timestamp('email_verified_at')->nullable();
+            $table->boolean('is_verified')->default(false);
+            $table->boolean('is_banned')->default(false);
+            $table->timestamp('banned_until')->nullable();
+            $table->text('ban_reason')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

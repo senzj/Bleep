@@ -99,7 +99,9 @@
     <div class="flex gap-3 mb-4">
         <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between gap-2">
-                <div class="flex items-start gap-3">
+                <div class="flex items-start gap-1.5">
+
+                    {{-- User Name Display --}}
                     @if($isAnonymous)
                         <div class="group flex items-start gap-3">
                             <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
@@ -132,6 +134,31 @@
                         </a>
                     @endif
 
+                    {{-- Verified badge --}}
+                    @if (! $isAnonymous && $bleep->user)
+                        @if ($bleep->user->is_verified)
+                            <div class="flex items-center mt-0.5">
+                                <i data-lucide="badge-check" class="w-5 h-5 text-blue-500" title="Verified User"></i>
+                            </div>
+                        @endif
+                    @endif
+
+                    {{-- User Role Tag --}}
+                    @if (! $isAnonymous && $bleep->user)
+                        <div class="flex items-center mt-0.5">
+                            @if ($bleep->user->role === 'admin')
+                                <span class="px-1.5 py-0.5 text-xs font-semibold rounded bg-blue-600/10 text-blue-600 border border-blue-600/20 ml-2">
+                                    ADMIN
+                                </span>
+                            @elseif ($bleep->user->role === 'moderator')
+                                <span class="px-1.5 py-0.5 text-xs font-semibold rounded bg-yellow-500/10 text-yellow-600 border border-yellow-600/20 ml-2">
+                                    MOD
+                                </span>
+                            @endif
+                        </div>
+                    @endif
+
+                    {{-- Follow/Unfollow Button --}}
                     @if (! $isAnonymous && $bleep->user && Auth::check() && Auth::id() !== $bleep->user->id)
                         @php
                             $isFollowing = Auth::user()->isFollowing($bleep->user);
@@ -146,13 +173,18 @@
                     @endif
                 </div>
 
+                {{-- Left --}}
                 <div class="flex items-start gap-3">
-                    <div class="text-base-content/60 text-xs whitespace-nowrap">
-                        <div>{{ $bleep->created_at->diffForHumans() }}</div>
+
+                    {{-- Timestamp --}}
+                    <div class="text-xs text-gray-400 mt-1 whitespace-nowrap">
+                        <span>
+                            {{ $bleep->created_at->diffForHumans(['short' => true]) }}
+                        </span>
                         @if ($bleep->updated_at->gt($bleep->created_at->addSeconds(5)))
-                            <div class="text-xs text-base-content/50">
-                                edited {{ $bleep->updated_at->diffForHumans() }}
-                            </div>
+                            <span>
+                                edited {{ $bleep->updated_at->diffForHumans(['short' => true]) }}
+                            </span>
                         @endif
                     </div>
 
@@ -161,7 +193,7 @@
                             <i data-lucide="more-vertical" class="w-5 h-5"></i>
                         </button>
 
-                        <ul tabindex="0" class="dropdown-content z-[1] shadow-lg bg-base-100 rounded-xl w-52 border border-base-200 p-2 space-y-1">
+                        <ul tabindex="0" class="dropdown-content z-1 shadow-lg bg-base-100 rounded-xl w-52 border border-base-200 p-2 space-y-1">
                             @can('update', $bleep)
                                 <li>
                                     <button type="button"
@@ -341,7 +373,7 @@
             </div>
         @endif
 
-        {{-- views - with min-height to prevent CLS --}}
+        {{-- views --}}
         <div class="text-xs text-gray-400 mt-5 flex items-center justify-between min-h-5">
             <span class="text-xs">
                 {{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y \| g:i:s A') }}
@@ -361,13 +393,12 @@
         </div>
     </div>
 
-    {{-- Engagement Footer - with min-height to prevent CLS --}}
+    {{-- Engagement Footer --}}
     @php
         $cols = 2; // Likes + Share (always visible)
         $cols += $showCommentsButton ? 1 : 0;
         $cols += auth()->check() ? 1 : 0; // Repost button for authenticated users
 
-        // Map to actual Tailwind classes
         $gridClass = match($cols) {
             2 => 'grid-cols-2',
             3 => 'grid-cols-3',
@@ -375,20 +406,20 @@
             default => 'grid-cols-2',
         };
     @endphp
-    <div class="grid {{ $gridClass }} gap-2 pt-3 border-t border-base-300 text-sm min-h-[44px]">
+    <div class="grid {{ $gridClass }} items-center gap-2 pt-3 border-t border-base-300 text-sm min-h-10">
         {{-- Likes --}}
-        <div class="flex justify-center">
-            <form method="POST" action="/bleeps/{{ $bleep->id }}/like" class="like-form inline">
+        <div class="flex items-center justify-center">
+            <form method="POST" action="/bleeps/{{ $bleep->id }}/like" class="like-form inline-flex">
                 @csrf
                 <button type="submit"
-                    class="btn btn-ghost btn-xs gap-1 hover:bg-red-100/50 hover:text-red-600 transition-colors group like-btn
-                    {{ Auth::check() && $bleep->isLikedBy(Auth::user()) ? 'text-red-600' : '' }}"
+                    class="btn btn-ghost btn-xs h-8 min-h-8 leading-none whitespace-nowrap gap-1 group like-btn
+                    {{ Auth::check() && $bleep->isLikedBy(Auth::user()) ? 'text-red-600 hover:bg-red-100/50 hover:text-red-600' : 'hover:bg-red-100/50 hover:text-red-600' }}"
                     data-bleep-id="{{ $bleep->id }}">
-                    <i data-lucide="heart" class="w-5 h-5 group-hover:scale-110 transition-transform heart-icon"></i>
-                    <span class="inline sm:hidden text-sm like-count" data-bleep-id="{{ $bleep->id }}">
+                    <i data-lucide="heart" class="w-5 h-5 align-middle group-hover:scale-110 transition-transform heart-icon"></i>
+                    <span class="inline sm:hidden text-xs like-count align-middle" data-bleep-id="{{ $bleep->id }}">
                         {{ $bleep->likes()->count() }}
                     </span>
-                    <span class="hidden sm:inline text-xs like-text whitespace-nowrap">
+                    <span class="hidden sm:inline text-xs like-text whitespace-nowrap align-middle">
                         @if (Auth::check() && $bleep->isLikedBy(Auth::user()))
                             {{ $bleep->likes()->count() }} {{ $bleep->likes()->count() === 1 ? 'Liked' : 'Likes' }}
                         @else
@@ -401,12 +432,12 @@
 
         {{-- Comments --}}
         @if($showCommentsButton)
-            <div class="flex justify-center">
-                <button class="btn btn-ghost btn-xs gap-1 hover:bg-blue-100/50 hover:text-blue-600 transition-colors group comment-btn"
+            <div class="flex items-center justify-center">
+                <button class="btn btn-ghost btn-xs h-8 min-h-8 leading-none whitespace-nowrap gap-1 hover:bg-blue-100/50 hover:text-blue-600 transition-colors group comment-btn"
                     data-bleep-id="{{ $bleep->id }}">
-                    <i data-lucide="message-circle" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
-                    <span class="inline sm:hidden text-xs">{{ $bleep->comments()->count() }}</span>
-                    <span class="hidden sm:inline text-xs whitespace-nowrap">
+                    <i data-lucide="message-circle" class="w-5 h-5 align-middle group-hover:scale-110 transition-transform"></i>
+                    <span class="inline sm:hidden text-xs align-middle">{{ $bleep->comments()->count() }}</span>
+                    <span class="hidden sm:inline text-xs whitespace-nowrap align-middle">
                         {{ $bleep->comments()->count() }} {{ $bleep->comments()->count() === 1 ? 'Comment' : 'Comments' }}
                     </span>
                 </button>
@@ -415,18 +446,19 @@
 
         {{-- Repost --}}
         @auth
-            <div class="flex justify-center">
+            <div class="flex items-center justify-center">
                 <button type="button" data-bleep-id="{{ $bleep->id }}" data-reposted="{{ $hasReposted ? '1' : '0' }}"
-                    class="cursor-pointer flex items-center gap-2 text-sm font-medium group repost-btn rounded-full px-3 py-1.5 transition-all duration-200 ease-out
-                        {{ $hasReposted ? 'bg-green-100 text-green-700 shadow-sm hover:bg-red-100 hover:text-red-600' : 'hover:bg-green-50 hover:text-green-600 text-gray-500' }}">
-                    <i data-lucide="repeat" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110 repost-icon"></i>
-                    <span class="inline sm:hidden text-xs repost-meta-mobile" data-bleep-id="{{ $bleep->id }}">
+
+                    class="btn btn-ghost btn-xs h-8 min-h-8 leading-none whitespace-nowrap gap-1 group repost-btn
+                        {{ $hasReposted ? 'text-green-700 hover:bg-red-100 hover:text-red-600' : 'hover:bg-green-50 hover:text-green-600 text-gray-500' }}">
+                    <i data-lucide="repeat" class="w-5 h-5 align-middle transition-transform duration-200 group-hover:scale-110 repost-icon"></i>
+                    <span class="inline sm:hidden text-xs repost-meta-mobile align-middle" data-bleep-id="{{ $bleep->id }}">
                         {{ $totalRepostCount }}
                     </span>
-                    <span class="hidden sm:inline text-xs repost-text whitespace-nowrap" data-bleep-id="{{ $bleep->id }}">
+                    <span class="hidden sm:inline text-xs repost-text whitespace-nowrap align-middle" data-bleep-id="{{ $bleep->id }}">
                         <span class="repost-label">
-                            <span class="repost-count mr-0.5" data-bleep-id="{{ $bleep->id }}">{{ $totalRepostCount }} </span>
-                            <span class="repost-text-label">{{ $hasReposted ? 'Reposted' : ($totalRepostCount === 1 ? 'Repost' : 'Repost') }}</span>
+                            <span class="repost-count mr-0.5" data-bleep-id="{{ $bleep->id }}">{{ $totalRepostCount }}</span>
+                            <span class="repost-text-label">{{ $hasReposted ? 'Reposted' : 'Repost' }}</span>
                             <span class="unrepost-text-label hidden">Remove Repost</span>
                         </span>
                     </span>
@@ -435,20 +467,20 @@
         @endauth
 
         {{-- Share --}}
-        <div class="flex justify-center">
+        <div class="flex items-center justify-center">
             <button type="button" data-bleep-id="{{ $bleep->id }}" title="Share / Copy link"
-                class="cursor-pointer flex items-center gap-2 text-sm font-medium group share-btn rounded-full px-3 py-1.5
-                    transition-all duration-200 ease-out hover:bg-yellow-300/20 hover:text-yellow-600">
-                <i data-lucide="forward" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110 group-hover:text-yellow-600"></i>
-                <span class="inline sm:hidden text-xs share-count" data-bleep-id="{{ $bleep->id }}">
+                class="btn btn-ghost btn-xs h-8 min-h-8 leading-none whitespace-nowrap gap-1 group share-btn hover:bg-yellow-300/20 hover:text-yellow-600">
+                <i data-lucide="forward" class="w-5 h-5 align-middle transition-transform duration-200 group-hover:scale-110 group-hover:text-yellow-600"></i>
+                <span class="inline sm:hidden text-xs share-count align-middle" data-bleep-id="{{ $bleep->id }}">
                     {{ $shareCount }}
                 </span>
-                <span class="hidden sm:inline text-xs share-text whitespace-nowrap" data-bleep-id="{{ $bleep->id }}">
+                <span class="hidden sm:inline text-xs share-text whitespace-nowrap align-middle" data-bleep-id="{{ $bleep->id }}">
                     {{ $shareCount }} {{ $shareCount === 1 ? 'Share' : 'Shares' }}
                 </span>
             </button>
         </div>
     </div>
+
 
 </article>
 
