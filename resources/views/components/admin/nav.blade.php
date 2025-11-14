@@ -13,8 +13,10 @@
     </a>
 
     {{-- Users --}}
-
-    {{-- Security --}}
+    <a href="{{ route('admin.users') }}" class="flex items-center gap-3 px-4 py-2 text-sm rounded-lg transition-colors {{ request()->routeIs('admin.users') ? 'bg-primary text-primary-content' : 'hover:bg-base-200' }}">
+        <i data-lucide="users" class="w-5 h-5"></i>
+        <span>User Management</span>
+    </a>
 
 
 </nav>

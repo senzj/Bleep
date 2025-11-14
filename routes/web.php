@@ -137,7 +137,7 @@ Route::middleware('auth')->group((function () {
 
 
     // Admin/Mod routes
-    Route::middleware(['auth', 'can:is_admin'])->group(function () {
+    Route::middleware('can:is_admin')->group(function () {
         // Admin Dashboard
         Route::get('/admin/dashboard', [AdminController::class, 'index'])
             ->name('admin.dashboard');
@@ -160,7 +160,12 @@ Route::middleware('auth')->group((function () {
             ->name('admin.reports.dismiss');
 
 
-        //
+        // Users Management
+        Route::get('/admin/users', [AdminController::class, 'users'])
+            ->name('admin.users');
+
+        Route::post('/admin/users/{user}/update', [AdminController::class, 'updateUsers'])
+            ->name('admin.users.update');
     });
 }));
 
