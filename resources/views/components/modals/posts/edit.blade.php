@@ -28,15 +28,37 @@
                     ></textarea>
                 </div>
 
-                <div class="mt-3 flex items-center justify-between">
-                    <label class="cursor-pointer label flex items-center">
-                        <span class="label-text mr-2">Post anonymously</span>
-                        <input id="edit-is-anonymous" type="checkbox" name="is_anonymous" value="1" class="toggle toggle-primary" />
-                        <div id="edit-toggle-indicator" class="ml-2 w-7 h-7 rounded-full transition-all duration-200 flex items-center justify-center overflow-hidden" aria-hidden="true"></div>
-                    </label>
+                <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center justify-start gap-4">
+                        {{-- Anonymous icon + dot-toggle --}}
+                        <div class="flex items-center gap-2">
+                            <label for="edit-is-anonymous" id="edit-anon-icon" class="p-2 rounded-full bg-transparent cursor-pointer transition-colors duration-150" title="Post anonymously" aria-hidden="true">
+                                <i data-lucide="hat-glasses" class="w-5 h-5"></i>
+                            </label>
+                            <input id="edit-is-anonymous"
+                                   name="is_anonymous"
+                                   type="checkbox"
+                                   value="1"
+                                   class="toggle toggle-sm"
+                                   {{ old('is_anonymous') ? 'checked' : '' }}>
+                        </div>
+
+                        {{-- NSFW icon + dot-toggle --}}
+                        <div class="flex items-center gap-2">
+                            <label for="edit-is-nsfw" id="edit-nsfw-icon" class="p-2 rounded-full bg-transparent cursor-pointer transition-colors duration-150" title="Mark as NSFW" aria-hidden="true">
+                                <i data-lucide="eye-off" class="w-5 h-5"></i>
+                            </label>
+                            <input id="edit-is-nsfw"
+                                   name="is_nsfw"
+                                   type="checkbox"
+                                   value="1"
+                                   class="toggle toggle-sm"
+                                   {{ old('is_nsfw') ? 'checked' : '' }}>
+                        </div>
+                    </div>
 
                     <div class="flex gap-2">
-                        <button type="button" id="cancel-edit-bleep" class="btn btn-ghost btn-sm">Cancel</button>
+                        <button type="button" id="cancel-edit-bleep" class="btn btn-ghost btn-outline btn-sm">Cancel</button>
                         <button type="submit" class="btn btn-primary btn-sm" id="submit-edit-bleep">Update</button>
                     </div>
                 </div>

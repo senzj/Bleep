@@ -22,6 +22,7 @@ export default defineConfig({
                 'resources/js/bleep/posts/infinitescroll.js',
                 'resources/js/bleep/posts/like.js',
                 'resources/js/bleep/posts/media.js',
+                'resources/js/bleep/posts/nsfw.js',
                 'resources/js/bleep/posts/post.js',
                 'resources/js/bleep/posts/repost.js',
                 'resources/js/bleep/posts/share.js',

@@ -200,7 +200,8 @@
                                         class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition edit-bleep-btn"
                                         data-bleep-id="{{ $bleep->id }}"
                                         data-bleep-message="{{ $bleep->message }}"
-                                        data-bleep-anonymous="{{ $bleep->is_anonymous ? '1' : '0' }}">
+                                        data-bleep-anonymous="{{ $bleep->is_anonymous ? '1' : '0' }}"
+                                        data-bleep-nsfw="{{ $bleep->is_nsfw ? '1' : '0' }}">
                                         <i data-lucide="pencil" class="w-4 h-4"></i>
                                         <span>Edit</span>
                                     </button>
@@ -237,161 +238,339 @@
 
     {{-- Message Content --}}
     <div class="mb-4">
-        <p class="text-base leading-relaxed text-base-content bleep-message" data-bleep-id="{{ $bleep->id }}">
-            @if(!empty($bleep->message))
-                {{ $bleep->message }}
-            @endif
-        </p>
+        <div class="bleep-content-section">
+            @php
+                $mediaItems = ($bleep->media ?? collect())->take(4);
+                $hasMedia = $mediaItems->count() > 0;
+                $isNsfw = (bool) $bleep->is_nsfw;
+            @endphp
 
-        @php
-            $mediaItems = ($bleep->media ?? collect())->take(4);
-        @endphp
+            {{-- ALWAYS render the wrapper, toggle visibility based on NSFW state --}}
+            <div class="bleep-nsfw-wrapper" data-bleep-id="{{ $bleep->id }}" data-is-nsfw="{{ $isNsfw ? '1' : '0' }}" data-is-anonymous="{{ $bleep->is_anonymous ? '1' : '0' }}">
 
-        @if($mediaItems->count() > 0)
-            @php $count = $mediaItems->count(); @endphp
+                {{-- NSFW Placeholder (shown only when NSFW) --}}
+                <div class="nsfw-placeholder p-6 bg-base-200 rounded-lg text-center border-2 border-red-500/20 {{ !$isNsfw ? 'hidden' : '' }}">
+                    <div class="flex items-center justify-center mb-3">
+                        <i data-lucide="eye-off" class="w-8 h-8 text-red-500"></i>
+                    </div>
+                    <p class="mb-1 font-semibold text-lg">This Bleep is marked as <span class="text-red-500">NSFW</span></p>
+                    <p class="text-sm text-base-content/60 mb-4">Content may be sensitive or inappropriate</p>
+                    <button type="button" class="btn btn-sm btn-error nsfw-reveal-btn" data-bleep-id="{{ $bleep->id }}">
+                        <i data-lucide="eye" class="w-4 h-4"></i>
+                        View Content
+                    </button>
+                </div>
 
-            <div class="mt-2 overflow-hidden rounded-xl border border-base-300" data-bleep-media>
-                @if ($count === 1)
-                    <div class="flex items-center justify-center bg-base-200">
-                        @php $m = $mediaItems->first(); @endphp
-                        <div class="relative cursor-pointer group"
-                             data-media-index="0"
-                             data-media-type="{{ $m->type }}"
-                             data-media-src="{{ asset('storage/'.$m->path) }}"
-                             data-media-alt="{{ $m->original_name }}"
-                             data-media-mime="{{ $m->mime_type }}">
-                            @if($m->type === 'image')
-                                <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
-                                    class="max-h-96 w-auto rounded-lg object-cover" loading="lazy">
+                {{-- Deferred NSFW Content --}}
+                <div class="nsfw-content hidden mt-3" data-bleep-id="{{ $bleep->id }}" data-bleep-message="{{ e($bleep->message) }}">
+                    <p class="nsfw-message text-base leading-relaxed text-base-content mb-3"></p>
+                    @if($hasMedia)
+                        @php $count = $mediaItems->count(); @endphp
+                        <div class="nsfw-media-container mt-2 overflow-hidden rounded-xl border border-base-300" data-bleep-media>
+                            @if($count === 1)
+                                @php $m = $mediaItems->first(); @endphp
+                                <div class="flex items-center justify-center bg-base-200">
+                                    <div class="relative cursor-pointer group"
+                                        data-media-index="0"
+                                        data-media-type="{{ $m->type }}"
+                                        data-media-src="{{ asset('storage/'.$m->path) }}"
+                                        data-media-alt="{{ $m->original_name }}"
+                                        data-media-mime="{{ $m->mime_type }}">
+                                        @if($m->type === 'image')
+                                            <img class="nsfw-media max-h-96 w-auto rounded-lg object-cover"
+                                                data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                alt="{{ $m->original_name }}"
+                                                loading="lazy">
+                                        @else
+                                            <video class="nsfw-media max-h-96 w-auto rounded-lg object-contain" controls preload="metadata">
+                                                <source data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                        data-media-mime="{{ $m->mime_type }}">
+                                            </video>
+                                        @endif
+                                    </div>
+                                </div>
+                            @elseif($count === 2)
+                                <div class="grid grid-cols-2 gap-1 bg-base-200">
+                                    @foreach($mediaItems as $index => $m)
+                                        <div class="flex items-center justify-center overflow-hidden">
+                                            <div class="relative cursor-pointer group w-full"
+                                                data-media-index="{{ $index }}"
+                                                data-media-type="{{ $m->type }}"
+                                                data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                data-media-alt="{{ $m->original_name }}"
+                                                data-media-mime="{{ $m->mime_type }}">
+                                                @if($m->type === 'image')
+                                                    <img class="nsfw-media max-h-64 w-full object-cover rounded-lg"
+                                                        data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                        alt="{{ $m->original_name }}"
+                                                        loading="lazy">
+                                                @else
+                                                    <video class="nsfw-media max-h-64 w-full rounded-lg object-contain" controls preload="metadata">
+                                                        <source data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                                data-media-mime="{{ $m->mime_type }}">
+                                                    </video>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @elseif($count === 3)
+                                <div class="grid grid-cols-3 grid-rows-2 gap-1 bg-base-200">
+                                    <div class="col-span-1 row-span-1">
+                                        @php $m = $mediaItems[0]; @endphp
+                                        <div class="relative cursor-pointer group h-full"
+                                            data-media-index="0"
+                                            data-media-type="{{ $m->type }}"
+                                            data-media-src="{{ asset('storage/'.$m->path) }}"
+                                            data-media-alt="{{ $m->original_name }}"
+                                            data-media-mime="{{ $m->mime_type }}">
+                                            @if($m->type === 'image')
+                                                <img class="nsfw-media w-full h-40 object-cover rounded-lg"
+                                                    data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                    alt="{{ $m->original_name }}"
+                                                    loading="lazy">
+                                            @else
+                                                <video class="nsfw-media w-full h-40 object-contain rounded-lg" controls preload="metadata">
+                                                    <source data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                            data-media-mime="{{ $m->mime_type }}">
+                                                </video>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="col-span-1 row-span-1">
+                                        @php $m = $mediaItems[1]; @endphp
+                                        <div class="relative cursor-pointer group h-full"
+                                            data-media-index="1"
+                                            data-media-type="{{ $m->type }}"
+                                            data-media-src="{{ asset('storage/'.$m->path) }}"
+                                            data-media-alt="{{ $m->original_name }}"
+                                            data-media-mime="{{ $m->mime_type }}">
+                                            @if($m->type === 'image')
+                                                <img class="nsfw-media w-full h-40 object-cover rounded-lg"
+                                                    data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                    alt="{{ $m->original_name }}"
+                                                    loading="lazy">
+                                            @else
+                                                <video class="nsfw-media w-full h-40 object-contain rounded-lg" controls preload="metadata">
+                                                    <source data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                            data-media-mime="{{ $m->mime_type }}">
+                                                </video>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="col-span-2 row-span-2">
+                                        @php $m = $mediaItems[2]; @endphp
+                                        <div class="relative cursor-pointer group h-full"
+                                            data-media-index="2"
+                                            data-media-type="{{ $m->type }}"
+                                            data-media-src="{{ asset('storage/'.$m->path) }}"
+                                            data-media-alt="{{ $m->original_name }}"
+                                            data-media-mime="{{ $m->mime_type }}">
+                                            @if($m->type === 'image')
+                                                <img class="nsfw-media w-full h-full object-cover rounded-lg"
+                                                    data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                    alt="{{ $m->original_name }}"
+                                                    loading="lazy">
+                                            @else
+                                                <video class="nsfw-media w-full h-full object-contain rounded-lg" controls preload="metadata">
+                                                    <source data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                            data-media-mime="{{ $m->mime_type }}">
+                                                </video>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
                             @else
-                                <video class="max-h-96 w-auto rounded-lg object-contain" controls preload="metadata">
-                                    <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
-                                </video>
+                                <div class="grid grid-cols-2 gap-1 bg-base-200">
+                                    @foreach($mediaItems as $index => $m)
+                                        <div class="relative overflow-hidden">
+                                            <div class="relative cursor-pointer group"
+                                                data-media-index="{{ $index }}"
+                                                data-media-type="{{ $m->type }}"
+                                                data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                data-media-alt="{{ $m->original_name }}"
+                                                data-media-mime="{{ $m->mime_type }}">
+                                                @if($m->type === 'image')
+                                                    <img class="nsfw-media w-full h-40 object-cover rounded-lg"
+                                                        data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                        alt="{{ $m->original_name }}"
+                                                        loading="lazy">
+                                                @else
+                                                    <video class="nsfw-media w-full h-40 rounded-lg object-contain" controls preload="metadata">
+                                                        <source data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                                data-media-mime="{{ $m->mime_type }}">
+                                                    </video>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
                             @endif
                         </div>
-                    </div>
-                @elseif ($count === 2)
-                    <div class="grid grid-cols-2 gap-1 bg-base-200">
-                        @foreach($mediaItems as $index => $m)
-                            <div class="flex items-center justify-center overflow-hidden">
-                                <div class="relative cursor-pointer group w-full"
-                                     data-media-index="{{ $index }}"
-                                     data-media-type="{{ $m->type }}"
-                                     data-media-src="{{ asset('storage/'.$m->path) }}"
-                                     data-media-alt="{{ $m->original_name }}"
-                                     data-media-mime="{{ $m->mime_type }}">
-                                    @if($m->type === 'image')
-                                        <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
-                                            class="max-h-64 w-full object-cover rounded-lg" loading="lazy">
-                                    @else
-                                        <video class="max-h-64 w-full rounded-lg object-contain" controls preload="metadata">
-                                            <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
-                                        </video>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @elseif ($count === 3)
-                    <div class="grid grid-cols-3 grid-rows-2 gap-1 bg-base-200">
-                        <div class="col-span-1 row-span-1">
-                            @php $m = $mediaItems[0]; @endphp
-                            <div class="relative cursor-pointer group h-full"
-                                 data-media-index="0"
-                                 data-media-type="{{ $m->type }}"
-                                 data-media-src="{{ asset('storage/'.$m->path) }}"
-                                 data-media-alt="{{ $m->original_name }}"
-                                 data-media-mime="{{ $m->mime_type }}">
-                                @if($m->type === 'image')
-                                    <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
-                                        class="w-full h-40 object-cover rounded-lg" loading="lazy">
-                                @else
-                                    <video class="w-full h-40 object-contain rounded-lg" controls preload="metadata">
-                                        <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
-                                    </video>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="col-span-1 row-span-1">
-                            @php $m = $mediaItems[1]; @endphp
-                            <div class="relative cursor-pointer group h-full"
-                                 data-media-index="1"
-                                 data-media-type="{{ $m->type }}"
-                                 data-media-src="{{ asset('storage/'.$m->path) }}"
-                                 data-media-alt="{{ $m->original_name }}"
-                                 data-media-mime="{{ $m->mime_type }}">
-                                @if($m->type === 'image')
-                                    <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
-                                        class="w-full h-40 object-cover rounded-lg" loading="lazy">
-                                @else
-                                    <video class="w-full h-40 object-contain rounded-lg" controls preload="metadata">
-                                        <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
-                                    </video>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="col-span-2 row-span-2">
-                            @php $m = $mediaItems[2]; @endphp
-                            <div class="relative cursor-pointer group h-full"
-                                 data-media-index="2"
-                                 data-media-type="{{ $m->type }}"
-                                 data-media-src="{{ asset('storage/'.$m->path) }}"
-                                 data-media-alt="{{ $m->original_name }}"
-                                 data-media-mime="{{ $m->mime_type }}">
-                                @if($m->type === 'image')
-                                    <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
-                                        class="w-full h-full object-cover rounded-lg" loading="lazy">
-                                @else
-                                    <video class="w-full h-full object-contain rounded-lg" controls preload="metadata">
-                                        <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
-                                    </video>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                @else
-                    <div class="grid grid-cols-2 gap-1 bg-base-200">
-                        @foreach($mediaItems as $index => $m)
-                            <div class="relative overflow-hidden">
-                                <div class="relative cursor-pointer group"
-                                     data-media-index="{{ $index }}"
-                                     data-media-type="{{ $m->type }}"
-                                     data-media-src="{{ asset('storage/'.$m->path) }}"
-                                     data-media-alt="{{ $m->original_name }}"
-                                     data-media-mime="{{ $m->mime_type }}">
-                                    @if($m->type === 'image')
-                                        <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
-                                            class="w-full h-40 object-cover rounded-lg" loading="lazy">
-                                    @else
-                                        <video class="w-full h-40 rounded-lg object-contain" controls preload="metadata">
-                                            <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
-                                        </video>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-        @endif
-
-        {{-- views --}}
-        <div class="text-xs text-gray-400 mt-5 flex items-center justify-between min-h-5">
-            <span class="text-xs">
-                {{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y \| g:i:s A') }}
-            </span>
-            <div class="flex items-center gap-1 text-base-content/60 text-xs">
-                <span class="view-count">
-                    @if($bleep->views >= 1000000)
-                        {{ number_format($bleep->views / 1000000, 1) }}M
-                    @elseif($bleep->views >= 1000)
-                        {{ number_format($bleep->views / 1000, 1) }}k
-                    @else
-                        {{ $bleep->views }}
                     @endif
-                </span>
-                <i data-lucide="eye" class="w-4 h-4"></i>
+                    <div class="mt-3 text-center">
+                        <button type="button" class="btn btn-sm btn-outline hide-nsfw-btn" data-bleep-id="{{ $bleep->id }}">
+                            <i data-lucide="eye-off" class="w-4 h-4"></i>
+                            Hide Content
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Normal Content (shown when NOT NSFW) --}}
+                <div class="normal-bleep-content {{ $isNsfw ? 'hidden' : '' }}">
+                    <p class="text-base leading-relaxed text-base-content bleep-message" data-bleep-id="{{ $bleep->id }}">
+                        @if(!empty($bleep->message))
+                            {{ $bleep->message }}
+                        @endif
+                    </p>
+
+                    @if($hasMedia)
+                        @php $count = $mediaItems->count(); @endphp
+                            <div class="mt-2 overflow-hidden rounded-xl border border-base-300 bleep-media-gallery" data-bleep-media data-bleep-id="{{ $bleep->id }}">
+                            @if ($count === 1)
+                                <div class="flex items-center justify-center bg-base-200">
+                                    @php $m = $mediaItems->first(); @endphp
+                                    <div class="relative cursor-pointer group"
+                                        data-media-index="0"
+                                        data-media-type="{{ $m->type }}"
+                                        data-media-src="{{ asset('storage/'.$m->path) }}"
+                                        data-media-alt="{{ $m->original_name }}"
+                                        data-media-mime="{{ $m->mime_type }}">
+                                        @if($m->type === 'image')
+                                            <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
+                                                class="max-h-96 w-auto rounded-lg object-cover" loading="lazy">
+                                        @else
+                                            <video class="max-h-96 w-auto rounded-lg object-contain" controls preload="metadata">
+                                                <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                            </video>
+                                        @endif
+                                    </div>
+                                </div>
+                            @elseif ($count === 2)
+                                <div class="grid grid-cols-2 gap-1 bg-base-200">
+                                    @foreach($mediaItems as $index => $m)
+                                        <div class="flex items-center justify-center overflow-hidden">
+                                            <div class="relative cursor-pointer group w-full"
+                                                data-media-index="{{ $index }}"
+                                                data-media-type="{{ $m->type }}"
+                                                data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                data-media-alt="{{ $m->original_name }}"
+                                                data-media-mime="{{ $m->mime_type }}">
+                                                @if($m->type === 'image')
+                                                    <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
+                                                        class="max-h-64 w-full object-cover rounded-lg" loading="lazy">
+                                                @else
+                                                    <video class="max-h-64 w-full rounded-lg object-contain" controls preload="metadata">
+                                                        <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                                    </video>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @elseif ($count === 3)
+                                <div class="grid grid-cols-3 grid-rows-2 gap-1 bg-base-200">
+                                    <div class="col-span-1 row-span-1">
+                                        @php $m = $mediaItems[0]; @endphp
+                                        <div class="relative cursor-pointer group h-full"
+                                            data-media-index="0"
+                                            data-media-type="{{ $m->type }}"
+                                            data-media-src="{{ asset('storage/'.$m->path) }}"
+                                            data-media-alt="{{ $m->original_name }}"
+                                            data-media-mime="{{ $m->mime_type }}">
+                                            @if($m->type === 'image')
+                                                <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
+                                                    class="w-full h-40 object-cover rounded-lg" loading="lazy">
+                                            @else
+                                                <video class="w-full h-40 object-contain rounded-lg" controls preload="metadata">
+                                                    <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                                </video>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="col-span-1 row-span-1">
+                                        @php $m = $mediaItems[1]; @endphp
+                                        <div class="relative cursor-pointer group h-full"
+                                            data-media-index="1"
+                                            data-media-type="{{ $m->type }}"
+                                            data-media-src="{{ asset('storage/'.$m->path) }}"
+                                            data-media-alt="{{ $m->original_name }}"
+                                            data-media-mime="{{ $m->mime_type }}">
+                                            @if($m->type === 'image')
+                                                <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
+                                                    class="w-full h-40 object-cover rounded-lg" loading="lazy">
+                                            @else
+                                                <video class="w-full h-40 object-contain rounded-lg" controls preload="metadata">
+                                                    <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                                </video>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="col-span-2 row-span-2">
+                                        @php $m = $mediaItems[2]; @endphp
+                                        <div class="relative cursor-pointer group h-full"
+                                            data-media-index="2"
+                                            data-media-type="{{ $m->type }}"
+                                            data-media-src="{{ asset('storage/'.$m->path) }}"
+                                            data-media-alt="{{ $m->original_name }}"
+                                            data-media-mime="{{ $m->mime_type }}">
+                                            @if($m->type === 'image')
+                                                <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
+                                                    class="w-full h-full object-cover rounded-lg" loading="lazy">
+                                            @else
+                                                <video class="w-full h-full object-contain rounded-lg" controls preload="metadata">
+                                                    <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                                </video>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            @else
+                                <div class="grid grid-cols-2 gap-1 bg-base-200">
+                                    @foreach($mediaItems as $index => $m)
+                                        <div class="relative overflow-hidden">
+                                            <div class="relative cursor-pointer group"
+                                                data-media-index="{{ $index }}"
+                                                data-media-type="{{ $m->type }}"
+                                                data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                data-media-alt="{{ $m->original_name }}"
+                                                data-media-mime="{{ $m->mime_type }}">
+                                                @if($m->type === 'image')
+                                                    <img src="{{ asset('storage/'.$m->path) }}" alt="{{ $m->original_name }}"
+                                                        class="w-full h-40 object-cover rounded-lg" loading="lazy">
+                                                @else
+                                                    <video class="w-full h-40 rounded-lg object-contain" controls preload="metadata">
+                                                        <source src="{{ asset('storage/'.$m->path) }}" type="{{ $m->mime_type }}">
+                                                    </video>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+                </div>
             </div>
+        </div>
+    </div>
+
+    {{-- views --}}
+    <div class="text-xs text-gray-400 mt-5 flex items-center justify-between min-h-5">
+        <span class="text-xs">
+            {{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y \| g:i:s A') }}
+        </span>
+        <div class="flex items-center gap-1 text-base-content/60 text-xs">
+            <span class="view-count">
+                @if($bleep->views >= 1000000)
+                    {{ number_format($bleep->views / 1000000, 1) }}M
+                @elseif($bleep->views >= 1000)
+                    {{ number_format($bleep->views / 1000, 1) }}k
+                @else
+                    {{ $bleep->views }}
+                @endif
+            </span>
+            <i data-lucide="eye" class="w-4 h-4"></i>
         </div>
     </div>
 
@@ -494,6 +673,7 @@
         @vite([
             'resources/js/bleep/posts/like.js',
             'resources/js/bleep/posts/media.js',
+            'resources/js/bleep/posts/nsfw.js',
             'resources/js/bleep/posts/repost.js',
             'resources/js/bleep/posts/share.js',
             'resources/js/bleep/users/follow.js',

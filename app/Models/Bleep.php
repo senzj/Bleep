@@ -15,6 +15,7 @@ class Bleep extends Model
     protected $fillable = [
         'message',
         'is_anonymous',
+        'is_nsfw',
         'deleted_by_author',
         'media_path',
         'views',
@@ -22,6 +23,7 @@ class Bleep extends Model
 
     protected $casts = [
         'deleted_by_author' => 'boolean',
+        'is_nsfw' => 'boolean',
         'views' => 'integer',
     ];
 

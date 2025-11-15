@@ -57,6 +57,7 @@ class BleepController extends Controller
             // either message or media is required
             'message' => 'nullable|string|max:255|required_without:media',
             'is_anonymous' => 'nullable|boolean',
+            'is_nsfw' => 'nullable|boolean',
             'media' => 'nullable|array|max:4|required_without:message',
             'media.*' => 'file|max:102400|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm',
         ], [
@@ -69,11 +70,13 @@ class BleepController extends Controller
 
         $user = Auth::user();
         $isAnonymous = $request->boolean('is_anonymous');
+        $isNsfw = $request->boolean('is_nsfw');
 
         // Create the bleep first to get its ID
         $bleep = $user->bleeps()->create([
             'message' => $validated['message'] ?? null,
             'is_anonymous' => $isAnonymous,
+            'is_nsfw' => $isNsfw,
         ]);
 
         // Handle media files (if any)
@@ -134,6 +137,7 @@ class BleepController extends Controller
         $validated = $request->validate([
             'message' => 'required|string|max:255',
             'is_anonymous' => 'nullable|boolean',
+            'is_nsfw' => 'nullable|boolean',
         ], [
             'message.required' => 'Thoughts cannot be empty! Write something to bleep about.',
             'message.max' => 'Your bleep is too long! Keep it under 255 characters.',
@@ -142,6 +146,7 @@ class BleepController extends Controller
         $bleep->update([
             'message' => $validated['message'],
             'is_anonymous' => $request->boolean('is_anonymous'),
+            'is_nsfw' => $request->boolean('is_nsfw'),
         ]);
 
         // reload relations
@@ -171,6 +176,7 @@ class BleepController extends Controller
                     'id' => $bleep->id,
                     'message' => $bleep->message,
                     'is_anonymous' => (bool) $bleep->is_anonymous,
+                    'is_nsfw' => (bool) $bleep->is_nsfw,
                     'display_name' => $displayName,
                     'username' => $username,
                     'avatar_url' => $avatarUrl,

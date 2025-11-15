@@ -5,6 +5,7 @@ document.addEventListener('click', (e) => {
     const bleepId = btn.dataset.bleepId;
     const message = btn.dataset.bleepMessage ?? '';
     const isAnonymous = btn.dataset.bleepAnonymous === '1';
+    const isNsfw = btn.dataset.bleepNsfw === '1';
 
     const modal = document.getElementById('edit-bleep-modal');
     const overlay = document.getElementById('edit-bleep-modal-overlay');
@@ -16,10 +17,15 @@ document.addEventListener('click', (e) => {
     form.setAttribute('action', `/bleeps/${bleepId}/update`);
     form.setAttribute('data-bleep-id', bleepId);
     form.querySelector('textarea[name="message"]').value = message;
-    form.querySelector('#edit-is-anonymous').checked = isAnonymous;
 
-    // Update toggle indicator on load
-    updateEditToggleUI();
+    // update checkboxes (use new IDs)
+    const anonCheckbox = form.querySelector('#edit-is-anonymous');
+    const nsfwCheckbox = form.querySelector('#edit-is-nsfw');
+    if (anonCheckbox) anonCheckbox.checked = isAnonymous;
+    if (nsfwCheckbox) nsfwCheckbox.checked = isNsfw;
+
+    // update icon highlights to match checkbox state
+    updateEditIconState();
 
     // open modal
     modal.classList.remove('hidden');
@@ -43,6 +49,7 @@ document.addEventListener('click', (e) => {
         const payload = {
             message: form.querySelector('textarea[name="message"]').value,
             is_anonymous: form.querySelector('#edit-is-anonymous').checked ? 1 : 0,
+            is_nsfw: form.querySelector('#edit-is-nsfw')?.checked ? 1 : 0,
         };
 
         const csrf = document.querySelector('meta[name="csrf-token"]')?.content ||
@@ -123,8 +130,95 @@ document.addEventListener('click', (e) => {
                 .forEach(btn => {
                     btn.dataset.bleepMessage = b.message;
                     btn.dataset.bleepAnonymous = b.is_anonymous ? '1' : '0';
+                    btn.dataset.bleepNsfw = b.is_nsfw ? '1' : '0';
                 });
 
+            // --- Immediate UI feedback for NSFW changes ---
+            (function syncNsfwUI() {
+                const wrapper = document.querySelector(`.bleep-nsfw-wrapper[data-bleep-id="${b.id}"]`);
+                if (!wrapper) return;
+
+                // Update wrapper flags
+                wrapper.setAttribute('data-is-nsfw', b.is_nsfw ? '1' : '0');
+                wrapper.setAttribute('data-is-anonymous', b.is_anonymous ? '1' : '0');
+
+                const placeholder = wrapper.querySelector('.nsfw-placeholder');
+                const content = wrapper.querySelector('.nsfw-content');
+                const normalContent = wrapper.querySelector('.normal-bleep-content');
+                const plainMsg = normalContent?.querySelector('.bleep-message');
+                const gallery = normalContent?.querySelector('.bleep-media-gallery, [data-bleep-media]');
+
+                const isNsfw = Boolean(b.is_nsfw);
+
+                if (isNsfw) {
+                    // Show NSFW placeholder, hide normal content
+                    if (placeholder) placeholder.classList.remove('hidden');
+                    if (normalContent) normalContent.classList.add('hidden');
+                    if (content) content.classList.add('hidden'); // Keep deferred content hidden until clicked
+
+                    // Clear localStorage reveal state
+                    try { localStorage.removeItem(`nsfw_viewed_${b.id}`); } catch(e) {}
+                    delete wrapper.dataset.revealed;
+
+                    // Clear deferred content srcs
+                    if (content) {
+                        content.querySelectorAll('[data-media-src], .nsfw-media').forEach(el => {
+                            const tag = el.tagName.toLowerCase();
+                            if (tag === 'img') el.removeAttribute('src');
+                            if (tag === 'source') el.removeAttribute('src');
+                            if (tag === 'video') {
+                                try { el.pause(); } catch(e){}
+                                el.removeAttribute('src');
+                                const source = el.querySelector('source');
+                                if (source) source.removeAttribute('src');
+                            }
+                        });
+                    }
+                } else {
+                    // Not NSFW - show normal content, hide placeholder and deferred
+                    if (placeholder) placeholder.classList.add('hidden');
+                    if (content) {
+                        const msgNode = content.querySelector('.nsfw-message');
+                        if (msgNode) msgNode.textContent = '';
+                        content.classList.add('hidden');
+                        // Clear deferred media
+                        content.querySelectorAll('[data-media-src], .nsfw-media').forEach(el => {
+                            const tag = el.tagName.toLowerCase();
+                            if (tag === 'img') el.removeAttribute('src');
+                            if (tag === 'source') el.removeAttribute('src');
+                            if (tag === 'video') {
+                                try { el.pause(); } catch(e){}
+                                el.removeAttribute('src');
+                            }
+                        });
+                    }
+
+                    // Show normal content
+                    if (normalContent) normalContent.classList.remove('hidden');
+                    if (plainMsg) plainMsg.textContent = b.message;
+
+                    // Restore gallery images
+                    if (gallery) {
+                        gallery.querySelectorAll('[data-media-src]').forEach(el => {
+                            const tag = el.tagName.toLowerCase();
+                            const src = el.getAttribute('data-media-src');
+                            if (!src) return;
+                            if (tag === 'img' && !el.getAttribute('src')) el.setAttribute('src', src);
+                            if (tag === 'source' && !el.getAttribute('src')) {
+                                el.setAttribute('src', src);
+                                const parentVideo = el.closest('video');
+                                try { parentVideo?.load(); } catch(e){}
+                            }
+                            if (tag === 'video' && !el.getAttribute('src')) {
+                                el.setAttribute('src', src);
+                                try { el.load(); } catch(e){}
+                            }
+                        });
+                    }
+                }
+            })();
+
+            // --- end UI sync ---
         } catch (err) {
           console.error('Update failed', err);
         } finally {
@@ -138,27 +232,35 @@ document.addEventListener('click', (e) => {
     if (window.createLucideIcons) window.createLucideIcons();
 });
 
-// Anonymous toggle handler for edit modal
-const editToggle = document.getElementById('edit-is-anonymous');
-const editIndicator = document.getElementById('edit-toggle-indicator');
+// icon + toggle highlight helpers (modal)
+function setIconState(btn, checked, onClasses = ['bg-primary','text-white','shadow'], offClasses = ['bg-transparent']) {
+    if (!btn) return;
+    if (checked) {
+        btn.classList.add(...onClasses);
+        offClasses.forEach(c => btn.classList.remove(c));
+        btn.setAttribute('aria-pressed', 'true');
+    } else {
+        onClasses.forEach(c => btn.classList.remove(c));
+        btn.classList.add(...offClasses);
+        btn.setAttribute('aria-pressed', 'false');
+    }
+}
 
-if (editToggle && editIndicator) {
-    const updateEditToggleUI = () => {
-        if (editToggle.checked) {
-            editIndicator.style.backgroundImage = 'none';
-            editIndicator.style.backgroundColor = '#1f2937';
-            editIndicator.innerHTML = `<i data-lucide="hat-glasses" class="w-4 h-4 text-white"></i>`;
-            if (window.createLucideIcons) window.createLucideIcons();
-        } else {
-            editIndicator.innerHTML = '';
-            editIndicator.style.backgroundColor = 'transparent';
-            editIndicator.style.backgroundImage = 'none';
-        }
-    };
+function updateEditIconState() {
+    const anonIcon = document.getElementById('edit-anon-icon');
+    const anonCheckbox = document.getElementById('edit-is-anonymous');
+    const nsfwIcon = document.getElementById('edit-nsfw-icon');
+    const nsfwCheckbox = document.getElementById('edit-is-nsfw');
 
-    editToggle.addEventListener('change', updateEditToggleUI);
-    // Will be called when modal opens
-    window.updateEditToggleUI = updateEditToggleUI;
+    if (anonIcon && anonCheckbox) {
+        setIconState(anonIcon, anonCheckbox.checked, ['bg-primary','text-white','shadow'], ['bg-transparent']);
+        anonCheckbox.addEventListener('change', () => setIconState(anonIcon, anonCheckbox.checked, ['bg-primary','text-white','shadow'], ['bg-transparent']));
+    }
+
+    if (nsfwIcon && nsfwCheckbox) {
+        setIconState(nsfwIcon, nsfwCheckbox.checked, ['bg-secondary','text-white','shadow'], ['bg-transparent']);
+        nsfwCheckbox.addEventListener('change', () => setIconState(nsfwIcon, nsfwCheckbox.checked, ['bg-secondary','text-white','shadow'], ['bg-transparent']));
+    }
 }
 
 // close modal when clicking overlay

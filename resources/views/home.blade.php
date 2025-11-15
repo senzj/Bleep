@@ -61,24 +61,45 @@
                                 <div id="upload-status" class="text-xs mt-1 text-base-content/60">Starting upload...</div>
                             </div>
 
-                            <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                {{-- Anonymous toggle --}}
-                                <label class="cursor-pointer label flex items-center justify-between sm:justify-start w-full sm:w-auto">
-                                    <span class="label-text mr-2 text-sm sm:text-base">Post anonymously</span>
-                                    <div class="flex items-center">
-                                        <input id="post-anonymous-toggle"
-                                            type="checkbox"
-                                            name="is_anonymous"
-                                            value="1"
-                                            {{ old('is_anonymous') ? 'checked' : '' }}
-                                            class="toggle toggle-primary scale-90 sm:scale-100"/>
-                                        <div id="post-toggle-indicator" aria-hidden="true" class="ml-2 w-6 h-6 sm:w-7 sm:h-7 rounded-full transition-all duration-200 flex items-center justify-center overflow-hidden"></div>
-                                    </div>
-                                </label>
+                            <div class="mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
-                                {{-- Right buttons --}}
+                                {{-- Left buttons (keep as first column on desktop, but render inline controls on mobile) --}}
+                                <div class="flex w-full sm:w-auto items-center justify-end sm:space-y-5 gap-3">
+                                    <div class="flex items-center gap-8">
+                                        {{-- Anonymous: icon/label + toggle --}}
+                                        <div class="flex items-center gap-1">
+                                            <label for="post-anonymous-toggle" class="flex items-center gap-2 cursor-pointer select-none">
+                                                <span id="post-anonymous-icon" class="p-2 rounded-full bg-base-400 transition-colors duration-150" title="Post anonymously" aria-hidden="true">
+                                                    <i data-lucide="hat-glasses" class="w-5 h-5"></i>
+                                                </span>
+                                            </label>
+                                            <input id="post-anonymous-toggle"
+                                                   name="is_anonymous"
+                                                   type="checkbox"
+                                                   value="1"
+                                                   class="toggle toggle-sm"
+                                                   {{ old('is_anonymous') ? 'checked' : '' }}>
+                                        </div>
+
+                                        {{-- NSFW: icon/label + toggle --}}
+                                        <div class="flex items-center gap-1">
+                                            <label for="post-nsfw-toggle" class="flex items-center gap-2 cursor-pointer select-none">
+                                                <span id="post-nsfw-icon" class="p-2 rounded-full bg-base-400 transition-colors duration-150" title="Mark as NSFW" aria-hidden="true">
+                                                    <i data-lucide="eye-off" class="w-5 h-5"></i>
+                                                </span>
+                                            </label>
+                                            <input id="post-nsfw-toggle"
+                                                   name="is_nsfw"
+                                                   type="checkbox"
+                                                   value="1"
+                                                   class="toggle toggle-sm"
+                                                   {{ old('is_nsfw') ? 'checked' : '' }}>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Right buttons (remains second row on mobile because parent is flex-col on small screens) --}}
                                 <div class="flex flex-col sm:flex-row items-center justify-end gap-2 w-full sm:w-auto">
-                                    {{-- Inner flex row for mobile side-by-side --}}
                                     <div class="flex w-full sm:w-auto justify-between gap-2">
                                         {{-- Add media button --}}
                                         <button type="button" id="open-media-picker" class="btn btn-ghost btn-sm flex-1 sm:flex-none justify-center">
@@ -94,7 +115,9 @@
                                         </button>
                                     </div>
                                 </div>
+
                             </div>
+
                         </form>
                     </div>
                 </div>
