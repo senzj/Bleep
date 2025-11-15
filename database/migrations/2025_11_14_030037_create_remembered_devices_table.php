@@ -17,7 +17,13 @@ return new class extends Migration
             $table->string('token', 100)->unique();
             $table->ipAddress('ip')->nullable();
             $table->text('user_agent')->nullable();
+
+            $table->string('parsed_os', 64)->nullable()->index();
+            $table->string('parsed_browser', 64)->nullable()->index();
+            $table->string('parsed_device_type', 64)->nullable()->index();
+
             $table->timestamp('last_used_at')->nullable();
+            $table->timestamp('revoked_at')->nullable();
             $table->timestamps();
 
             $table->index(['user_id', 'token']);

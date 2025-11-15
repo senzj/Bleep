@@ -142,6 +142,9 @@ Route::middleware('auth')->group((function () {
         Route::get('/admin/dashboard', [AdminController::class, 'index'])
             ->name('admin.dashboard');
 
+        Route::get('/admin/dashboard/chart-data', [AdminController::class, 'dashboardChartData'])
+            ->name('admin.dashboard.chart-data');
+
 
         // Reports Dashboard
         Route::get('/admin/reports', [ReportsController::class, 'index'])

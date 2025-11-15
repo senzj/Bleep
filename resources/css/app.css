@@ -90,3 +90,9 @@
         animation: none !important;
     }
 }
+
+/* Admin */
+/* keeps cloak hidden */
+[x-cloak] {
+    display: none !important;
+}

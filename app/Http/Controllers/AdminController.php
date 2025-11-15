@@ -3,16 +3,203 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\RememberedDevice;
-use Illuminate\Http\Request;
+use App\Models\Bleep;
+use App\Models\Likes;
+use App\Models\Share;
+use App\Models\Repost;
+use App\Models\Reports;
+use App\Models\Comments;
 use Illuminate\Support\Carbon;
+use App\Helpers\UserAgentParser;
+use App\Models\RememberedDevice;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Http\Request;
+use Carbon\CarbonPeriod;
+use Carbon\CarbonInterval;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class AdminController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('admin.dashboard');
+        $totalUsers = User::count();
+        $newToday = User::whereDate('created_at', now()->toDateString())->count();
+        $bannedUsers = User::where('is_banned', true)->count();
+
+        $totalSessions = DB::table('sessions')->count();
+        $activeSessions = DB::table('sessions')
+            ->whereNotNull('user_id')
+            ->where('last_activity', '>=', now()->subMinutes(5)->timestamp)
+            ->distinct()
+            ->count('user_id');
+
+        $totalDevices = RememberedDevice::count();
+
+        // Reports counts (fallback to 0 if table doesn't exist)
+        try {
+            $reportsPending = DB::table('reports')->where('status', 'pending')->count();
+            $reportsOngoing = DB::table('reports')->whereIn('status', ['ongoing','open','in_progress'])->count();
+        } catch (\Throwable $e) {
+            $reportsPending = 0;
+            $reportsOngoing = 0;
+        }
+
+        return view('admin.dashboard', compact(
+            'totalUsers',
+            'newToday',
+            'bannedUsers',
+            'totalSessions',
+            'activeSessions',
+            'totalDevices',
+            'reportsPending',
+            'reportsOngoing'
+        ));
+    }
+
+    public function dashboardChartData(Request $request)
+    {
+        $range = $request->get('range', 'daily');
+
+        try {
+            $payload = Cache::remember("admin:stats:dashboard:{$range}", 30, function () use ($range) {
+                $now = now();
+
+                switch ($range) {
+                    case 'weekly':
+                        $start = $now->copy()->subWeeks(12)->startOfWeek();
+                        $interval = 'week';
+                        $format = 'Y-m-d';
+                        break;
+                    case 'monthly':
+                        $start = $now->copy()->subMonths(12)->startOfMonth();
+                        $interval = 'month';
+                        $format = 'Y-m';
+                        break;
+                    case 'yearly':
+                        $start = $now->copy()->subYears(5)->startOfYear();
+                        $interval = 'year';
+                        $format = 'Y';
+                        break;
+                    case 'daily':
+                    default:
+                        $start = $now->copy()->subDays(30)->startOfDay();
+                        $interval = 'day';
+                        $format = 'Y-m-d';
+                        break;
+                }
+                $end = $now;
+
+                // Users time series
+                $dateFormat = $interval === 'month' ? '%Y-%m' : ($interval === 'year' ? '%Y' : '%Y-%m-%d');
+                $usersTimeseries = DB::table('users')
+                    ->select(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}') as period"), DB::raw('COUNT(*) as total'))
+                    ->whereBetween('created_at', [$start, $end])
+                    ->groupBy('period')
+                    ->orderBy('period')
+                    ->pluck('total', 'period')
+                    ->toArray();
+
+                $totalUsers = DB::table('users')->count();
+                $activeUsers = DB::table('sessions')->where('last_activity', '>=', now()->subMinutes(5)->timestamp)->distinct()->count('user_id');
+
+                // Devices
+                $osCounts = RememberedDevice::select(DB::raw("COALESCE(parsed_os, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+                    ->groupBy('label')->orderByRaw('total DESC')->limit(10)
+                    ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int)$r->total])->values();
+
+                $browserCounts = RememberedDevice::select(DB::raw("COALESCE(parsed_browser, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+                    ->groupBy('label')->orderByRaw('total DESC')->limit(10)
+                    ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int)$r->total])->values();
+
+                $deviceTypeCounts = RememberedDevice::select(DB::raw("COALESCE(parsed_device_type, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+                    ->groupBy('label')->orderByRaw('total DESC')
+                    ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int)$r->total])->values();
+
+                // Sessions - hourly/daily
+                $hourlyRows = DB::table('sessions')
+                    ->select(DB::raw("HOUR(FROM_UNIXTIME(last_activity)) as hour"), DB::raw("COUNT(*) as total"))
+                    ->whereBetween('last_activity', [now()->subDays(7)->timestamp, now()->timestamp])
+                    ->groupBy('hour')->orderBy('hour')->get()->pluck('total', 'hour')->toArray();
+
+                $dailyRows = DB::table('sessions')
+                    ->select(DB::raw("DAYOFWEEK(FROM_UNIXTIME(last_activity)) as day"), DB::raw("COUNT(*) as total"))
+                    ->whereBetween('last_activity', [now()->subWeeks(8)->timestamp, now()->timestamp])
+                    ->groupBy('day')->orderBy('day')->get()->pluck('total', 'day')->toArray();
+
+                $activeSessions = DB::table('sessions')->where('last_activity', '>=', now()->subMinutes(5)->timestamp)->count();
+                $peakHour = collect($hourlyRows)->sortDesc()->keys()->first();
+                $peakDay = collect($dailyRows)->sortDesc()->keys()->first();
+
+                // Bleeps & engagement
+                $totalBleeps = Bleep::count();
+                $likesCount = Likes::count();
+                $sharesCount = Share::count();
+                $repostCount = Repost::count();
+                $commentsCount = Comments::count();
+                $engagementTotal = $likesCount + $sharesCount + $repostCount + $commentsCount;
+                $engagementRate = $totalBleeps ? round($engagementTotal / $totalBleeps, 2) : 0;
+
+                $topBleeps = Bleep::where('created_at', '>=', now()->subDays(90))
+                    ->withCount('likes')->with('user')->orderByDesc('likes_count')->limit(10)
+                    ->get(['id', 'message', 'user_id', 'created_at'])
+                    ->map(fn($b) => [
+                        'id' => $b->id,
+                        'message' => \Illuminate\Support\Str::limit($b->message, 120),
+                        'likes' => $b->likes_count,
+                        'user' => ['id' => $b->user_id, 'dname' => optional($b->user)->dname],
+                        'created_at' => $b->created_at,
+                    ]);
+
+                // Reports
+                $reportsCounts = DB::table('reports')
+                    ->select(DB::raw("DATE_FORMAT(created_at, '%Y-%m-%d') as day"), DB::raw("COUNT(*) as total"))
+                    ->whereBetween('created_at', [now()->subDays(90), now()])
+                    ->groupBy('day')->pluck('total', 'day')->toArray();
+
+                $reportsByCategory = DB::table('reports')
+                    ->select('category', DB::raw('COUNT(*) as total'))
+                    ->groupBy('category')->pluck('total', 'category')->toArray();
+
+                $pending = DB::table('reports')->where('status', 'pending')->count();
+                $ongoingCount = DB::table('reports')->whereIn('status', ['ongoing', 'open', 'in_progress'])->count();
+                $resolved = DB::table('reports')->where('status', 'resolved')->count();
+
+                // Build labels for series using CarbonInterval
+                if ($interval === 'day') {
+                    $step = CarbonInterval::day();
+                } elseif ($interval === 'week') {
+                    $step = CarbonInterval::week();
+                } elseif ($interval === 'month') {
+                    $step = CarbonInterval::month();
+                } else {
+                    $step = CarbonInterval::year();
+                }
+                $period = CarbonPeriod::create($start, $step, $end);
+                $labels = [];
+                foreach ($period as $dt) {
+                    $labels[] = $dt->format($format);
+                }
+                $userSeries = array_map(fn($l) => (int)($usersTimeseries[$l] ?? 0), $labels);
+
+                return [
+                    'meta' => ['range' => $range, 'start' => $start->toDateString(), 'end' => $end->toDateString()],
+                    'users' => ['total' => $totalUsers, 'active' => $activeUsers, 'labels' => $labels, 'series' => [$userSeries]],
+                    'devices' => ['os' => $osCounts, 'browser' => $browserCounts, 'deviceType' => $deviceTypeCounts],
+                    'sessions' => ['activeSessions' => $activeSessions, 'hourly' => $hourlyRows, 'peakHour' => $peakHour, 'peakDay' => $peakDay],
+                    'bleeps' => ['total' => $totalBleeps, 'likes' => $likesCount, 'shares' => $sharesCount, 'reposts' => $repostCount, 'comments' => $commentsCount, 'engagementRate' => $engagementRate, 'top' => $topBleeps],
+                    'reports' => ['pending' => $pending, 'ongoing' => $ongoingCount, 'resolved' => $resolved, 'byCategory' => $reportsByCategory, 'labels' => array_keys($reportsCounts), 'series' => [array_values($reportsCounts)]],
+                ];
+            });
+
+            return response()->json($payload);
+        } catch (Throwable $e) {
+            Log::error('admin.dashboard.chart-data error: ' . $e->getMessage(), ['exception' => $e]);
+            $message = config('app.debug') ? $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() : 'Internal server error';
+            return response()->json(['error' => $message], 500);
+        }
     }
 
     public function users(Request $request)

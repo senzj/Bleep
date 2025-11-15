@@ -2,7 +2,9 @@ import './bootstrap';
 
 import './lucideicons';
 
-// import './alpine';
+import './chart';
+
+import './alpine';
 
 // theme toggle
 import './theme';

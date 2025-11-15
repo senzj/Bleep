@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[reports.js] loaded'); // Debug marker
+
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const modal = document.getElementById('ban_modal');
     const form = document.getElementById('ban-form');
