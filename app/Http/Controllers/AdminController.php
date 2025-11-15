@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\RememberedDevice;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -88,16 +88,89 @@ class AdminController extends Controller
 
     public function devices(Request $request)
     {
-        // List of active sessions with user info
-        $sessions = DB::table('sessions')
-            ->whereNotNull('user_id')
-            ->orderByDesc('last_activity')
-            ->paginate(24);
+        $search = $request->get('q', null);
+        $filter = $request->get('filter', 'all');
 
-        // Load user info
+        // Stats (unchanged)
+        $totalSessions = DB::table('sessions')->count();
+        $activeSessions = DB::table('sessions')->where('last_activity', '>=', now()->subMinutes(5)->timestamp)->count();
+        $uniqueUsers = DB::table('sessions')->whereNotNull('user_id')->distinct()->count('user_id');
+
+        $totalDevices = RememberedDevice::count();
+        $activeDevices = RememberedDevice::where('last_used_at', '>=', now()->subDays(7))->count();
+
+        // Sessions query
+        $sessionsQuery = DB::table('sessions')
+            ->leftJoin('users', 'sessions.user_id', '=', 'users.id')
+            ->select('sessions.*')
+            ->whereNotNull('sessions.user_id')
+            ->orderByDesc('last_activity');
+
+        if ($filter === 'online') {
+            $sessionsQuery->where('last_activity', '>=', now()->subMinutes(5)->timestamp);
+        } elseif ($filter === 'offline') {
+            $sessionsQuery->where('last_activity', '<', now()->subMinutes(5)->timestamp);
+        }
+
+        if ($search) {
+            $sessionsQuery->where(function($q) use ($search) {
+                $q->where('users.username', 'like', "%{$search}%")
+                  ->orWhere('users.dname', 'like', "%{$search}%")
+                  ->orWhere('users.email', 'like', "%{$search}%");
+            });
+        }
+
+        $sessions = $sessionsQuery->paginate(12, ['*'], 'sessions_page')->withQueryString();
+
+        // Remembered devices query
+        $devicesQuery = RememberedDevice::with('user')->orderByDesc('last_used_at');
+
+        if ($filter === 'online') {
+            $devicesQuery->where('last_used_at', '>=', now()->subMinutes(5));
+        } elseif ($filter === 'offline') {
+            $devicesQuery->where('last_used_at', '<', now()->subMinutes(5));
+        }
+
+        if ($search) {
+            $devicesQuery->whereHas('user', function ($q) use ($search) {
+                $q->where('username', 'like', "%{$search}%")
+                  ->orWhere('dname', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $devices = $devicesQuery->paginate(12, ['*'], 'devices_page')->withQueryString();
+
+        // load user info for sessions
         $userIds = $sessions->pluck('user_id')->unique()->filter()->values();
         $users = User::whereIn('id', $userIds)->get()->keyBy('id');
 
-        return view('admin.devices', compact('sessions', 'users'));
+        return view('admin.devices', compact(
+            'sessions',
+            'users',
+            'devices',
+            'totalSessions',
+            'activeSessions',
+            'uniqueUsers',
+            'totalDevices',
+            'activeDevices',
+            'filter',
+            'search'
+        ));
+    }
+
+    public function revokeSession(Request $request, $sessionId)
+    {
+        $deleted = DB::table('sessions')->where('id', $sessionId)->delete();
+        if ($deleted) {
+            return response()->json(['message' => 'Session revoked.']);
+        }
+        return response()->json(['message' => 'Session not found.'], 404);
+    }
+
+    public function revokeDevice(Request $request, RememberedDevice $device)
+    {
+        $device->delete();
+        return response()->json(['message' => 'Device removed.']);
     }
 }

@@ -141,4 +141,24 @@ class User extends Authenticatable
 
         return true;
     }
+
+    public function rememberedDevices(): HasMany
+    {
+        return $this->hasMany(RememberedDevice::class);
+    }
+
+    /**
+     * Limit remembered devices to 5 per user.
+     * Deletes oldest if limit exceeded.
+     */
+    public function pruneRememberedDevices(): void
+    {
+        $count = $this->rememberedDevices()->count();
+        if ($count > 5) {
+            $this->rememberedDevices()
+                ->orderBy('last_used_at', 'asc')
+                ->limit($count - 5)
+                ->delete();
+        }
+    }
 }

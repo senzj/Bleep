@@ -1,8 +1,9 @@
 <?php
 
 use App\Http\Middleware\CheckUserBan;
-use App\Http\Middleware\UpdateUserTimezone;
 use Illuminate\Foundation\Application;
+use App\Http\Middleware\UpdateUserTimezone;
+use App\Http\Middleware\CheckRememberedDevice;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             UpdateUserTimezone::class,
             CheckUserBan::class,
+            CheckRememberedDevice::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

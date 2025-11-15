@@ -166,6 +166,21 @@ Route::middleware('auth')->group((function () {
 
         Route::post('/admin/users/{user}/update', [AdminController::class, 'updateUsers'])
             ->name('admin.users.update');
+
+
+        // Devices and Sessions Management
+        Route::get('/admin/devices', [AdminController::class, 'devices'])
+            ->name('admin.devices');
+
+        Route::delete('/admin/devices/{sessionId}/revoke', [AdminController::class, 'revokeSession'])
+            ->name('admin.devices.revoke');
+
+        Route::delete('/admin/devices/device/{device}/revoke', [AdminController::class, 'revokeDevice'])
+            ->name('admin.devices.device.revoke');
+
+        // System Logs
+        Route::get('/admin/logs', [AdminController::class, 'logs'])
+            ->name('admin.logs');
     });
 }));
 
