@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Auth;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use App\Models\RememberedDevice;
+use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class Login extends Controller
 {
@@ -27,23 +29,21 @@ class Login extends Controller
         if (Auth::attempt($credentials, $remember)) {
             // Regenerate session for security
             $request->session()->regenerate();
-
             $user = Auth::user();
 
             // If "Remember Me" is checked, create/update device token
             if ($remember) {
-                $token = Str::random(60);
+                // plain token stored in cookie; model will hash it when persisting comparisons are needed
+                $plainToken = Str::random(64);
 
-                // Create or update the remembered device
-                RememberedDevice::createOrUpdateFromRequest($request, $token);
+                // create or update remembered device row (handles existing cookie-device update)
+                $device = RememberedDevice::createOrUpdateFromRequest($request, $plainToken);
 
-                // Prune old devices if > 5
+                // Ensure user has at most 5 remembered devices
                 $user->pruneRememberedDevices();
 
-                // Queue cookie: store plain token in secure HttpOnly cookie
-                cookie()->queue(
-                    cookie()->make('device_token', $token, 60 * 24 * 30 /* 30 days */, null, null, app()->environment('production'), true, false, 'Strict')
-                );
+                // set cookie with plain token (minutes: 60*24*30 = 30 days)
+                Cookie::queue('device_token', $plainToken, 60 * 24 * 30);
             }
 
             // Redirect to intended page or home

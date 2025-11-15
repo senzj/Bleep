@@ -9,12 +9,14 @@ use App\Http\Controllers\PostController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BleepController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\FollowingController;
 use App\Http\Controllers\Bleep\LikesController;
 use App\Http\Controllers\Bleep\ShareController;
 use App\Http\Controllers\Bleep\RepostController;
 use App\Http\Controllers\Users\ProfileController;
 use App\Http\Controllers\Bleep\CommentsController;
+use App\Http\Controllers\RememberedDeviceController;
 
 // REGISTER
 Route::view('/register', 'auth.register')
@@ -122,18 +124,29 @@ Route::middleware('auth')->group((function () {
     Route::get('/settings', fn () => redirect()->route('settings.profile'))
         ->name('settings');
 
-    Route::get('/settings/profile', [\App\Http\Controllers\SettingsController::class, 'editProfile'])
+    Route::get('/settings/profile', [SettingsController::class, 'editProfile'])
         ->name('settings.profile');
-    Route::put('/settings/profile', [\App\Http\Controllers\SettingsController::class, 'updateProfile'])
+    Route::put('/settings/profile', [SettingsController::class, 'updateProfile'])
         ->name('settings.profile.update');
 
-    Route::get('/settings/password', [\App\Http\Controllers\SettingsController::class, 'editPassword'])
+    Route::get('/settings/password', [SettingsController::class, 'editPassword'])
         ->name('settings.password');
-    Route::put('/settings/password', [\App\Http\Controllers\SettingsController::class, 'updatePassword'])
+    Route::put('/settings/password', [SettingsController::class, 'updatePassword'])
         ->name('settings.password.update');
 
+    Route::get('settings/devices', [SettingsController::class, 'devices'])
+        ->name('settings.devices');
+    Route::delete('settings/devices/{sessionId}/revoke/session', [SettingsController::class, 'revokeSession'])
+        ->name('settings.devices.revoke');
+    Route::delete('settings/devices/{device}/revoke/device', [SettingsController::class, 'revokeDevice'])
+        ->name('settings.devices.device.revoke');
+
+    Route::get('settings/logs', [SettingsController::class, 'logs'])
+        ->name('settings.logs');
+
     // User report submission
-    Route::post('/reports', [ReportsController::class, 'store'])->middleware('auth')->name('reports.store');
+    Route::post('/reports', [ReportsController::class, 'store'])
+        ->name('reports.store');
 
 
     // Admin/Mod routes
@@ -184,6 +197,14 @@ Route::middleware('auth')->group((function () {
         // System Logs
         Route::get('/admin/logs', [AdminController::class, 'logs'])
             ->name('admin.logs');
+
     });
 }));
+
+// remembered devices routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/settings/devices', [SettingsController::class, 'devices'])->name('settings.devices');
+    Route::delete('/settings/devices/{remembered_device}', [RememberedDeviceController::class, 'destroy'])
+        ->name('settings.devices.destroy');
+});
 

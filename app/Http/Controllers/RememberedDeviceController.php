@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\remembered_devices;
+use App\Models\RememberedDevice;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
-class RememberedDevicesController extends Controller
+class RememberedDeviceController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -56,10 +58,29 @@ class RememberedDevicesController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove the specified resource (revoke a remembered device).
      */
-    public function destroy(RememberedDevice $rememberedDevice)
+    public function destroy(Request $request, RememberedDevice $rememberedDevice)
     {
-        //
+        // ensure user owns the device or is admin
+        if ($rememberedDevice->user_id !== Auth::id() && ! Auth::user()->hasAdminAccess()) {
+            abort(403);
+        }
+
+        $action = env('REMEMBERED_LOGOUT', 'delete');
+
+        if ($action === 'delete') {
+            $rememberedDevice->delete();
+        } else { // rotate: clear user_id and rotate token & mark revoked
+            $plain = Str::random(64);
+            $rememberedDevice->update([
+                'user_id' => null,
+                'token' => hash('sha256', $plain),
+                'last_used_at' => null,
+                'revoked_at' => now(),
+            ]);
+        }
+
+        return response()->json(['status' => 'ok']);
     }
 }

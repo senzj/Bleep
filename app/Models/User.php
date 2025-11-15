@@ -42,7 +42,6 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
-        'remember_token',
     ];
 
     /**
@@ -156,7 +155,7 @@ class User extends Authenticatable
         $count = $this->rememberedDevices()->count();
         if ($count > 5) {
             $this->rememberedDevices()
-                ->orderBy('last_used_at', 'asc')
+                ->orderByRaw('COALESCE(last_used_at, created_at) ASC')
                 ->limit($count - 5)
                 ->delete();
         }

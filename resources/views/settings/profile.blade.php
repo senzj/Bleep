@@ -11,53 +11,99 @@
 
         <input type="hidden" name="profile_picture" id="profile_picture_data" value="{{ old('profile_picture', '') }}">
 
-        <div class="md:col-span-2 flex flex-col sm:flex-row items-center gap-4">
+        <div class="md:col-span-2">
             @php
                 $hasAvatar = filled(Auth::user()->getOriginal('profile_picture'));
                 $avatarUrl = Auth::user()->profile_picture_url;
             @endphp
 
-            <div class="relative group cursor-pointer" onclick="document.getElementById('profile_picture_input').click()">
-                <div class="avatar shadow-lg rounded-full border border-base-200">
-                    <div class="w-28 h-28 rounded-full ring ring-gray-400 transition-all relative overflow-hidden">
-                        {{-- Always render both; JS toggles visibility --}}
-                        <img
-                            id="profile_picture_preview"
-                            src="{{ $hasAvatar ? $avatarUrl : '' }}"
-                            alt="Profile Preview"
-                            class="w-full h-full rounded-full object-cover {{ $hasAvatar ? '' : 'hidden' }}" />
+            {{-- Mobile: Centered column layout --}}
+            <div class="flex flex-col items-center gap-4 md:hidden">
+                <div class="relative group cursor-pointer" onclick="document.getElementById('profile_picture_input').click()">
+                    <div class="avatar shadow-lg rounded-full border border-base-200">
+                        <div class="w-28 h-28 rounded-full ring ring-gray-400 transition-all relative overflow-hidden">
+                            <img
+                                id="profile_picture_preview"
+                                src="{{ $hasAvatar ? $avatarUrl : '' }}"
+                                alt="Profile Preview"
+                                class="w-full h-full rounded-full object-cover {{ $hasAvatar ? '' : 'hidden' }}" />
 
-                        <div
-                            id="default_avatar"
-                            class="items-center justify-center h-full w-full bg-base-300 rounded-full {{ $hasAvatar ? 'hidden' : 'flex' }}">
-                            <i data-lucide="user" class="w-14 h-14 text-base-content/50"></i>
+                            <div
+                                id="default_avatar"
+                                class="items-center justify-center h-full w-full bg-base-300 rounded-full {{ $hasAvatar ? 'hidden' : 'flex' }}">
+                                <i data-lucide="user" class="w-14 h-14 text-base-content/50"></i>
+                            </div>
                         </div>
                     </div>
+                    <div class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <i data-lucide="camera" class="w-8 h-8 text-white"></i>
+                    </div>
                 </div>
-                <div class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <i data-lucide="camera" class="w-8 h-8 text-white"></i>
+
+                <div class="text-center">
+                    <label class="block text-sm font-medium mb-2">Profile Picture</label>
+                    <input id="profile_picture_input" type="file" accept="image/*" class="hidden" />
+                    <div class="flex flex-wrap justify-center gap-2 mb-2">
+                        <button type="button"
+                                class="btn btn-sm btn-outline btn-primary"
+                                onclick="document.getElementById('profile_picture_input').click()">
+                            <i data-lucide="upload" class="w-4 h-4 mr-1"></i>
+                            Upload New
+                        </button>
+                        <button type="button"
+                                id="recrop_button"
+                                class="btn btn-sm btn-outline btn-secondary {{ $hasAvatar ? '' : 'hidden' }}">
+                            <i data-lucide="crop" class="w-4 h-4 mr-1"></i>
+                            Recrop
+                        </button>
+                    </div>
+                    <p class="text-xs text-base-content/60">PNG/JPG up to 5MB. Square image recommended.</p>
+                    @error('profile_picture') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                 </div>
             </div>
 
-            <div class="flex-1">
-                <label class="block text-sm font-medium mb-1">Profile Picture</label>
-                <input id="profile_picture_input" type="file" accept="image/*" class="hidden" />
-                <div class="flex flex-wrap gap-2 mb-1">
-                    <button type="button"
-                            class="btn btn-sm btn-outline btn-primary"
-                            onclick="document.getElementById('profile_picture_input').click()">
-                        <i data-lucide="upload" class="w-4 h-4 mr-1"></i>
-                        Upload New
-                    </button>
-                    <button type="button"
-                            id="recrop_button"
-                            class="btn btn-sm btn-outline btn-secondary {{ $hasAvatar ? '' : 'hidden' }}">
-                        <i data-lucide="crop" class="w-4 h-4 mr-1"></i>
-                        Recrop
-                    </button>
+            {{-- Desktop: Row layout with avatar on left --}}
+            <div class="hidden md:flex items-center gap-4">
+                <div class="relative group cursor-pointer flex-shrink-0" onclick="document.getElementById('profile_picture_input').click()">
+                    <div class="avatar shadow-lg rounded-full border border-base-200">
+                        <div class="w-28 h-28 rounded-full ring ring-gray-400 transition-all relative overflow-hidden">
+                            <img
+                                id="profile_picture_preview_desktop"
+                                src="{{ $hasAvatar ? $avatarUrl : '' }}"
+                                alt="Profile Preview"
+                                class="w-full h-full rounded-full object-cover {{ $hasAvatar ? '' : 'hidden' }}" />
+
+                            <div
+                                id="default_avatar_desktop"
+                                class="items-center justify-center h-full w-full bg-base-300 rounded-full {{ $hasAvatar ? 'hidden' : 'flex' }}">
+                                <i data-lucide="user" class="w-14 h-14 text-base-content/50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <i data-lucide="camera" class="w-8 h-8 text-white"></i>
+                    </div>
                 </div>
-                <p class="text-xs text-base-content/60">PNG/JPG up to 5MB. Square image recommended.</p>
-                @error('profile_picture') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Profile Picture</label>
+                    <div class="flex flex-wrap gap-2 mb-2">
+                        <button type="button"
+                                class="btn btn-sm btn-outline btn-primary"
+                                onclick="document.getElementById('profile_picture_input').click()">
+                            <i data-lucide="upload" class="w-4 h-4 mr-1"></i>
+                            Upload New
+                        </button>
+                        <button type="button"
+                                id="recrop_button_desktop"
+                                class="btn btn-sm btn-outline btn-secondary {{ $hasAvatar ? '' : 'hidden' }}">
+                            <i data-lucide="crop" class="w-4 h-4 mr-1"></i>
+                            Recrop
+                        </button>
+                    </div>
+                    <p class="text-xs text-base-content/60">PNG/JPG up to 5MB. Square image recommended.</p>
+                    @error('profile_picture') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                </div>
             </div>
         </div>
 

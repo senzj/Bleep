@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
+        {{-- meta data --}}
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="base_url" content="{{ url('') }}">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
         @stack('meta')
         {{-- Prevent flash: set theme before CSS paints --}}
         <script>
@@ -25,10 +28,6 @@
         <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
         <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
         @stack('styles')
-
-        {{-- meta data --}}
-        <meta name="base_url" content="{{ url('') }}">
-        <meta name="csrf-token" content="{{ csrf_token() }}">
     </head>
 
     <body class="min-h-screen flex flex-col font-sans bg-base-300/90">
@@ -44,8 +43,8 @@
             </div>
         @elseif (session('error'))
             <div class="toast toast-top toast-center">
-                <div class="alert alert-success animate-fade-out">
-                    <i data-lucide="check-alert" class="h-6 w-6 shrink-0 stroke-current"></i>
+                <div class="alert alert-error animate-fade-out">
+                    <i data-lucide="circle-alert" class="h-6 w-6 shrink-0 stroke-current"></i>
                     <span>{{ session('error') }}</span>
                 </div>
             </div>

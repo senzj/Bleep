@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('media_path')->nullable();
             $table->integer('views')->default(0);
             $table->boolean('is_anonymous')->default(false);
+            $table->boolean('is_nsfw')->default(false);
             $table->timestamps();
             $table->softDeletes();
             $table->boolean('deleted_by_author')->default(false);

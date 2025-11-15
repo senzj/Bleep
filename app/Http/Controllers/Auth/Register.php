@@ -39,8 +39,6 @@ class Register extends Controller
         // Fetch timezone from request or default to UTC
         $timezone = $validated['timezone'] ?? 'UTC';
 
-        Log::info('User timezone detected: ' . $timezone);
-
         // Handle profile picture upload (convert to JPG and store under public disk)
         $profilePicturePath = null;
         if (!empty($validated['profile_picture'])) {
@@ -77,11 +75,14 @@ class Register extends Controller
             'profile_picture' => $profilePicturePath,
         ]);
 
-        // Log them in
-        Auth::login($user);
+        // // Log them in
+        // Auth::login($user);
 
-        // Redirect to home
-        return redirect('/')->with('success', 'Welcome to Bleep!');
+        // // Redirect to home
+        // return redirect('/')->with('success', 'Welcome to Bleep!');
+
+        // redirect to login with success message
+        return redirect('/login')->with('success', 'Registration successful! You can now log in.');
     }
 
     /**

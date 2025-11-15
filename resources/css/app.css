@@ -73,6 +73,19 @@
     border: var(--border) solid rgba(0, 0, 0, 0.08);
 }
 
+/* Toast-only error color */
+:where(.toast) {
+    --color-error: #9b2226;
+    --color-error-content: #ffffff;
+}
+
+/* Hairline border + ensure text/icons pick up the content color */
+:where(.toast .alert-error) {
+    background: var(--color-error);
+    color: var(--color-error-content);
+    border: var(--border) solid rgba(0, 0, 0, 0.08);
+}
+
 /* Smooth theme change (enabled when .theme-transition is present) */
 .theme-transition, .theme-transition * {
     transition-property: background-color, color, border-color, fill, stroke, box-shadow;

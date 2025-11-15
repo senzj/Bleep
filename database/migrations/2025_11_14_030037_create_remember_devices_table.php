@@ -13,8 +13,9 @@ return new class extends Migration
     {
         Schema::create('remembered_devices', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('token', 100)->unique();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+
+            $table->string('token', 64)->unique(); // store sha256 hashes (64 chars)
             $table->ipAddress('ip')->nullable();
             $table->text('user_agent')->nullable();
 
@@ -26,7 +27,7 @@ return new class extends Migration
             $table->timestamp('revoked_at')->nullable();
             $table->timestamps();
 
-            $table->index(['user_id', 'token']);
+            $table->index(['user_id', 'last_used_at']);
         });
     }
 
