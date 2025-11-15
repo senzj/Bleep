@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Session;
 use App\Models\Device;
 use App\Models\RememberedDevice;
+use App\Models\Logs; // added
 
 class SettingsController extends Controller
 {
@@ -55,6 +56,8 @@ class SettingsController extends Controller
 
         $user->update($validated);
 
+        Logs::record($user->id, 'profile_edit', ['changes' => array_keys($validated)], $request);
+
         return redirect()->route('settings.profile')->with('success', 'Profile updated.');
     }
 
@@ -78,6 +81,8 @@ class SettingsController extends Controller
         $user->update([
             'password' => Hash::make($validated['password']),
         ]);
+
+        Logs::record($user->id, 'password_change', null, $request);
 
         return redirect()->route('settings.password')->with('success', 'Password updated.');
     }
@@ -128,6 +133,10 @@ class SettingsController extends Controller
             ->where('user_id', $user->id)
             ->delete();
 
+        if ($deleted) {
+            Logs::record($user->id, 'session_removed', ['session_id' => $sessionId], $request);
+        }
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => $deleted > 0,
@@ -142,10 +151,17 @@ class SettingsController extends Controller
     {
         $user = $request->user();
 
-        $deleted = DB::table('remembered_devices')
+        $row = DB::table('remembered_devices')
             ->where('id', $deviceId)
-            ->where('user_id', $user->id)
-            ->delete();
+            ->where('user_id', $user->id);
+
+        $device = $row->first();
+
+        $deleted = $row->delete();
+
+        if ($deleted) {
+            Logs::record($user->id, 'device_removed', ['device_id' => $deviceId, 'token' => $device?->token], $request);
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -160,4 +176,55 @@ class SettingsController extends Controller
     /**
      * Account Logs
      */
+    public function logs(Request $request)
+    {
+        $user = $request->user();
+
+        // Build query for user's logs with optional filters
+        $query = Logs::where('user_id', $user->id)->orderBy('created_at', 'desc');
+
+        // simple text search against action, details JSON (string), and ip
+        if ($request->filled('q')) {
+            $q = trim($request->get('q'));
+            $query->where(function ($w) use ($q) {
+                $w->where('action', 'like', "%{$q}%")
+                  ->orWhere('details', 'like', "%{$q}%")
+                  ->orWhere('ip', 'like', "%{$q}%");
+            });
+        }
+
+        // action filter (populated from user's existing actions)
+        if ($request->filled('action')) {
+            $query->where('action', $request->get('action'));
+        }
+
+        // date range
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->get('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->get('date_to'));
+        }
+
+        // available actions for this user (for select)
+        $actions = Logs::where('user_id', $user->id)
+            ->whereNotNull('action')
+            ->distinct()
+            ->orderBy('action')
+            ->pluck('action')
+            ->filter()
+            ->values()
+            ->toArray();
+
+        $logs = $query->paginate(20)->withQueryString();
+
+        return view('settings.logs', [
+            'logs' => $logs,
+            'actions' => $actions,
+            'q' => $request->get('q'),
+            'action' => $request->get('action'),
+            'dateFrom' => $request->get('date_from'),
+            'dateTo' => $request->get('date_to'),
+        ]);
+    }
 }

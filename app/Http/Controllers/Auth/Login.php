@@ -9,6 +9,7 @@ use App\Models\RememberedDevice;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Models\Logs; // added
 
 class Login extends Controller
 {
@@ -31,6 +32,9 @@ class Login extends Controller
             $request->session()->regenerate();
             $user = Auth::user();
 
+            // Log successful login
+            Logs::record($user->id, 'login', ['username' => $user->username, 'remember' => (bool)$remember], $request);
+
             // If "Remember Me" is checked, create/update device token
             if ($remember) {
                 // plain token stored in cookie; model will hash it when persisting comparisons are needed
@@ -49,6 +53,9 @@ class Login extends Controller
             // Redirect to intended page or home
             return redirect()->intended('/')->with('success', 'Welcome back!');
         }
+
+        // Log failed login attempt
+        Logs::record(null, 'failed_login', ['username' => $request->input('username')], $request);
 
         // If login fails, redirect back with error
         return back()

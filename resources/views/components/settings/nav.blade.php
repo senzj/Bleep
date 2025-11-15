@@ -7,7 +7,7 @@
 >
     {{-- Mobile toggle (floating top-left) --}}
     <button @click="open = true"
-        class="fixed top-20 left-5 z-10 md:hidden bg-base-100 border rounded-lg p-2 shadow hover:bg-base-200"
+        class="fixed bottom-5 left-5 z-10 md:hidden bg-base-100 border rounded-lg p-3 shadow hover:bg-base-200"
         :aria-expanded="open.toString()"
         aria-label="Open admin menu"
         type="button"

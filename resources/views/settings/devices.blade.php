@@ -126,7 +126,7 @@
 
             @forelse($devices as $d)
                 <div class="grid md:grid-cols-[1.2fr_1fr_1.2fr_1fr_.8fr] grid-cols-1 gap-2 md:gap-3 px-4 py-4 border-t border-base-300 hover:bg-base-200/40 transition
-                    @if($d->token === $currentDeviceToken) bg-amber-100/60 ring-2 ring-amber-400 @endif">
+                    @if($d->token === $currentDeviceToken) bg-amber-200/60 @endif">
 
                     <div class="flex justify-between md:justify-start items-center">
                         <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">User</span>

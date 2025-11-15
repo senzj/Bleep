@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Bleep;
 use App\Models\BleepMedia;
 use App\Models\Repost;
+use App\Models\Logs; // added
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -193,6 +194,9 @@ class BleepController extends Controller
 
         // Soft delete will trigger cascade deletes in boot method
         $bleep->delete();
+
+        // Log deletion (informational)
+        Logs::record($bleep->user_id, 'bleep_deleted', ['bleep_id' => $bleep->id, 'by_user' => Auth::id()], request());
 
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([

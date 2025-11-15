@@ -20,6 +20,7 @@ use Carbon\CarbonPeriod;
 use Carbon\CarbonInterval;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use App\Models\Logs; // added
 
 class AdminController extends Controller
 {
@@ -350,6 +351,7 @@ class AdminController extends Controller
     {
         $deleted = DB::table('sessions')->where('id', $sessionId)->delete();
         if ($deleted) {
+            Logs::record(auth()->id(), 'session_removed', ['session_id' => $sessionId, 'by_admin' => auth()->id()], $request);
             return response()->json(['message' => 'Session revoked.']);
         }
         return response()->json(['message' => 'Session not found.'], 404);
@@ -358,6 +360,98 @@ class AdminController extends Controller
     public function revokeDevice(Request $request, RememberedDevice $device)
     {
         $device->delete();
+        Logs::record(auth()->id(), 'device_removed', ['device_id' => $device->id, 'target_user' => $device->user_id], $request);
         return response()->json(['message' => 'Device removed.']);
     }
+
+    /**
+     * Logs page
+     */
+    public function logs(Request $request)
+    {
+        // Base query
+        $query = Logs::query()->with('user')->orderByDesc('created_at');
+
+        // Quick search across user display name, username, email and logs.ip
+        $q = trim($request->get('q', ''));
+        if ($q !== '') {
+            // join users only when needed for searching user fields
+            $query = $query->leftJoin('users', 'logs.user_id', '=', 'users.id')
+                ->select('logs.*')
+                ->where(function ($w) use ($q) {
+                    $w->where('users.username', 'like', "%{$q}%")
+                      ->orWhere('users.dname', 'like', "%{$q}%")
+                      ->orWhere('users.email', 'like', "%{$q}%")
+                      ->orWhere('logs.ip', 'like', "%{$q}%");
+                });
+        }
+
+        // Dynamic filter values (populated from DB)
+        $actions = Logs::select('action')
+            ->distinct()
+            ->whereNotNull('action')
+            ->orderBy('action')
+            ->pluck('action')
+            ->filter()
+            ->values()
+            ->toArray();
+
+        $oses = RememberedDevice::selectRaw("COALESCE(parsed_os, 'Unknown') as val")
+            ->distinct()
+            ->pluck('val')
+            ->filter()
+            ->values()
+            ->toArray();
+
+        $browsers = RememberedDevice::selectRaw("COALESCE(parsed_browser, 'Unknown') as val")
+            ->distinct()
+            ->pluck('val')
+            ->filter()
+            ->values()
+            ->toArray();
+
+        // Apply filters from request
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->get('user_id'));
+        }
+
+        if ($request->filled('action')) {
+            $query->where('action', $request->get('action'));
+        }
+
+        // device filters: we filter logs by matching user_agent content (best-effort)
+        if ($request->filled('device_os')) {
+            $query->where('user_agent', 'like', '%'.$request->get('device_os').'%');
+        }
+        if ($request->filled('device_browser')) {
+            $query->where('user_agent', 'like', '%'.$request->get('device_browser').'%');
+        }
+
+        // date filters
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->get('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->get('date_to'));
+        }
+
+        $logs = $query->paginate(25)->withQueryString();
+
+        // Pass dynamic lists and current query values to the view
+        return view('admin.logs', [
+            'logs' => $logs,
+            'actions' => $actions,
+            'oses' => $oses,
+            'browsers' => $browsers,
+            'q' => $q,
+            'userId' => $request->get('user_id'),
+            'action' => $request->get('action'),
+            'device_os' => $request->get('device_os'),
+            'device_browser' => $request->get('device_browser'),
+            'dateFrom' => $request->get('date_from'),
+            'dateTo' => $request->get('date_to'),
+        ]);
+    }
+
+
 }

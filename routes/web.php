@@ -197,6 +197,7 @@ Route::middleware('auth')->group((function () {
         // System Logs
         Route::get('/admin/logs', [AdminController::class, 'logs'])
             ->name('admin.logs');
+        
 
     });
 }));

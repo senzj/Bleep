@@ -9,13 +9,13 @@
             ['route' => 'admin.reports', 'icon' => 'flag', 'label' => 'Reports'],
             ['route' => 'admin.users', 'icon' => 'users', 'label' => 'User Management'],
             ['route' => 'admin.devices', 'icon' => 'monitor-smartphone', 'label' => 'Devices & Sessions'],
-            ['route' => 'admin.logs', 'icon' => 'file-text', 'label' => 'Logs'],
+            ['route' => 'admin.logs', 'icon' => 'file-text', 'label' => 'System Logs'],
         ];
     @endphp
 
-    {{-- Mobile menu button (fixed floating top-left) --}}
+    {{-- Mobile menu button --}}
     <button @click="open = true"
-        class="fixed top-20 left-5 z-10 md:hidden bg-base-100 border rounded-lg p-2 shadow hover:bg-base-200"
+        class="fixed bottom-5 left-5 z-10 md:hidden bg-base-100 border rounded-lg p-3 shadow hover:bg-base-200"
         :aria-expanded="open.toString()"
         aria-label="Open admin menu"
         type="button"

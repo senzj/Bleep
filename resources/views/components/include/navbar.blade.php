@@ -4,44 +4,44 @@
     </div>
 
     <div class="navbar-end gap-2">
-        @auth
-            {{-- Theme Toggle --}}
-            <div class="dropdown dropdown-end">
-                <button tabindex="0" class="btn btn-ghost btn-circle theme-button">
-                    <i data-lucide="sun" class="w-5 h-5 theme-icon"></i>
-                </button>
-                <ul id="theme-menu" tabindex="0" class="dropdown-content z-1 shadow-lg bg-base-100 rounded-md w-44 border border-base-200 p-2 space-y-1 mt-2">
-                    <li>
-                        <button type="button" data-theme-name="lofi"
-                                class="theme-toggle cursor-pointer flex items-center gap-3 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
-                            <i data-lucide="star" class="w-5 h-5"></i>
-                            <span>Lofi</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button type="button" data-theme-name="light"
-                                class="theme-toggle cursor-pointer bg-transparent flex items-center gap-3 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
-                            <i data-lucide="sun" class="w-5 h-5"></i>
-                            <span>Light</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button type="button" data-theme-name="dark"
-                                class="theme-toggle cursor-pointer flex items-center gap-3 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
-                            <i data-lucide="moon" class="w-5 h-5"></i>
-                            <span>Dark</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button type="button" data-theme-name="system"
-                                class="theme-toggle cursor-pointer flex items-center gap-3 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
-                            <i data-lucide="laptop" class="w-5 h-5"></i>
-                            <span>System</span>
-                        </button>
-                    </li>
-                </ul>
-            </div>
+        {{-- Theme Toggle --}}
+        <div class="dropdown dropdown-end">
+            <button tabindex="0" class="btn btn-ghost btn-circle theme-button">
+                <i data-lucide="sun" class="w-5 h-5 theme-icon"></i>
+            </button>
+            <ul id="theme-menu" tabindex="0" class="dropdown-content z-1 shadow-lg bg-base-100 rounded-md w-44 border border-base-200 p-2 space-y-1 mt-2">
+                <li>
+                    <button type="button" data-theme-name="lofi"
+                            class="theme-toggle cursor-pointer flex items-center gap-3 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
+                        <i data-lucide="star" class="w-5 h-5"></i>
+                        <span>Lofi</span>
+                    </button>
+                </li>
+                <li>
+                    <button type="button" data-theme-name="light"
+                            class="theme-toggle cursor-pointer bg-transparent flex items-center gap-3 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
+                        <i data-lucide="sun" class="w-5 h-5"></i>
+                        <span>Light</span>
+                    </button>
+                </li>
+                <li>
+                    <button type="button" data-theme-name="dark"
+                            class="theme-toggle cursor-pointer flex items-center gap-3 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
+                        <i data-lucide="moon" class="w-5 h-5"></i>
+                        <span>Dark</span>
+                    </button>
+                </li>
+                <li>
+                    <button type="button" data-theme-name="system"
+                            class="theme-toggle cursor-pointer flex items-center gap-3 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
+                        <i data-lucide="laptop" class="w-5 h-5"></i>
+                        <span>System</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
 
+        @auth
             {{-- Profile Dropdown --}}
             <div class="dropdown dropdown-end">
                 <button tabindex="0" class="flex items-center gap-3 px-3 py-2 shadow-sm rounded-md hover:bg-base-200 transition-colors cursor-pointer">
