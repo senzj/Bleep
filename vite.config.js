@@ -9,6 +9,7 @@ export default defineConfig({
                 'resources/js/init.js',
                 'resources/css/app.css',
                 'resources/css/profile-crop.css',
+                'resources/css/profile.css',
                 'resources/js/app.js',
                 'resources/js/admin/dashboard.js',
                 'resources/js/admin/devices.js',
