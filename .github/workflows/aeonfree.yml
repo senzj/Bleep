@@ -1,4 +1,4 @@
-name: Deploy to InfinityFree
+name: Deploy to AeonFree
 
 on:
   push:
@@ -38,11 +38,11 @@ jobs:
       # ---------- Prepare Deployment ----------
       - name: Prepare deployment package
         run: |
-          # Create environment file
-          cp .env.example .env
-
           # Generate app key
           php artisan key:generate
+
+          # sym link storage test
+          php artisan storage:link
 
           # Copy storage files (since storage:link won't work)
           mkdir -p public/storage
