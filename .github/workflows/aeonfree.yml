@@ -1,0 +1,74 @@
+name: Deploy to InfinityFree
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ---------- PHP ----------
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, openssl, pdo, bcmath
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader --prefer-dist
+
+      # ---------- Node / Build ----------
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Build Frontend
+        run: |
+          npm ci
+          npm run build
+
+      # ---------- Prepare Deployment ----------
+      - name: Prepare deployment package
+        run: |
+          # Create environment file
+          cp .env.example .env
+
+          # Generate app key
+          php artisan key:generate
+
+          # Copy storage files (since storage:link won't work)
+          mkdir -p public/storage
+          cp -R storage/app/public/* public/storage/ || true
+
+          # Clean up dev files
+          rm -rf node_modules
+          rm -rf tests
+
+          # Clear logs
+          rm -rf storage/logs/*.log
+
+      # ---------- FTP Upload ----------
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.0
+        with:
+          server: ftpupload.net
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: /htdocs/
+          local-dir: ./
+          exclude: |
+            **/.git*
+            **/.github/**
+            **/node_modules/**
+            **/tests/**
+            **/storage/logs/**
+            **/storage/framework/cache/**
+          log-level: standard
