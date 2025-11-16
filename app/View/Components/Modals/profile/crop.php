@@ -1,12 +1,12 @@
 <?php
 
-namespace App\View\Components\modals\profile;
+namespace App\View\Components\Modals\Profile;
 
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
-class crop extends Component
+class Crop extends Component
 {
     /**
      * Create a new component instance.

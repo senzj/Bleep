@@ -1,12 +1,12 @@
 <?php
 
-namespace App\View\Components\subcomponents;
+namespace App\View\Components\Subcomponents;
 
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
-class avatar extends Component
+class Avatar extends Component
 {
     /**
      * Create a new component instance.

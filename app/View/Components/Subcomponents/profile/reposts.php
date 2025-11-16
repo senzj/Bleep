@@ -1,12 +1,12 @@
 <?php
 
-namespace App\View\Components\subcomponents\profile;
+namespace App\View\Components\Subcomponents\Profile;
 
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
-class reposts extends Component
+class Reposts extends Component
 {
     /**
      * Create a new component instance.

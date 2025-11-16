@@ -1,12 +1,12 @@
 <?php
 
-namespace App\View\Components\modals\posts;
+namespace App\View\Components\Modals\Posts;
 
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
-class report extends Component
+class Report extends Component
 {
     /**
      * Create a new component instance.

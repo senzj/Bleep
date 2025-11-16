@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
-class bleep extends Component
+class Bleep extends Component
 {
     /**
      * Create a new component instance.
