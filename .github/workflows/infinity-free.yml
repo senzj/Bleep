@@ -38,11 +38,21 @@ jobs:
       # ---------- Prepare Deployment ----------
       - name: Prepare deployment package
         run: |
+          # Create environment file
+          cp .env.example .env
+
+          # Generate app key
+          php artisan key:generate
+
+          # Copy storage files (since storage:link won't work)
+          mkdir -p public/storage
+          cp -R storage/app/public/* public/storage/ || true
+
           # Clean up dev files
           rm -rf node_modules
           rm -rf tests
 
-          # It's okay to clean logs
+          # Clear logs
           rm -rf storage/logs/*.log
 
       # ---------- FTP Upload ----------
