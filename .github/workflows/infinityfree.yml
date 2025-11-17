@@ -38,6 +38,38 @@ jobs:
       # ---------- Prepare Deployment ----------
       - name: Prepare deployment package
         run: |
+          # If this is a push we can detect changed files between before and sha.
+          # For manual dispatch keep the step.
+          if [ "${{ github.event_name }}" = "push" ] && [ -n "${{ github.event.before }}" ]; then
+            CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+
+            if [ -z "$CHANGED" ]; then
+              echo "No changes in this push — skipping prepare step."
+              exit 0
+            fi
+
+            echo "Files changed; running prepare step..."
+          fi
+
+          # Only run caches/optimizations if needed (safe to run anyway)
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+
+          # Generate app key only if missing
+          if [ ! -f .env ]; then
+            echo "No .env file found — copying example."
+            cp .env.example .env
+          else
+            echo ".env already exists — not overwriting."
+          fi
+
+          if ! grep -q '^APP_KEY=' .env || grep -q '^APP_KEY=$' .env; then
+            php artisan key:generate --force
+          else
+            echo "APP_KEY present — skipping key generation."
+          fi
+
           # Clean up dev files
           rm -rf node_modules
           rm -rf tests
