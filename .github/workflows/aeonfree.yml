@@ -14,7 +14,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ---------- PHP ----------
+      # Step to check if we've done the “prepare” before
+      - name: Download marker artifact (if exists)
+        uses: actions/download-artifact@v3
+        with:
+          name: deploy-marker
+        continue-on-error: true
+        id: download_marker
+
+      - name: Prepare deployment package (only once)
+        if: steps.download_marker.outcome == 'failure'
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan storage:link
+          rm -rf node_modules
+          rm -rf tests
+          rm -rf storage/logs/*.log
+
+      # Create marker to mark that “prepare” has run
+      - name: Create deploy marker
+        if: steps.download_marker.outcome == 'failure'
+        run: echo "prepared" > deploy_prepared
+      - name: Upload marker artifact
+        if: steps.download_marker.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-marker
+          path: deploy_prepared
+
+      # ---------- PHP Setup ----------
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -34,25 +63,6 @@ jobs:
         run: |
           npm ci
           npm run build
-
-      # ---------- Prepare Deployment ----------
-      - name: Prepare deployment package
-        run: |
-          # copy .env file
-          cp .env.example .env
-
-          # Generate app key
-          php artisan key:generate
-
-          # sym link storage test
-          php artisan storage:link
-
-          # Clean up dev files
-          rm -rf node_modules
-          rm -rf tests
-
-          # Clear logs
-          rm -rf storage/logs/*.log
 
       # ---------- FTP Upload ----------
       - name: Deploy via FTP
