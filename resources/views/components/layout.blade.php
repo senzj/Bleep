@@ -2,7 +2,9 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         {{-- icon --}}
-        <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+        <link rel="shortcut icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
+        {{-- optional PNG fallback (add public/favicon-32.png if you want) --}}
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('Bleep_Icon.png') }}">
 
         {{-- meta data --}}
         <meta charset="UTF-8">

@@ -14,7 +14,13 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {{-- Left panel --}}
         <div class="hidden lg:block lg:col-span-3" id="left-panel">
-            {{-- Left sidebar content --}}
+            {{-- Infinityfree limitations announcement --}}
+            <div class="alert alert-warning">
+                <i data-lucide="alert-triangle" class="h-6 w-6 shrink-0 stroke-current"></i>
+                <span>There may be some features unavailable due to hosting limitations.</span>
+            </div>
+
+            {{-- Online mutuals --}}
         </div>
 
         {{-- Center panel --}}
@@ -157,7 +163,7 @@
 
         {{-- Right panel --}}
         <div class="hidden lg:block lg:col-span-3" id="right-panel">
-            {{-- Right sidebar content --}}
+            {{-- Suggested to follow (friend's following) --}}
         </div>
     </div>
 
