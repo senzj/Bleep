@@ -38,6 +38,9 @@ jobs:
       # ---------- Prepare Deployment ----------
       - name: Prepare deployment package
         run: |
+          # copy .env file
+          cp .env.example .env
+
           # Generate app key
           php artisan key:generate
 
