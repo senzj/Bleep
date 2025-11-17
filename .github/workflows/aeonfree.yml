@@ -44,10 +44,6 @@ jobs:
           # sym link storage test
           php artisan storage:link
 
-          # Copy storage files (since storage:link won't work)
-          mkdir -p public/storage
-          cp -R storage/app/public/* public/storage/ || true
-
           # Clean up dev files
           rm -rf node_modules
           rm -rf tests
