@@ -22,7 +22,10 @@ jobs:
           extensions: mbstring, intl, openssl, pdo, bcmath
 
       - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader --prefer-dist
+        run: |
+          composer install --no-dev --optimize-autoloader --prefer-dist
+          composer update
+          composer dump-autoload -o
 
       # ---------- Node / Build ----------
       - name: Setup Node
@@ -33,6 +36,7 @@ jobs:
       - name: Build Frontend
         run: |
           npm ci
+          npm update
           npm run build
 
       # ---------- Prepare Deployment (only once) ----------
