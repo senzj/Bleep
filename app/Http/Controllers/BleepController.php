@@ -100,7 +100,7 @@ class BleepController extends Controller
                     $ext
                 );
 
-                $dir = $username . '/bleep_post/' . $type;
+                $dir = $username . '/bleeps/' . $type;
                 $storedPath = $file->storeAs($dir, $fileName, 'public'); // returns relative path
 
                 // persist media row
