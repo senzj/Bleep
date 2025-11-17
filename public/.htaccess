@@ -5,7 +5,7 @@
 
     RewriteEngine On
 
-    # FIX FOR INFINITYFREE (simulate storage:link)
+    # Fix for Media Storage alternative
     RewriteRule ^storage/(.*)$ storage/app/public/$1 [L]
 
     # Handle Authorization Header
