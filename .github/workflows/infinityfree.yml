@@ -2,8 +2,7 @@ name: Deploy to InfinityFree
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -13,10 +12,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # ---------- PHP ----------
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -24,90 +20,50 @@ jobs:
           extensions: mbstring, intl, openssl, pdo, bcmath
 
       - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader --prefer-dist
+        run: composer install --no-dev --optimize-autoloader --no-interaction
 
-      # ---------- Node / Build ----------
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
+          cache: 'npm'
 
-      - name: Build Frontend
+      - name: Build frontend assets
         run: |
           npm ci
           npm run build
 
-      # ---------- Prepare Deployment ----------
-      - name: Prepare deployment package
+      - name: Prepare Laravel for production
         run: |
-          # If this is a push we can detect changed files between before and sha.
-          # For manual dispatch keep the step.
-          if [ "${{ github.event_name }}" = "push" ] && [ -n "${{ github.event.before }}" ]; then
-            BEFORE='${{ github.event.before }}'
-            AFTER='${{ github.sha }}'
+          # Ensure .env exists (don't overwrite if it exists)
+          [ ! -f .env ] && cp .env.example .env
 
-            # If the BEFORE commit exists locally, compute diff. Otherwise try fetching history.
-            if git rev-parse --verify "$BEFORE^{commit}" >/dev/null 2>&1; then
-              CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" || true)
-            else
-              echo "Previous commit not present locally; attempting to fetch full history..."
-              git fetch --prune origin || true
-              if git rev-parse --verify "$BEFORE^{commit}" >/dev/null 2>&1; then
-                CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" || true)
-              else
-                echo "Cannot find previous commit ($BEFORE) after fetch; proceeding with prepare step."
-                CHANGED=1
-              fi
-            fi
+          # Generate APP_KEY if missing
+          grep -q '^APP_KEY=.\+' .env || php artisan key:generate --force
 
-            if [ -z "$CHANGED" ]; then
-              echo "No changes in this push — skipping prepare step."
-              exit 0
-            fi
-
-            echo "Files changed; running prepare step..."
-          fi
-
-          # Only run caches/optimizations if needed (safe to run anyway)
+          # Cache configurations
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
 
-          # Generate app key only if missing
-          if [ ! -f .env ]; then
-            echo "No .env file found — copying example."
-            cp .env.example .env
-          else
-            echo ".env already exists — not overwriting."
-          fi
+      - name: Cleanup unnecessary files
+        run: |
+          rm -rf node_modules tests .git .github
+          rm -f .gitignore .gitattributes .editorconfig phpunit.xml
+          find storage/logs -type f -name "*.log" -delete
 
-          if ! grep -q '^APP_KEY=' .env || grep -q '^APP_KEY=$' .env; then
-            php artisan key:generate --force
-          else
-            echo "APP_KEY present — skipping key generation."
-          fi
-
-          # Clean up dev files
-          rm -rf node_modules
-          rm -rf tests
-
-          # Clear logs
-          rm -rf storage/logs/*.log
-
-      # ---------- FTP Upload ----------
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.0
+      - name: Deploy to InfinityFree
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ftpupload.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: /htdocs/
-          local-dir: ./
           exclude: |
             **/.git*
             **/.github/**
             **/node_modules/**
             **/tests/**
-            **/storage/logs/**
-            **/storage/framework/cache/**
-          log-level: standard
+            **/.env.example
+            **/phpunit.xml
+            **/README.md
