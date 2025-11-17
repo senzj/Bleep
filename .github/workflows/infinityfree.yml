@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # ---------- PHP ----------
       - name: Setup PHP
@@ -41,7 +43,22 @@ jobs:
           # If this is a push we can detect changed files between before and sha.
           # For manual dispatch keep the step.
           if [ "${{ github.event_name }}" = "push" ] && [ -n "${{ github.event.before }}" ]; then
-            CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+            BEFORE='${{ github.event.before }}'
+            AFTER='${{ github.sha }}'
+
+            # If the BEFORE commit exists locally, compute diff. Otherwise try fetching history.
+            if git rev-parse --verify "$BEFORE^{commit}" >/dev/null 2>&1; then
+              CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" || true)
+            else
+              echo "Previous commit not present locally; attempting to fetch full history..."
+              git fetch --prune origin || true
+              if git rev-parse --verify "$BEFORE^{commit}" >/dev/null 2>&1; then
+                CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" || true)
+              else
+                echo "Cannot find previous commit ($BEFORE) after fetch; proceeding with prepare step."
+                CHANGED=1
+              fi
+            fi
 
             if [ -z "$CHANGED" ]; then
               echo "No changes in this push — skipping prepare step."
