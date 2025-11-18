@@ -41,6 +41,10 @@ jobs:
           # Generate APP_KEY if missing
           grep -q '^APP_KEY=.\+' .env || php artisan key:generate --force
 
+          # Create storage directory structure for InfinityFree
+          mkdir -p public/storage/app/public
+          chmod -R 755 public/storage
+
           # Cache configurations
           php artisan config:cache
           php artisan route:cache
