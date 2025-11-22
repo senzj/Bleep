@@ -35,6 +35,7 @@ export default defineConfig({
                 'resources/js/settings/password.js',
                 'resources/js/settings/device.js',
                 'resources/js/social/people.js',
+                'resources/js/ui/mobile.js',
             ],
             refresh: true,
         }),

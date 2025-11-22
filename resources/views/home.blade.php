@@ -3,6 +3,7 @@
         'resources/js/bleep/posts/post.js',
         'resources/js/bleep/modals/posts/edit.js',
         'resources/js/bleep/posts/infinitescroll.js',
+        'resources/js/ui/mobile.js',
     ])
 @endpush
 
@@ -20,140 +21,156 @@
 
         {{-- Center panel --}}
         <div class="lg:block lg:col-span-6">
+            {{-- Mobile tabs: only visible on small screens --}}
+            <div class="flex items-center justify-between mb-3 lg:hidden">
+                <div class="flex gap-2 w-full" role="tablist" aria-label="Main tabs">
+                    <button type="button" class="flex-1 btn btn-sm btn-ghost data-tab-active" data-tab="bleep" aria-controls="bleeps-container" aria-selected="true">Bleep</button>
+                    <button type="button" class="flex-1 btn btn-sm btn-ghost" data-tab="people" aria-controls="mobile-people-panel" aria-selected="false">People</button>
+                </div>
+            </div>
+
             <h1 class="text-3xl font-bold mt-1">What's new on Bleep?</h1>
 
-            {{-- Post Form --}}
-            @auth
-                <div class="card bg-base-100 shadow mt-3">
-                    <div class="card-body">
-                        <form method="POST" action="/bleeps" enctype="multipart/form-data" id="bleep-form">
-                            @csrf
-                            <div class="form-control w-full">
-                                <textarea
-                                    name="message"
-                                    placeholder="What's on your mind? Share them with a bleep!"
-                                    class="textarea textarea-bordered w-full resize-none @error('message') textarea-error @enderror"
-                                    rows="2"
-                                    maxlength="255"
-                                >{{ old('message') }}</textarea>
-                            </div>
+            {{-- mobile people panel (in-center render for small screens) --}}
+            <div id="mobile-people-panel" class="mt-3 lg:hidden hidden" aria-hidden="true">
+                <x-social.people />
+            </div>
 
-                            {{-- hidden media input (single trigger button will open this) --}}
-                            <input
-                                id="bleep-media-input"
-                                type="file"
-                                name="media[]"
-                                class="hidden"
-                                multiple
-                                accept="image/*,video/mp4,video/webm"
-                            />
-                            @error('media') <div class="text-error text-xs mt-1">{{ $message }}</div> @enderror
-                            @error('media.*') <div class="text-error text-xs mt-1">{{ $message }}</div> @enderror
-
-                            {{-- preview grid --}}
-                            <div id="bleep-media-preview" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
-
-                            {{-- upload progress --}}
-                            <div id="upload-progress" class="mt-3 hidden">
-                                <div class="flex items-center gap-2">
-                                    <progress id="upload-progress-bar" class="progress progress-primary flex-1" value="0" max="100"></progress>
-                                    <span id="upload-progress-percent" class="text-xs w-10 text-right">0%</span>
+            {{-- Feed panel: post form + bleeps (toggled as a single unit on mobile) --}}
+            <div id="feed-panel">
+                {{-- Post Form --}}
+                @auth
+                    <div class="card bg-base-100 shadow mt-3">
+                        <div class="card-body">
+                            <form method="POST" action="/bleeps" enctype="multipart/form-data" id="bleep-form">
+                                @csrf
+                                <div class="form-control w-full">
+                                    <textarea
+                                        name="message"
+                                        placeholder="What's on your mind? Share them with a bleep!"
+                                        class="textarea textarea-bordered w-full resize-none @error('message') textarea-error @enderror"
+                                        rows="2"
+                                        maxlength="255"
+                                    >{{ old('message') }}</textarea>
                                 </div>
-                                <div id="upload-status" class="text-xs mt-1 text-base-content/60">Starting upload...</div>
-                            </div>
 
-                            <div class="mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                {{-- hidden media input (single trigger button will open this) --}}
+                                <input
+                                    id="bleep-media-input"
+                                    type="file"
+                                    name="media[]"
+                                    class="hidden"
+                                    multiple
+                                    accept="image/*,video/mp4,video/webm"
+                                />
+                                @error('media') <div class="text-error text-xs mt-1">{{ $message }}</div> @enderror
+                                @error('media.*') <div class="text-error text-xs mt-1">{{ $message }}</div> @enderror
 
-                                {{-- Left buttons (keep as first column on desktop, but render inline controls on mobile) --}}
-                                <div class="flex w-full sm:w-auto items-center justify-end sm:space-y-5 gap-3">
-                                    <div class="flex items-center gap-8">
-                                        {{-- Anonymous: icon/label + toggle --}}
-                                        <div class="flex items-center gap-1">
-                                            <label for="post-anonymous-toggle" class="flex items-center gap-2 cursor-pointer select-none">
-                                                <span id="post-anonymous-icon" class="p-2 rounded-full bg-base-400 transition-colors duration-150" title="Post anonymously" aria-hidden="true">
-                                                    <i data-lucide="hat-glasses" class="w-5 h-5"></i>
-                                                </span>
-                                            </label>
-                                            <input id="post-anonymous-toggle"
-                                                   name="is_anonymous"
-                                                   type="checkbox"
-                                                   value="1"
-                                                   class="toggle toggle-sm"
-                                                   {{ old('is_anonymous') ? 'checked' : '' }}>
-                                        </div>
+                                {{-- preview grid --}}
+                                <div id="bleep-media-preview" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
 
-                                        {{-- NSFW: icon/label + toggle --}}
-                                        <div class="flex items-center gap-1">
-                                            <label for="post-nsfw-toggle" class="flex items-center gap-2 cursor-pointer select-none">
-                                                <span id="post-nsfw-icon" class="p-2 rounded-full bg-base-400 transition-colors duration-150" title="Mark as NSFW" aria-hidden="true">
-                                                    <i data-lucide="eye-off" class="w-5 h-5"></i>
-                                                </span>
-                                            </label>
-                                            <input id="post-nsfw-toggle"
-                                                   name="is_nsfw"
-                                                   type="checkbox"
-                                                   value="1"
-                                                   class="toggle toggle-sm"
-                                                   {{ old('is_nsfw') ? 'checked' : '' }}>
+                                {{-- upload progress --}}
+                                <div id="upload-progress" class="mt-3 hidden">
+                                    <div class="flex items-center gap-2">
+                                        <progress id="upload-progress-bar" class="progress progress-primary flex-1" value="0" max="100"></progress>
+                                        <span id="upload-progress-percent" class="text-xs w-10 text-right">0%</span>
+                                    </div>
+                                    <div id="upload-status" class="text-xs mt-1 text-base-content/60">Starting upload...</div>
+                                </div>
+
+                                <div class="mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+
+                                    {{-- Left buttons (keep as first column on desktop, but render inline controls on mobile) --}}
+                                    <div class="flex w-full sm:w-auto items-center justify-end sm:space-y-5 gap-3">
+                                        <div class="flex items-center gap-8">
+                                            {{-- Anonymous: icon/label + toggle --}}
+                                            <div class="flex items-center gap-1">
+                                                <label for="post-anonymous-toggle" class="flex items-center gap-2 cursor-pointer select-none">
+                                                    <span id="post-anonymous-icon" class="p-2 rounded-full bg-base-400 transition-colors duration-150" title="Post anonymously" aria-hidden="true">
+                                                        <i data-lucide="hat-glasses" class="w-5 h-5"></i>
+                                                    </span>
+                                                </label>
+                                                <input id="post-anonymous-toggle"
+                                                       name="is_anonymous"
+                                                       type="checkbox"
+                                                       value="1"
+                                                       class="toggle toggle-sm"
+                                                       {{ old('is_anonymous') ? 'checked' : '' }}>
+                                            </div>
+
+                                            {{-- NSFW: icon/label + toggle --}}
+                                            <div class="flex items-center gap-1">
+                                                <label for="post-nsfw-toggle" class="flex items-center gap-2 cursor-pointer select-none">
+                                                    <span id="post-nsfw-icon" class="p-2 rounded-full bg-base-400 transition-colors duration-150" title="Mark as NSFW" aria-hidden="true">
+                                                        <i data-lucide="eye-off" class="w-5 h-5"></i>
+                                                    </span>
+                                                </label>
+                                                <input id="post-nsfw-toggle"
+                                                       name="is_nsfw"
+                                                       type="checkbox"
+                                                       value="1"
+                                                       class="toggle toggle-sm"
+                                                       {{ old('is_nsfw') ? 'checked' : '' }}>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                {{-- Right buttons (remains second row on mobile because parent is flex-col on small screens) --}}
-                                <div class="flex flex-col sm:flex-row items-center justify-end gap-2 w-full sm:w-auto">
-                                    <div class="flex w-full sm:w-auto justify-between gap-2">
-                                        {{-- Add media button --}}
-                                        <button type="button" id="open-media-picker" class="btn btn-ghost btn-sm flex-1 sm:flex-none justify-center">
-                                            <i data-lucide="image-plus" class="w-4 h-4 mr-1"></i>
-                                            Add media
-                                            <span id="bleep-media-count" class="badge badge-neutral badge-sm ml-2 hidden">0/4</span>
-                                        </button>
+                                    {{-- Right buttons (remains second row on mobile because parent is flex-col on small screens) --}}
+                                    <div class="flex flex-col sm:flex-row items-center justify-end gap-2 w-full sm:w-auto">
+                                        <div class="flex w-full sm:w-auto justify-between gap-2">
+                                            {{-- Add media button --}}
+                                            <button type="button" id="open-media-picker" class="btn btn-ghost btn-sm flex-1 sm:flex-none justify-center">
+                                                <i data-lucide="image-plus" class="w-4 h-4 mr-1"></i>
+                                                Add media
+                                                <span id="bleep-media-count" class="badge badge-neutral badge-sm ml-2 hidden">0/4</span>
+                                            </button>
 
-                                        {{-- Submit post --}}
-                                        <button type="submit" class="btn btn-primary btn-sm flex-1 sm:flex-none justify-center" id="post-submit-btn">
-                                            <i data-lucide="send" class="w-4 h-4"></i>
-                                            Post
-                                        </button>
+                                            {{-- Submit post --}}
+                                            <button type="submit" class="btn btn-primary btn-sm flex-1 sm:flex-none justify-center" id="post-submit-btn">
+                                                <i data-lucide="send" class="w-4 h-4"></i>
+                                                Post
+                                            </button>
+                                        </div>
                                     </div>
+
                                 </div>
 
-                            </div>
-
-                        </form>
-                    </div>
-                </div>
-            @endauth
-
-            {{-- bleeps container --}}
-            <div id="bleeps-container" class="space-y-4 mt-8">
-                @forelse ($bleeps as $bleep)
-                    <x-bleep :bleep="$bleep" />
-                @empty
-                    <div class="hero py-12">
-                        <div class="hero-content text-center">
-                            <div>
-                                <i data-lucide="inbox" class="w-16 h-16 mx-auto text-base-content/40"></i>
-                                <p class="mt-4 text-base-content/60">No bleeps yet. Be the first to share!</p>
-                            </div>
+                            </form>
                         </div>
                     </div>
-                @endforelse
-            </div>
+                @endauth
 
-            {{-- Loading indicator --}}
-            <div id="loading-indicator" class="hidden text-center py-8">
-                <span class="loading loading-spinner loading-lg text-primary"></span>
-                <p class="mt-2 text-base-content/60">Loading more bleeps...</p>
-            </div>
+                {{-- bleeps container --}}
+                <div id="bleeps-container" class="space-y-4 mt-8">
+                    @forelse ($bleeps as $bleep)
+                        <x-bleep :bleep="$bleep" />
+                    @empty
+                        <div class="hero py-12">
+                            <div class="hero-content text-center">
+                                <div>
+                                    <i data-lucide="inbox" class="w-16 h-16 mx-auto text-base-content/40"></i>
+                                    <p class="mt-4 text-base-content/60">No bleeps yet. Be the first to share!</p>
+                                </div>
+                            </div>
+                        </div>
+                    @endforelse
+                </div>
 
-            {{-- End of content indicator --}}
-            <div id="end-of-content" class="hidden text-center py-8">
-                <i data-lucide="circle-check" class="w-8 h-8 mx-auto text-base-content/40"></i>
-                <p class="mt-2 text-base-content/60">You've reached the end of the bleeps!</p>
-            </div>
+                {{-- Loading indicator --}}
+                <div id="loading-indicator" class="hidden text-center py-8">
+                    <span class="loading loading-spinner loading-lg text-primary"></span>
+                    <p class="mt-2 text-base-content/60">Loading more bleeps...</p>
+                </div>
 
-            {{-- Infinite scroll trigger --}}
-            <div id="infinite-scroll-trigger" data-page="2" data-has-more="{{ $bleeps->hasMorePages() ? 'true' : 'false' }}"></div>
+                {{-- End of content indicator --}}
+                <div id="end-of-content" class="hidden text-center py-8">
+                    <i data-lucide="circle-check" class="w-8 h-8 mx-auto text-base-content/40"></i>
+                    <p class="mt-2 text-base-content/60">You've reached the end of the bleeps!</p>
+                </div>
+
+                {{-- Infinite scroll trigger --}}
+                <div id="infinite-scroll-trigger" data-page="2" data-has-more="{{ $bleeps->hasMorePages() ? 'true' : 'false' }}"></div>
+            </div>
         </div>
 
         {{-- Right panel --}}

@@ -99,6 +99,7 @@
     <div class="flex gap-3 mb-4">
         <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between gap-2">
+                {{-- Right --}}
                 <div class="flex items-start gap-1.5">
 
                     {{-- User Name Display --}}
@@ -164,7 +165,7 @@
                             $isFollowing = Auth::user()->isFollowing($bleep->user);
                         @endphp
                         <button type="button" data-user-id="{{ $bleep->user->id }}" data-following="{{ $isFollowing ? '1' : '0' }}"
-                            class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn rounded-full px-2.5 py-1 transition-all duration-200 ease-out
+                            class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn rounded-full px-2.5 py-1 transition-all duration-200 ease-out mt-2
                                 {{ $isFollowing ? 'bg-blue-100 text-blue-700 shadow-sm hover:bg-red-100 hover:text-red-600' : 'bg-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600 shadow-sm' }}">
                             <i data-lucide="{{ $isFollowing ? 'user-round-check' : 'user-round-plus' }}" class="w-4 h-4 transition-transform duration-200 group-hover:scale-110 follow-icon"></i>
                             <span class="follow-text">{{ $isFollowing ? 'Following' : 'Follow' }}</span>
@@ -176,14 +177,15 @@
                 {{-- Left --}}
                 <div class="flex items-start gap-3">
 
-                    {{-- Timestamp --}}
-                    <div class="text-xs text-gray-400 mt-1 whitespace-nowrap">
-                        <span>
-                            {{ $bleep->created_at->diffForHumans(['short' => true]) }}
-                        </span>
+                    {{-- Timestamp - desktop only --}}
+                    <div class="text-xs text-gray-400 mt-1 whitespace-nowrap hidden md:block">
                         @if ($bleep->updated_at->gt($bleep->created_at->addSeconds(5)))
                             <span>
                                 edited {{ $bleep->updated_at->diffForHumans(['short' => true]) }}
+                            </span>
+                        @else
+                            <span>
+                                {{ $bleep->created_at->diffForHumans(['short' => true]) }}
                             </span>
                         @endif
                     </div>
@@ -556,21 +558,43 @@
     </div>
 
     {{-- views --}}
-    <div class="text-xs text-gray-400 mt-5 flex items-center justify-between min-h-5">
-        <span class="text-xs">
-            {{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y \| g:i:s A') }}
-        </span>
-        <div class="flex items-center gap-1 text-base-content/60 text-xs">
-            <span class="view-count">
-                @if($bleep->views >= 1000000)
-                    {{ number_format($bleep->views / 1000000, 1) }}M
-                @elseif($bleep->views >= 1000)
-                    {{ number_format($bleep->views / 1000, 1) }}k
+    <div class="text-xs text-gray-400 flex items-center justify-between min-h-5 min-w-0">
+        <time datetime="{{ $bleep->created_at->toIso8601String() }}" class="text-xs min-w-0 truncate" title="{{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y | g:i:s A') }}" aria-label="Posted {{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y | g:i:s A') }}">
+            {{-- Short relative time on small screens, full absolute time on sm+ --}}
+            <span>{{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y | g:i:s A') }}</span>
+        </time>
+
+        <div class="flex items-center gap-1">
+
+            {{-- Timestamp - mobile only --}}
+            <div class="text-xs text-gray-400 whitespace-nowrap block md:hidden">
+                @if ($bleep->updated_at->gt($bleep->created_at->addSeconds(5)))
+                    <span>
+                        edited {{ $bleep->updated_at->diffForHumans(['short' => true]) }}
+                    </span>
                 @else
-                    {{ $bleep->views }}
+                    <span>
+                        {{ $bleep->created_at->diffForHumans(['short' => true]) }}
+                    </span>
                 @endif
-            </span>
-            <i data-lucide="eye" class="w-4 h-4"></i>
+            </div>
+
+            {{-- dot divider --}}
+            <span class="text-base-content mx-1 inline sm:hidden">•</span>
+
+            {{-- views --}}
+            <div class="flex items-center gap-1 text-base-content/60 text-xs shrink-0">
+                <span class="view-count">
+                    @if($bleep->views >= 1000000)
+                        {{ number_format($bleep->views / 1000000, 1) }}M
+                    @elseif($bleep->views >= 1000)
+                        {{ number_format($bleep->views / 1000, 1) }}k
+                    @else
+                        {{ $bleep->views }}
+                    @endif
+                </span>
+                <i data-lucide="eye" class="w-4 h-4"></i>
+            </div>
         </div>
     </div>
 

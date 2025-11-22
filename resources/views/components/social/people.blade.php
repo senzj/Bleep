@@ -22,11 +22,16 @@
             {{-- User suggestions --}}
             <div id="user-suggestions" class="space-y-4">
                 @forelse($suggestedUsers as $user)
-                    <div class="user-item flex items-center space-x-4 w-full min-w-0" data-username="{{ $user->username }}" data-display-name="{{ $user->dname }}" data-is-mutual="{{ isset($user->is_mutual) && $user->is_mutual ? '1' : '0' }}">
+                    <div
+                        class="user-item flex items-center gap-4 w-full min-w-0 flex-wrap"
+                        data-username="{{ $user->username }}"
+                        data-display-name="{{ $user->dname }}"
+                        data-is-mutual="{{ isset($user->is_mutual) && $user->is_mutual ? '1' : '0' }}"
+                    >
                         <img src="{{ $user->profile_picture_url }}" alt="{{ $user->dname }}'s Avatar" class="w-12 h-12 rounded-full shrink-0">
 
                         <div class="flex-1 min-w-0">
-                            <p class="font-semibold truncate flex items-center">
+                            <p class="font-semibold truncate flex items-center gap-2">
                                 <span class="truncate">{{ $user->dname }}</span>
                                 @if(isset($user->is_mutual) && $user->is_mutual)
                                     <span class="ml-2 badge badge-sm badge-outline shrink-0">Mutual</span>
@@ -35,10 +40,12 @@
                             <p class="text-sm text-base-content/60 truncate">{{ "@" . $user->username }}</p>
                         </div>
 
-                        <button class="follow-btn btn btn-sm btn-primary shrink-0" data-user-id="{{ $user->id }}" data-following="false" aria-pressed="false">
-                            <i data-lucide="user-plus" class="w-4 h-4 mr-1"></i>
-                            <span class="btn-label">Follow</span>
-                        </button>
+                        <div class="shrink-0">
+                            <button class="follow-btn btn btn-sm btn-primary" data-user-id="{{ $user->id }}" data-following="false" aria-pressed="false" aria-label="Follow {{ $user->dname }}">
+                                <i data-lucide="user-plus" class="w-4 h-4 mr-1"></i>
+                                <span class="btn-label">Follow</span>
+                            </button>
+                        </div>
                     </div>
                 @empty
                     <div class="text-center text-base-content/60">
