@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\Register;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BleepController;
+use App\Http\Controllers\SocialController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\FollowingController;
@@ -119,6 +120,11 @@ Route::middleware('auth')->group((function () {
 
     // Follow/Unfollow Routes
     Route::post('/bleeper/{user}/follow', [FollowingController::class, 'toggle']);
+
+    // Socials Routes
+    // Search users for people suggestions
+    Route::get('/api/users/search', [SocialController::class, 'searchUsers'])
+        ->name('api.users.search');
 
     // Settings Routes
     Route::get('/settings', fn () => redirect()->route('settings.profile'))

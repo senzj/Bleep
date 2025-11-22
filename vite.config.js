@@ -34,6 +34,7 @@ export default defineConfig({
                 'resources/js/profile/profile-crop.js',
                 'resources/js/settings/password.js',
                 'resources/js/settings/device.js',
+                'resources/js/social/people.js',
             ],
             refresh: true,
         }),

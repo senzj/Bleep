@@ -14,7 +14,8 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {{-- Left panel --}}
         <div class="hidden lg:block lg:col-span-3" id="left-panel">
-            {{-- Online mutuals --}}
+                {{-- Server Announcement --}}
+                <x-announcement.system />
         </div>
 
         {{-- Center panel --}}
@@ -157,12 +158,7 @@
 
         {{-- Right panel --}}
         <div class="hidden lg:block lg:col-span-3" id="right-panel">
-            {{-- hosting limitations announcement --}}
-            <div class="alert alert-warning ml-5">
-                <i data-lucide="alert-triangle" class="h-6 w-6 shrink-0 stroke-current"></i>
-                <span>There may be some features unavailable due to hosting limitations.</span>
-            </div>
-            {{-- Suggested to follow (friend's following) --}}
+            <x-social.people />
         </div>
     </div>
 
