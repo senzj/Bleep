@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper diff
 
       # ---------- PHP ----------
       - name: Setup PHP
@@ -34,21 +36,7 @@ jobs:
         run: |
           npm ci
           npm run build
-      # ---------- Prepare Deployment ----------
-      - name: Prepare deployment package
-        run: |
-          # Create .env file
-          cp .env.example .env
-          # Generate key
-          php artisan key:generate
-          # create a storage folder in public
-          mkdir -p public/storage
-          php artisan storage:link
-          # Clean up dev files
-          rm -rf node_modules
-          rm -rf tests
-          # It's okay to clean logs
-          rm -rf storage/logs/*.log
+
       # ---------- FTP Upload ----------
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.0
@@ -58,6 +46,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: /htdocs/
           local-dir: ./
+          state-name: .ftp-deploy-sync-state.json
           exclude: |
             **/.git*
             **/.github/**
@@ -65,4 +54,5 @@ jobs:
             **/tests/**
             **/storage/logs/**
             **/storage/framework/cache/**
+            **/.ftp-deploy-sync-state.json
           log-level: standard
