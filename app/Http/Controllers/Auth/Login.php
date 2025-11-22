@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers\Auth;
 
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
+
 use App\Models\RememberedDevice;
+use App\Models\Logs;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
-use App\Models\Logs; // added
 
 class Login extends Controller
 {

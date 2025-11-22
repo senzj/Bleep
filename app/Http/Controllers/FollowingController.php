@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Following;
 use App\Models\User;
+
 use Illuminate\Http\Request;
 
 class FollowingController extends Controller

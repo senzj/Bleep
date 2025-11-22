@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Bleep;
 
-use App\Models\Bleep;
 use App\Http\Controllers\Controller;
+
+use App\Models\Bleep;
+
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 

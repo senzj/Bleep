@@ -5,6 +5,7 @@
     ])
 @endpush
 
+{{-- Crop modal --}}
 <input type="checkbox" id="cropper_modal" class="modal-toggle" />
 <div class="modal">
     <div class="modal-box p-0 bg-base-100 w-full max-w-sm sm:max-w-md md:max-w-lg rounded-2xl shadow-2xl overflow-hidden">

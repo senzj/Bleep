@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Throwable;
+use App\Models\Logs;
 use App\Models\User;
 use App\Models\Bleep;
 use App\Models\Likes;
@@ -9,18 +11,15 @@ use App\Models\Share;
 use App\Models\Repost;
 use App\Models\Reports;
 use App\Models\Comments;
-use Illuminate\Support\Carbon;
-use App\Helpers\UserAgentParser;
 use App\Models\RememberedDevice;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
+
 use Illuminate\Http\Request;
-use Carbon\CarbonPeriod;
-use Carbon\CarbonInterval;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Throwable;
-use App\Models\Logs; // added
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Carbon\CarbonInterval;
+use Carbon\CarbonPeriod;
 
 class AdminController extends Controller
 {
@@ -351,7 +350,7 @@ class AdminController extends Controller
     {
         $deleted = DB::table('sessions')->where('id', $sessionId)->delete();
         if ($deleted) {
-            Logs::record(auth()->id(), 'session_removed', ['session_id' => $sessionId, 'by_admin' => auth()->id()], $request);
+            Logs::record(Auth::id(), 'session_removed', ['session_id' => $sessionId, 'by_admin' => Auth::id()], $request);
             return response()->json(['message' => 'Session revoked.']);
         }
         return response()->json(['message' => 'Session not found.'], 404);
@@ -360,7 +359,7 @@ class AdminController extends Controller
     public function revokeDevice(Request $request, RememberedDevice $device)
     {
         $device->delete();
-        Logs::record(auth()->id(), 'device_removed', ['device_id' => $device->id, 'target_user' => $device->user_id], $request);
+        Logs::record(Auth::id(), 'device_removed', ['device_id' => $device->id, 'target_user' => $device->user_id], $request);
         return response()->json(['message' => 'Device removed.']);
     }
 

@@ -3,14 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bleep;
-use App\Models\BleepMedia;
 use App\Models\Repost;
-use App\Models\Logs; // added
+use App\Models\Logs;
+
+use App\Services\MediaUploadService;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage;
 
 class BleepController extends Controller
 {
@@ -54,7 +55,6 @@ class BleepController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            // either message or media is required
             'message' => 'nullable|string|max:255|required_without:media',
             'is_anonymous' => 'nullable|boolean',
             'is_nsfw' => 'nullable|boolean',
@@ -69,54 +69,21 @@ class BleepController extends Controller
         ]);
 
         $user = Auth::user();
-        $isAnonymous = $request->boolean('is_anonymous');
-        $isNsfw = $request->boolean('is_nsfw');
 
-        // Create the bleep first to get its ID
+        // Create the bleep
         $bleep = $user->bleeps()->create([
-            'message' => $validated['message'] ?? null,
-            'is_anonymous' => $isAnonymous,
-            'is_nsfw' => $isNsfw,
+            'is_nsfw' => $request->boolean('is_nsfw'),
+            'message' => $request->input('message'),
         ]);
 
-        // Handle media files (if any)
+        // Handle media uploads - SIMPLIFIED!
         if ($request->hasFile('media')) {
             foreach ($request->file('media') as $file) {
                 if (!$file->isValid()) continue;
 
-                $mime = $file->getClientMimeType() ?? '';
-                // enum-safe mapping: only 'image' or 'video'
-                $type = str_starts_with($mime, 'video/') ? 'video' : 'image';
-
-                $username = $user->username ?? 'user';
-                $originalNameNoExt = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-                $ext = strtolower($file->getClientOriginalExtension());
-
-                $fileName = sprintf(
-                    '%d_%s_%s.%s',
-                    $bleep->id,
-                    Str::slug($originalNameNoExt),
-                    Str::slug($user->username ?? 'op'),
-                    $ext
-                );
-
-                $dir = $username . '/bleeps/' . $type;
-                $storedPath = $file->storeAs($dir, $fileName, 'public'); // returns relative path
-
-                // persist media row
-                BleepMedia::create([
-                    'bleep_id' => $bleep->id,
-                    'path' => $storedPath,
-                    'type' => $type,
-                    'original_name' => $file->getClientOriginalName(),
-                    'mime_type' => $mime,
-                    'size' => $file->getSize(),
-                ]);
-
-                // keep first media in legacy column for backwards compatibility
-                if (!$bleep->media_path) {
-                    $bleep->update(['media_path' => $storedPath]);
-                }
+                $mediaData = MediaUploadService::saveBleepMedia($file, $user->username);
+                
+                $bleep->media()->create($mediaData);
             }
         }
 
@@ -195,13 +162,14 @@ class BleepController extends Controller
     {
         $this->authorize('delete', $bleep);
 
-        // Mark as deleted by author before soft deleting
         $bleep->update(['deleted_by_author' => true]);
 
-        // Soft delete will trigger cascade deletes in boot method
+        // Delete media files - SIMPLIFIED!
+        $mediaPaths = $bleep->media->pluck('path')->toArray();
+        MediaUploadService::deleteBleepMediaBatch($mediaPaths);
+
         $bleep->delete();
 
-        // Log deletion (informational)
         Logs::record($bleep->user_id, 'bleep_deleted', ['bleep_id' => $bleep->id, 'by_user' => Auth::id()], request());
 
         if (request()->ajax() || request()->wantsJson()) {

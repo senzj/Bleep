@@ -19,9 +19,6 @@
                         {{-- Hidden timezone field --}}
                         <input type="hidden" name="timezone" id="timezone" value="UTC">
 
-                        {{-- Hidden profile picture data --}}
-                        <input type="hidden" name="profile_picture" id="profile_picture_data" value="{{ old('profile_picture', '') }}">
-
                         {{-- User Profile Picture --}}
                         <div class="form-control mb-6">
                             <label class="label justify-center">
@@ -51,6 +48,7 @@
                                 </div>
                                 <input type="file"
                                     id="profile_picture_input"
+                                    name="profile_picture"
                                     class="hidden"
                                     accept="image/*">
 

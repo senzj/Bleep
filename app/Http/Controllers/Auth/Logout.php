@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Auth;
 
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str; // added for rotation
+
 use App\Models\RememberedDevice;
-use App\Models\Logs; // added
+use App\Models\Logs;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class Logout extends Controller
 {

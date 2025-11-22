@@ -2,17 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Logs;
+use App\Models\RememberedDevice;
+
+use App\Services\MediaUploadService;
+
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use App\Models\User;
-use App\Models\Session;
-use App\Models\Device;
-use App\Models\RememberedDevice;
-use App\Models\Logs; // added
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class SettingsController extends Controller
 {
@@ -28,27 +27,25 @@ class SettingsController extends Controller
 
     public function updateProfile(Request $request)
     {
-        $user = $request->user();
+        $user = Auth::user();
 
         $validated = $request->validate([
             'dname' => ['required', 'string', 'max:60'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'bio' => ['nullable', 'string', 'max:300'],
-            'profile_picture' => ['nullable', 'image', 'max:2048'],
+            'profile_picture' => ['nullable', 'image', 'mimes:png,jpg,jpeg,gif,webp', 'max:5120'],
         ]);
 
-        if ($request->hasFile('profile_picture')) {
-            // Delete old picture if exists
-            if ($user->profile_picture) {
-                Storage::disk('public')->delete($user->profile_picture);
-            }
-
-            $file = $request->file('profile_picture');
-            $path = $file->store('avatars', 'public');
-            $validated['profile_picture'] = $path;
+        // Handle profile picture upload - ONE LINE!
+        if ($request->hasFile('profile_picture') && $request->file('profile_picture')->isValid()) {
+            $validated['profile_picture'] = MediaUploadService::saveProfileImage(
+                $request->file('profile_picture'),
+                $user->username,
+                $user->profile_picture // Old path to delete
+            );
         }
 
-        // Update timezone if it has changed
+        // Update timezone if changed
         $detectedTimezone = $request->header('X-Timezone');
         if ($detectedTimezone && $user->timezone !== $detectedTimezone) {
             $validated['timezone'] = $detectedTimezone;

@@ -9,8 +9,6 @@
         @csrf
         @method('PUT')
 
-        <input type="hidden" name="profile_picture" id="profile_picture_data" value="{{ old('profile_picture', '') }}">
-
         <div class="md:col-span-2">
             @php
                 $hasAvatar = filled(Auth::user()->getOriginal('profile_picture'));
@@ -22,15 +20,9 @@
                 <div class="relative group cursor-pointer" onclick="document.getElementById('profile_picture_input').click()">
                     <div class="avatar shadow-lg rounded-full border border-base-200">
                         <div class="w-28 h-28 rounded-full ring ring-gray-400 transition-all relative overflow-hidden">
-                            <img
-                                id="profile_picture_preview"
-                                src="{{ $hasAvatar ? $avatarUrl : '' }}"
-                                alt="Profile Preview"
-                                class="w-full h-full rounded-full object-cover {{ $hasAvatar ? '' : 'hidden' }}" />
+                            <img id="profile_picture_preview" src="{{ $hasAvatar ? $avatarUrl : '' }}" alt="Profile Preview" class="w-full h-full rounded-full object-cover {{ $hasAvatar ? '' : 'hidden' }}" />
 
-                            <div
-                                id="default_avatar"
-                                class="items-center justify-center h-full w-full bg-base-300 rounded-full {{ $hasAvatar ? 'hidden' : 'flex' }}">
+                            <div id="default_avatar" class="items-center justify-center h-full w-full bg-base-300 rounded-full {{ $hasAvatar ? 'hidden' : 'flex' }}">
                                 <i data-lucide="user" class="w-14 h-14 text-base-content/50"></i>
                             </div>
                         </div>
@@ -42,7 +34,7 @@
 
                 <div class="text-center">
                     <label class="block text-sm font-medium mb-2">Profile Picture</label>
-                    <input id="profile_picture_input" type="file" accept="image/*" class="hidden" />
+                    <input id="profile_picture_input" type="file" name="profile_picture" accept="image/*" class="hidden" />
                     <div class="flex flex-wrap justify-center gap-2 mb-2">
                         <button type="button"
                                 class="btn btn-sm btn-outline btn-primary"
@@ -64,7 +56,7 @@
 
             {{-- Desktop: Row layout with avatar on left --}}
             <div class="hidden md:flex items-center gap-4">
-                <div class="relative group cursor-pointer flex-shrink-0" onclick="document.getElementById('profile_picture_input').click()">
+                <div class="relative group cursor-pointer shrink-0" onclick="document.getElementById('profile_picture_input').click()">
                     <div class="avatar shadow-lg rounded-full border border-base-200">
                         <div class="w-28 h-28 rounded-full ring ring-gray-400 transition-all relative overflow-hidden">
                             <img
