@@ -1,168 +1,110 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const searchInput = document.getElementById('user-search-input');
-    const suggestionsContainer = document.getElementById('user-suggestions');
-    const noResultsMessage = document.getElementById('no-results-message');
-    const loadingSpinner = document.createElement('div'); // Create spinner element
-    loadingSpinner.className = 'text-center py-4';
-    loadingSpinner.innerHTML = '<span class="loading loading-spinner loading-md"></span> Loading...';
 
-    let debounceTimer;
-    let isInitialLoad = true; // Flag to avoid replacing server-rendered content initially
+    // Safe CSRF token read (still useful for other requests)
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const CSRF_TOKEN = csrfMeta ? csrfMeta.getAttribute('content') : '';
+    if (!CSRF_TOKEN) {
+        console.warn('CSRF token meta not found — follow requests may fail.');
+    }
 
-    // Function to load suggestions
-    async function loadSuggestions(query = '') {
-        // Show spinner
-        suggestionsContainer.innerHTML = '';
-        suggestionsContainer.appendChild(loadingSpinner);
+    // Initialize each people component instance on the page
+    document.querySelectorAll('.people-component').forEach((root) => {
+        const searchInput = root.querySelector('.people-search-input');
+        const suggestionsContainer = root.querySelector('.people-user-suggestions');
+        const noResultsMessage = root.querySelector('.people-no-results-message');
+        let searchTimeout = null;
 
-        try {
-            const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`, {
-                method: 'GET',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                },
-            });
+        // Fetch and display users based on search query
+        async function fetchUsers(query = '') {
+            try {
+                const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
 
-            if (response.ok) {
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
                 const users = await response.json();
-                updateSuggestions(users, query);
-                isInitialLoad = false; // After first load, allow replacements
-            } else {
-                console.error('Load suggestions failed');
-                suggestionsContainer.innerHTML = '<p class="text-center text-base-content/60">Error loading suggestions.</p>';
+                displayUsers(users);
+            } catch (error) {
+                console.error('Search error:', error);
+                if (noResultsMessage) noResultsMessage.classList.remove('hidden');
+                if (suggestionsContainer) suggestionsContainer.innerHTML = '<div class="text-center text-error p-4">Error loading users.</div>';
             }
-        } catch (error) {
-            console.error('Load suggestions error:', error);
-            suggestionsContainer.innerHTML = '<p class="text-center text-base-content/60">Error loading suggestions.</p>';
         }
-    }
 
-    // Only load on search; keep server-rendered initial
-    searchInput.addEventListener('input', () => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            const query = searchInput.value.trim();
-            loadSuggestions(query);
-        }, 150); // Reduced to 150ms for less lag
-    });
-
-    // Update suggestions list with DocumentFragment for speed
-    function updateSuggestions(users, query) {
-        const fragment = document.createDocumentFragment();
-
-        if (users.length === 0) {
-            if (query) {
-                noResultsMessage.classList.remove('hidden');
-            } else {
-                // keep a friendly message when no server suggestions are available
-                const p = document.createElement('p');
-                p.className = 'text-center text-base-content/60';
-                p.textContent = "Looks like you're on your own buddy..";
-                fragment.appendChild(p);
-                noResultsMessage.classList.add('hidden');
+        // Display users in the suggestions container
+        // NOTE: follow button markup is intentionally compatible with resources/js/bleep/users/follow.js
+        function displayUsers(users) {
+            if (!suggestionsContainer) return;
+            if (users.length === 0) {
+                suggestionsContainer.innerHTML = '';
+                if (noResultsMessage) noResultsMessage.classList.remove('hidden');
+                return;
             }
-        } else {
-            noResultsMessage.classList.add('hidden');
-            users.forEach(user => {
-                const item = document.createElement('div');
-                item.className = 'user-item flex items-center space-x-4 w-full min-w-0';
-                if (query) item.classList.add('searched');
 
-                // include mutual badge if flagged from server
-                const mutualBadge = user.is_mutual ? `<span class="ml-2 badge badge-sm badge-outline shrink-0">Mutual</span>` : '';
+            if (noResultsMessage) noResultsMessage.classList.add('hidden');
 
-                item.innerHTML = `
-                    <img src="${user.profile_picture_url}" alt="${escapeHtml(user.dname)}'s Avatar" class="w-12 h-12 rounded-full shrink-0">
+            suggestionsContainer.innerHTML = users.map(user => `
+                <div class="user-item flex items-center gap-4 w-full min-w-0 flex-wrap"
+                     data-user-id="${user.id}"
+                     data-username="${user.username}"
+                     data-display-name="${user.dname}"
+                     data-is-mutual="${user.is_mutual ? '1' : '0'}">
+                    <a href="/bleeper/${user.username}" class="shrink-0">
+                        <img src="${user.profile_picture_url}" 
+                             alt="${user.dname}'s Avatar" 
+                             class="w-12 h-12 rounded-full hover:ring-2 hover:ring-primary transition-all">
+                    </a>
+
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold truncate flex items-center">
-                            <span class="truncate">${escapeHtml(user.dname)}</span>
-                            ${mutualBadge}
-                        </p>
-                        <p class="text-sm text-base-content/60 truncate">@${escapeHtml(user.username)}</p>
+                        <a href="/bleeper/${user.username}" class="block hover:text-primary transition-colors">
+                            <p class="font-semibold truncate flex items-center gap-2">
+                                <span class="truncate">${user.dname}</span>
+                                ${user.is_mutual ? '<span class="ml-2 badge badge-sm badge-outline shrink-0">Mutual</span>' : ''}
+                            </p>
+                            <p class="text-sm text-base-content/60 truncate">@${user.username}</p>
+                        </a>
                     </div>
-                    <button class="follow-btn btn btn-sm btn-primary shrink-0" data-user-id="${user.id}" data-following="false" aria-pressed="false">
-                        <i data-lucide="user-plus" class="w-4 h-4 mr-1"></i>
-                        <span class="btn-label">Follow</span>
-                    </button>
-                `;
-                fragment.appendChild(item);
-            });
-        }
 
-        suggestionsContainer.innerHTML = '';
-        suggestionsContainer.appendChild(fragment);
+                    <div class="shrink-0">
+                        <!-- Markup matches bleep/users/follow.js expectations -->
+                        <button type="button"
+                                class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn rounded-full px-2.5 py-1 transition-all duration-200 ease-out mt-2
+                                    ${user.is_following ? 'bg-blue-100 text-blue-700 shadow-sm hover:bg-red-100 hover:text-red-600' : 'bg-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600 shadow-sm'}"
+                                data-user-id="${user.id}"
+                                data-following="${user.is_following ? '1' : '0'}"
+                        >
+                            <i data-lucide="${user.is_following ? 'user-round-check' : 'user-round-plus'}" class="w-4 h-4 transition-transform duration-200 group-hover:scale-110 follow-icon"></i>
+                            <span class="follow-text">${user.is_following ? 'Following' : 'Follow'}</span>
+                            <span class="unfollow-text hidden">Unfollow</span>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
 
-        // Re-render lucide icons after dynamic insertions (support different lucide API names)
-        if (window.lucide) {
-            if (typeof window.lucide.replace === 'function') {
-                try { window.lucide.replace(); } catch (e) { /* ignore */ }
-            } else if (typeof window.lucide.createIcons === 'function') {
-                try { window.lucide.createIcons(); } catch (e) { /* ignore */ }
+            // Reinitialize Lucide icons
+            if (window.lucide) {
+                window.lucide.createIcons();
             }
         }
 
-        // mark that we replaced server-rendered content
-        isInitialLoad = false;
-    }
+        // Search with debounce
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                const query = e.target.value.trim();
 
-    // Utility: escape text to avoid injection when injecting via innerHTML
-    function escapeHtml(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    }
-
-    // Follow/unfollow functionality (unchanged)
-    suggestionsContainer.addEventListener('click', async (e) => {
-        const btn = e.target.closest('.follow-btn');
-        if (!btn) return;
-
-        const userId = btn.dataset.userId;
-        const isFollowing = btn.dataset.following === 'true';
-
-        try {
-            const response = await fetch(`/bleeper/${userId}/follow`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                },
-                body: JSON.stringify({}),
+                searchTimeout = setTimeout(() => {
+                    fetchUsers(query);
+                }, 300);
             });
 
-            if (response.ok) {
-                const result = await response.json();
-                if (result.following) {
-                    btn.innerHTML = '<i data-lucide="user-minus" class="w-4 h-4 mr-1"></i><span class="btn-label">Unfollow</span>';
-                    btn.classList.remove('btn-primary');
-                    btn.classList.add('btn-secondary');
-                    btn.dataset.following = 'true';
-                    btn.setAttribute('aria-pressed', 'true');
-                } else {
-                    btn.innerHTML = '<i data-lucide="user-plus" class="w-4 h-4 mr-1"></i><span class="btn-label">Follow</span>';
-                    btn.classList.remove('btn-secondary');
-                    btn.classList.add('btn-primary');
-                    btn.dataset.following = 'false';
-                    btn.setAttribute('aria-pressed', 'false');
-                }
-
-                // Re-render lucide icons within the updated button
-                if (window.lucide) {
-                    if (typeof window.lucide.replace === 'function') {
-                        try { window.lucide.replace(); } catch (e) { /* ignore */ }
-                    } else if (typeof window.lucide.createIcons === 'function') {
-                        try { window.lucide.createIcons(); } catch (e) { /* ignore */ }
-                    }
-                }
-            } else {
-                alert('Failed to toggle follow. Please try again.');
-            }
-        } catch (error) {
-            console.error('Follow error:', error);
-            alert('An error occurred. Please try again.');
+            // optional: run initial fetch to refresh server-side rendered suggestions
+            fetchUsers('');
         }
     });
+
 });

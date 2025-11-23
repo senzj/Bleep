@@ -19,6 +19,8 @@ use App\Http\Controllers\Users\ProfileController;
 use App\Http\Controllers\Bleep\CommentsController;
 use App\Http\Controllers\RememberedDeviceController;
 
+use App\Http\Controllers\Api\Auth\ValidationController;
+
 // REGISTER
 Route::view('/register', 'auth.register')
     ->middleware('guest')
@@ -215,3 +217,21 @@ Route::middleware(['auth'])->group(function () {
         ->name('settings.devices.destroy');
 });
 
+
+
+/*
+|--------------------------------------------------------------------------
+| API Routes for Validation
+|--------------------------------------------------------------------------
+*/
+
+// REGISTRATION Routes
+// Check username availability
+Route::post('/check-username', [ValidationController::class, 'checkUsername'])
+    ->middleware(['throttle:60,1', 'guest'])
+    ->name('check.username');
+
+// Check email availability
+Route::post('/check-email', [ValidationController::class, 'checkEmail'])
+    ->middleware(['throttle:60,1', 'guest'])
+    ->name('check.email');
