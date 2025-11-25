@@ -164,8 +164,7 @@
                         @php
                             $isFollowing = Auth::user()->isFollowing($bleep->user);
                         @endphp
-                        <button type="button" data-user-id="{{ $bleep->user->id }}" data-following="{{ $isFollowing ? '1' : '0' }}"
-                            class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn rounded-full px-2.5 py-1 transition-all duration-200 ease-out mt-2
+                        <button type="button" data-user-id="{{ $bleep->user->id }}" data-following="{{ $isFollowing ? '1' : '0' }}" class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn rounded-full px-3 py-1 transition-all duration-200 ease-out mt-2
                                 {{ $isFollowing ? 'bg-blue-100 text-blue-700 shadow-sm hover:bg-red-100 hover:text-red-600' : 'bg-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600 shadow-sm' }}">
                             <i data-lucide="{{ $isFollowing ? 'user-round-check' : 'user-round-plus' }}" class="w-4 h-4 transition-transform duration-200 group-hover:scale-110 follow-icon"></i>
                             <span class="follow-text">{{ $isFollowing ? 'Following' : 'Follow' }}</span>

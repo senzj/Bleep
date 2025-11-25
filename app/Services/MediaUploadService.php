@@ -10,7 +10,7 @@ class MediaUploadService
 {
     /**
      * Save a profile picture for a user
-     * 
+     *
      * @param UploadedFile $file
      * @param string $username
      * @param string|null $oldPath Path to delete if exists
@@ -25,14 +25,14 @@ class MediaUploadService
 
         // Generate filename: username_profile_timestamp.ext
         $filename = "{$username}_profile_" . time() . '.' . $file->extension();
-        
+
         // Store in: {username}/profile/{filename}
         return $file->storeAs("{$username}/profile", $filename, 'public');
     }
 
     /**
      * Delete a profile picture from storage
-     * 
+     *
      * @param string|null $path
      * @return bool
      */
@@ -47,7 +47,7 @@ class MediaUploadService
 
     /**
      * Save a bleep media file (image or video)
-     * 
+     *
      * @param UploadedFile $file
      * @param string $username
      * @return array ['path' => string, 'type' => string, 'mime' => string]
@@ -55,24 +55,29 @@ class MediaUploadService
     public static function saveBleepMedia(UploadedFile $file, string $username): array
     {
         $mime = $file->getMimeType();
-        $type = Str::startsWith($mime, 'video/') ? 'videos' : 'images';
-        
+        // Normalize type to match DB enum ('image' or 'video')
+        $type = (str_starts_with($mime, 'image/')) ? 'image' :
+                ((str_starts_with($mime, 'video/')) ? 'video' : 'file');
+
         // Generate filename: timestamp_random.ext
         $filename = time() . '_' . Str::random(8) . '.' . $file->extension();
-        
+
         // Store in: {username}/bleeps/{type}/{filename}
         $path = $file->storeAs("{$username}/bleeps/{$type}", $filename, 'public');
 
-        return [
+        // build $mediaData (ensure 'type' uses normalized value)
+        $mediaData = [
             'path' => $path,
             'type' => $type,
             'mime' => $mime,
         ];
+
+        return $mediaData;
     }
 
     /**
      * Delete a bleep media file from storage
-     * 
+     *
      * @param string|null $path
      * @return bool
      */
@@ -87,14 +92,14 @@ class MediaUploadService
 
     /**
      * Delete multiple bleep media files
-     * 
+     *
      * @param array $paths Array of file paths
      * @return int Number of files deleted
      */
     public static function deleteBleepMediaBatch(array $paths): int
     {
         $deleted = 0;
-        
+
         foreach ($paths as $path) {
             if (self::deleteBleepMedia($path)) {
                 $deleted++;
