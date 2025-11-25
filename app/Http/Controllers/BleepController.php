@@ -10,6 +10,7 @@ use App\Services\MediaUploadService;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
@@ -278,8 +279,10 @@ class BleepController extends Controller
             // Bulk insert new views
             \App\Models\BleepViews::insert($viewsData);
 
-            // Increment view counters
-            Bleep::whereIn('id', $newViewBleepIds)->increment('views');
+            // Increment view counters WITHOUT updating updated_at
+            DB::table((new Bleep())->getTable())
+                ->whereIn('id', $newViewBleepIds)
+                ->update(['views' => DB::raw('COALESCE(views,0) + 1')]);
         }
     }
 

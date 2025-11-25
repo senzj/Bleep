@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class Bleep extends Model
 {
@@ -99,7 +100,13 @@ class Bleep extends Model
 
         // Only increment counter if a new view was created (not a duplicate)
         if ($created->wasRecentlyCreated) {
-            $this->increment('views');
+            // Increment views column without touching updated_at
+            DB::table($this->getTable())
+                ->where('id', $this->id)
+                ->update(['views' => DB::raw('COALESCE(views,0) + 1')]);
+
+            // Refresh model to pick up latest views value (updated_at remains unchanged)
+            $this->refresh();
         }
     }
 
