@@ -102,6 +102,64 @@ document.addEventListener('click', (e) => {
                 if (window.createLucideIcons) window.createLucideIcons();
             }
 
+            // --- NEW: update role badge + verified icon near the display name ---
+            (function updateRoleAndVerified() {
+                const displayNameEl = document.querySelector(`.bleep-display-name[data-bleep-id="${b.id}"]`);
+                if (!displayNameEl) return;
+
+                // the container that holds name + badges in blade has classes "font-semibold ... flex items-center gap-1.5"
+                const nameContainer = displayNameEl.closest('.font-semibold');
+                if (!nameContainer) return;
+
+                // Remove any existing role badges or verified icons (server-rendered or client-added)
+                // remove server-rendered badge spans (ADMIN, MOD, other role text)
+                nameContainer.querySelectorAll('span, i[data-lucide="badge-check"]').forEach(el => {
+                    if (el.tagName.toLowerCase() === 'i' && el.getAttribute('data-lucide') === 'badge-check') {
+                        el.remove();
+                        return;
+                    }
+                    if (el.tagName.toLowerCase() === 'span') {
+                        const txt = (el.textContent || '').trim().toUpperCase();
+                        if (txt === 'ADMIN' || txt === 'MOD' || txt === '') {
+                            el.remove();
+                        }
+                    }
+                });
+
+                // Also remove any previously inserted role-badge / verified-icon to be safe
+                nameContainer.querySelectorAll('.role-badge, .verified-icon').forEach(el => el.remove());
+
+                if (!b.is_anonymous && b.user_role) {
+                    const role = b.user_role;
+                    let span = document.createElement('span');
+
+                    // use same styling as Blade so DOM stays consistent
+                    if (role === 'admin') {
+                        span.className = 'px-1 py-0.5 text-[10px] font-extrabold rounded bg-blue-500/20 text-blue-500 border border-blue-600/20 role-badge';
+                        span.textContent = 'ADMIN';
+                    } else if (role === 'moderator') {
+                        span.className = 'px-1 py-0.5 text-[10px] font-extrabold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-600/20 role-badge';
+                        span.textContent = 'MOD';
+                    } else {
+                        span.className = 'px-1 py-0.5 text-[10px] font-extrabold rounded bg-gray-200 text-gray-700 role-badge';
+                        span.textContent = role.toUpperCase();
+                    }
+
+                    // insert after the displayName element
+                    displayNameEl.insertAdjacentElement('afterend', span);
+                }
+
+                if (!b.is_anonymous && b.user_is_verified) {
+                    const i = document.createElement('i');
+                    i.setAttribute('data-lucide', 'badge-check');
+                    i.className = 'verified-icon w-4 h-4 text-blue-500';
+                    // append after any role badge (if present) or after displayName
+                    const afterEl = nameContainer.querySelector('.role-badge') || displayNameEl;
+                    afterEl.insertAdjacentElement('afterend', i);
+                    if (window.createLucideIcons) window.createLucideIcons();
+                }
+            })();
+
             // Toggle header link wrapper to match anonymity
             updateBleepIdentityWrapper(b.id, !!b.is_anonymous, b.username);
 

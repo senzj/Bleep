@@ -82,7 +82,7 @@ class BleepController extends Controller
                 if (!$file->isValid()) continue;
 
                 $mediaData = MediaUploadService::saveBleepMedia($file, $user->username);
-                
+
                 $bleep->media()->create($mediaData);
             }
         }
@@ -148,6 +148,10 @@ class BleepController extends Controller
                     'username' => $username,
                     'avatar_url' => $avatarUrl,
                     'updated_at_iso' => optional($bleep->updated_at)->toIso8601String(),
+
+                    // NEW: expose minimal user metadata so client can render badges/icons
+                    'user_role' => $bleep->is_anonymous ? null : ($bleep->user->role ?? null),
+                    'user_is_verified' => $bleep->is_anonymous ? false : (bool) ($bleep->user->is_verified ?? false),
                 ],
             ]);
         }

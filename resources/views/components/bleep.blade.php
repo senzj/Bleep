@@ -99,8 +99,9 @@
     <div class="flex gap-3 mb-4">
         <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between gap-2">
+
                 {{-- Right --}}
-                <div class="flex items-start gap-1.5">
+                <div class="flex items-start gap-3">
 
                     {{-- User Name Display --}}
                     @if($isAnonymous)
@@ -111,66 +112,92 @@
                                 </div>
                             </div>
                             <div class="min-w-0">
-                                <div class="font-semibold text-base-content">
-                                    <span class="text-sm truncate bleep-display-name" data-bleep-id="{{ $bleep->id }}">{{ $displayName }}</span>
+                                <div class="font-semibold text-base-content flex items-center gap-1.5">
+                                    <span class="text-sm truncate bleep-display-name" data-bleep-id="{{ $bleep->id }}">
+                                        {{ $displayName }}
+                                    </span>
+
+                                    {{-- Role Tag moved beside name using only spacing --}}
+                                    @if (! $isAnonymous && $bleep->user && $bleep->user->role === 'moderator')
+                                        <span class="px-1 py-0.5 text-xs font-extrabold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-600/20">
+                                            MOD
+                                        </span>
+                                    @endif
+
+                                    @if (! $isAnonymous && $bleep->user && $bleep->user->is_verified)
+                                        <i data-lucide="badge-check" class="w-4 h-4 text-blue-500"></i>
+                                    @endif
                                 </div>
-                                <div class="text-base-content/60 text-xs">
+
+                                <div class="text-base-content/60 text-xs mt-0.5">
                                     <span class="truncate bleep-username" data-bleep-id="{{ $bleep->id }}">@anonymous</span>
                                 </div>
                             </div>
                         </div>
+
                     @else
-                        <a href="{{ route('user.profile', ['username' => $bleep->user->username]) }}" class="group flex items-start gap-3">
+                        <a href="{{ route('user.profile', ['username' => $bleep->user->username]) }}"
+                        class="group flex items-start gap-3">
+
                             <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
                                 <x-subcomponents.avatar :user="$bleep->user" :size="12" />
                             </div>
+
                             <div class="min-w-0">
-                                <div class="font-semibold text-base-content">
-                                    <span class="text-sm truncate bleep-display-name group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ $displayName }}</span>
+                                <div class="font-semibold text-base-content flex items-center gap-1.5">
+                                    <span class="text-sm truncate bleep-display-name group-hover:underline" data-bleep-id="{{ $bleep->id }}">
+                                        {{ $displayName }}
+                                    </span>
+
+                                    {{-- Role Tag beside name --}}
+                                    @if ($bleep->user->role === 'admin')
+                                        <span class="px-1 py-0.5 text-[10px] font-extrabold rounded bg-blue-500/20 text-blue-500 border border-blue-600/20">
+                                            ADMIN
+                                        </span>
+                                    @elseif ($bleep->user->role === 'moderator')
+                                        <span class="px-1 py-0.5 text-[10px] font-extrabold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-600/20">
+                                            MOD
+                                        </span>
+                                    @endif
+
+                                    {{-- Verified --}}
+                                    @if ($bleep->user->is_verified)
+                                        <i data-lucide="badge-check" class="w-4 h-4 text-blue-500"></i>
+                                    @endif
                                 </div>
-                                <div class="text-base-content/60 text-xs">
-                                    <span class="truncate bleep-username group-hover:underline" data-bleep-id="{{ $bleep->id }}">{{ '@' . $bleep->user->username }}</span>
+
+                                <div class="text-base-content/60 text-xs mt-0.5">
+                                    <span class="truncate bleep-username group-hover:underline" data-bleep-id="{{ $bleep->id }}">
+                                        {{ '@' . $bleep->user->username }}
+                                    </span>
                                 </div>
+
                             </div>
                         </a>
                     @endif
 
-                    {{-- Verified badge --}}
-                    @if (! $isAnonymous && $bleep->user)
-                        @if ($bleep->user->is_verified)
-                            <div class="flex items-center mt-0.5">
-                                <i data-lucide="badge-check" class="w-5 h-5 text-blue-500" title="Verified User"></i>
-                            </div>
-                        @endif
-                    @endif
-
-                    {{-- User Role Tag --}}
-                    @if (! $isAnonymous && $bleep->user)
-                        <div class="flex items-center mt-0.5">
-                            @if ($bleep->user->role === 'admin')
-                                <span class="px-1 py-0.5 text-xs font-extrabold rounded bg-blue-500/20 text-blue-500 border border-blue-600/20 ml-2">
-                                    ADMIN
-                                </span>
-                            @elseif ($bleep->user->role === 'moderator')
-                                <span class="px-1 py-0.5 text-xs font-extrabold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-600/20 ml-2">
-                                    MOD
-                                </span>
-                            @endif
-                        </div>
-                    @endif
-
-                    {{-- Follow/Unfollow Button --}}
+                    {{-- Follow Button --}}
                     @if (! $isAnonymous && $bleep->user && Auth::check() && Auth::id() !== $bleep->user->id)
-                        @php
-                            $isFollowing = Auth::user()->isFollowing($bleep->user);
-                        @endphp
-                        <button type="button" data-user-id="{{ $bleep->user->id }}" data-following="{{ $isFollowing ? '1' : '0' }}" class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn rounded-full px-3 py-1 transition-all duration-200 ease-out mt-2
-                                {{ $isFollowing ? 'bg-blue-100 text-blue-700 shadow-sm hover:bg-red-100 hover:text-red-600' : 'bg-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600 shadow-sm' }}">
-                            <i data-lucide="{{ $isFollowing ? 'user-round-check' : 'user-round-plus' }}" class="w-4 h-4 transition-transform duration-200 group-hover:scale-110 follow-icon"></i>
+                        @php $isFollowing = Auth::user()->isFollowing($bleep->user); @endphp
+
+                        <button type="button"
+                            data-user-id="{{ $bleep->user->id }}"
+                            data-following="{{ $isFollowing ? '1' : '0' }}"
+                            class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn
+                                rounded-full px-3 py-1.5 mt-1 transition-all duration-200 shadow-sm
+                                {{ $isFollowing
+                                        ? 'bg-blue-100 text-blue-700 hover:bg-red-100 hover:text-red-600'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600' }}">
+
+                            <i data-lucide="{{ $isFollowing ? 'user-round-check' : 'user-round-plus' }}"
+                            class="w-4 h-4 transition-transform group-hover:scale-110"></i>
+
                             <span class="follow-text">{{ $isFollowing ? 'Following' : 'Follow' }}</span>
                             <span class="unfollow-text hidden">Unfollow</span>
+
                         </button>
                     @endif
+
                 </div>
 
                 {{-- Left --}}
@@ -233,6 +260,7 @@
                         </ul>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
@@ -708,3 +736,5 @@
         @endif
     @endpush
 @endonce
+
+{{-- Anonymity & content update is live updated via resources/js/bleep/modals/posts/edit.js --}}
