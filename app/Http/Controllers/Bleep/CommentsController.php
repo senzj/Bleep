@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 
 use App\Models\Bleep;
 use App\Models\Comments;
+use App\Services\MediaUploadService;
 
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -50,14 +51,20 @@ class CommentsController extends Controller
             ], 422);
         }
 
-        $mediaPath = $request->hasFile('media')
-            ? $request->file('media')->store('comments/media', 'public')
-            : null;
+        $mediaMeta = null;
+        if ($request->hasFile('media')) {
+            $mediaMeta = MediaUploadService::saveCommentMedia(
+                $request->file('media'),
+                Auth::user()->username
+            );
+        }
 
         $comment = $bleep->comments()->create([
             'user_id'      => Auth::id(),
             'message'      => $validated['message'],
-            'media_path'   => $mediaPath,
+            'media_path'   => $mediaMeta['path'] ?? null,
+            'media_type'   => $mediaMeta['type'] ?? null,
+            'media_mime'   => $mediaMeta['mime'] ?? null,
             'is_anonymous' => $request->boolean('is_anonymous'),
         ])->load(['user', 'likes']);
 

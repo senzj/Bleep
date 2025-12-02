@@ -108,4 +108,31 @@ class MediaUploadService
 
         return $deleted;
     }
+
+    /**
+     * Save a comment media file (image, video, or audio)
+     *
+     * @param UploadedFile $file
+     * @param string $username
+     * @return array ['path' => string, 'type' => string, 'mime' => string]
+     */
+    public static function saveCommentMedia(UploadedFile $file, string $username): array
+    {
+        $mime = $file->getMimeType();
+        $type = str_starts_with($mime, 'image/')
+            ? 'image'
+            : (str_starts_with($mime, 'video/')
+                ? 'video'
+                : (str_starts_with($mime, 'audio/') ? 'audio' : 'file'));
+
+        $filename = time() . '_' . Str::random(6) . '.' . $file->extension();
+
+        $path = $file->storeAs("{$username}/comments/{$type}", $filename, 'public');
+
+        return [
+            'path' => $path,
+            'type' => $type,
+            'mime' => $mime,
+        ];
+    }
 }

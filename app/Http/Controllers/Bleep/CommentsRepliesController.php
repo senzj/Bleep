@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Comments;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\MediaUploadService;
 
 class CommentsRepliesController extends Controller
 {
@@ -51,16 +52,22 @@ class CommentsRepliesController extends Controller
             ], 422);
         }
 
-        $mediaPath = $request->hasFile('media')
-            ? $request->file('media')->store('comments/media', 'public')
-            : null;
+        $mediaMeta = null;
+        if ($request->hasFile('media')) {
+            $mediaMeta = MediaUploadService::saveCommentMedia(
+                $request->file('media'),
+                Auth::user()->username
+            );
+        }
 
         $reply = Comments::create([
             'user_id'      => Auth::id(),
             'bleep_id'     => $comment->bleep_id,
             'parent_id'    => $comment->id,
             'message'      => $data['message'],
-            'media_path'   => $mediaPath,
+            'media_path'   => $mediaMeta['path'] ?? null,
+            'media_type'   => $mediaMeta['type'] ?? null,
+            'media_mime'   => $mediaMeta['mime'] ?? null,
             'is_anonymous' => $request->boolean('is_anonymous'),
         ])->load(['user', 'likes']);
 
