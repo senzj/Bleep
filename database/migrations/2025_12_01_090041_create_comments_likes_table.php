@@ -11,16 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('comments', function (Blueprint $table) {
+        Schema::create('comments_likes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('bleep_id')->constrained()->onDelete('cascade');
-            $table->foreignId('parent_id')->nullable()->constrained('comments')->onDelete('cascade');
-            $table->text('message');
-            $table->string('media_path')->nullable();
-            $table->boolean('is_anonymous')->default(false);
+            $table->foreignId('comments_id')->constrained()->onDelete('cascade');
             $table->timestamps();
-            $table->softDeletes();
+
+            $table->unique(['user_id', 'comments_id']); // User can like a comment only once
         });
     }
 
@@ -29,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('comments');
+        Schema::dropIfExists('comments_likes');
     }
 };

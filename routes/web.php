@@ -18,8 +18,9 @@ use App\Http\Controllers\Bleep\RepostController;
 use App\Http\Controllers\Users\ProfileController;
 use App\Http\Controllers\Bleep\CommentsController;
 use App\Http\Controllers\RememberedDeviceController;
-
 use App\Http\Controllers\Api\Auth\ValidationController;
+use App\Http\Controllers\Bleep\CommentsLikesController;
+use App\Http\Controllers\Bleep\CommentsRepliesController;
 
 // REGISTER
 Route::view('/register', 'auth.register')
@@ -62,6 +63,9 @@ Route::get('/bleeps/lazy-load', [BleepController::class, 'lazyLoad'])
 Route::get('/bleeps/comments/{bleep}/comments', [CommentsController::class, 'index']);
 Route::get('/bleeps/comments/{bleep}/count', [CommentsController::class, 'count']);
 Route::get('/bleeps/comments/{bleep}/html', [CommentsController::class, 'commentsHtml'])->name('comments.html');
+
+Route::get('/bleeps/comments/{comment}/replies', [CommentsRepliesController::class, 'index'])
+    ->name('comments.replies.index');
 
 // Shares
 Route::post('/bleeps/{bleep}/share', [ShareController::class, 'store']);
@@ -112,6 +116,12 @@ Route::middleware('auth')->group((function () {
     Route::put('/bleeps/comments/{comment}/update', [CommentsController::class, 'update']);
     Route::delete('/bleeps/comments/{comment}/delete', [CommentsController::class, 'destroy']);
     Route::post('/bleeps/comments/{comment}/report', [CommentsController::class, 'report']);
+
+    Route::post('/bleeps/comments/{comment}/likes', [CommentsLikesController::class, 'store'])->name('comments.likes.store');
+    Route::delete('/bleeps/comments/{comment}/likes', [CommentsLikesController::class, 'destroy'])->name('comments.likes.destroy');
+
+    Route::post('/bleeps/comments/{comment}/replies', [CommentsRepliesController::class, 'store'])
+        ->name('comments.replies.store');
 
     // Shares
     Route::post('/bleeps/{bleep}/share', [ShareController::class, 'store']);

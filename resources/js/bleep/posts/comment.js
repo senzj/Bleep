@@ -1,3 +1,6 @@
+import './comment/replies';
+import './comment/likes';
+
 document.addEventListener('DOMContentLoaded', function() {
     const baseUrl = document.querySelector('meta[name="base_url"]')?.content || '';
 
@@ -83,7 +86,133 @@ document.addEventListener('DOMContentLoaded', function() {
         floatingTextarea.addEventListener('input', () => autoGrow(floatingTextarea));
     }
 
-    floatingForm?.addEventListener('submit', handleFloatingFormSubmit);
+    const mediaInput = document.getElementById('comment-media-input');
+    const mediaTrigger = document.getElementById('comment-media-trigger');
+    const mediaPreview = document.getElementById('comment-media-preview');
+    const mediaClear = document.getElementById('comment-media-clear');
+
+    mediaTrigger?.addEventListener('click', () => mediaInput?.click());
+    mediaInput?.addEventListener('change', () => {
+        if (!mediaInput.files.length) {
+            clearMediaState();
+            return;
+        }
+
+        const file = mediaInput.files[0];
+
+        const previewShell = mediaPreview?.querySelector('figure');
+        if (!previewShell) return;
+
+        if (previewShell.dataset.previewUrl) {
+            URL.revokeObjectURL(previewShell.dataset.previewUrl);
+            delete previewShell.dataset.previewUrl;
+        }
+
+        const url = URL.createObjectURL(file);
+        previewShell.dataset.previewUrl = url;
+
+        const lower = file.name.toLowerCase();
+        let markup = '';
+
+        if (/\.(mp4|mov|webm)$/.test(lower)) {
+            markup = `<video controls class="w-full max-h-40 object-contain bg-black"><source src="${url}"></video>`;
+        } else if (/\.(mp3|wav|m4a)$/.test(lower)) {
+            markup = `<audio controls class="w-full"><source src="${url}"></audio>`;
+        } else {
+            markup = `<img src="${url}" alt="Attachment preview" class="w-full h-auto object-contain">`;
+        }
+
+        previewShell.innerHTML = markup;
+        mediaPreview?.classList.remove('hidden');
+    });
+
+    mediaClear?.addEventListener('click', (evt) => {
+        evt.preventDefault();
+        clearMediaState();
+    });
+
+    function clearMediaState() {
+        if (mediaInput) mediaInput.value = '';
+        const previewShell = mediaPreview?.querySelector('figure');
+        if (previewShell) {
+            if (previewShell.dataset.previewUrl) {
+                URL.revokeObjectURL(previewShell.dataset.previewUrl);
+                delete previewShell.dataset.previewUrl;
+            }
+            previewShell.innerHTML = '';
+        }
+        mediaPreview?.classList.add('hidden');
+    }
+
+    floatingForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!floatingTextarea) return;
+
+        const targetCommentId = window.commentReplyState?.getReplyId();
+        const endpoint = targetCommentId
+            ? `/bleeps/comments/${targetCommentId}/replies`
+            : `/bleeps/comments/${floatingForm.dataset.bleepId}/post`;
+
+        const message = floatingTextarea.value.trim();
+        const file = mediaInput?.files?.[0] ?? null;
+        const isAnonymous = anonymousToggle?.checked ?? false;
+
+        if (!message && !file) {
+            showToast('Write something or attach media', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('is_anonymous', isAnonymous ? '1' : '0');
+        if (message) formData.append('message', message);
+        if (file) formData.append('media', file);
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                window.location.href = '/login';
+            }
+            return;
+        }
+
+        const data = await response.json();
+        floatingTextarea.value = '';
+        autoGrow(floatingTextarea);
+        if (anonymousToggle) anonymousToggle.checked = false;
+        clearMediaState();
+
+        if (targetCommentId) {
+            const container = document.querySelector(`.comment-replies-container[data-comment-id="${targetCommentId}"]`);
+            if (container) {
+                const parentDepth = parseInt(document.querySelector(`.comment-card[data-comment-id="${targetCommentId}"]`)?.dataset.commentDepth ?? '0', 10);
+                container.dataset.depth = container.dataset.depth ?? (parentDepth + 1).toString();
+                container.dataset.loaded = '1';
+                container?.classList.remove('hidden');
+                container?.querySelector('.replies-list')?.insertAdjacentHTML('afterbegin', data.html);
+                const toggle = document.querySelector(`.comment-toggle-replies[data-comment-id="${targetCommentId}"]`);
+                if (toggle) {
+                    toggle.dataset.expanded = 'true';
+                    toggle.querySelector('.replies-toggle-text').textContent = `View ${data.replies_count} ${data.replies_count === 1 ? 'reply' : 'replies'}`;
+                    toggle.querySelector('.replies-toggle-icon')?.classList.add('rotate-180');
+                }
+                window.commentReplyState?.cancel();
+            }
+        } else {
+            await loadComments(floatingForm.dataset.bleepId);
+        }
+
+        window.lucide?.createIcons();
+    });
 
     // Handle floating form submit
     async function handleFloatingFormSubmit(e) {

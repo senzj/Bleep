@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Logs;
 use App\Models\Bleep;
 use App\Models\Repost;
-use App\Models\Logs;
 
-use App\Services\MediaUploadService;
+use App\Models\BleepViews;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Services\MediaUploadService;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class BleepController extends Controller
@@ -277,7 +278,7 @@ class BleepController extends Controller
             }
 
             // Bulk insert new views
-            \App\Models\BleepViews::insert($viewsData);
+            BleepViews::insert($viewsData);
 
             // Increment view counters WITHOUT updating updated_at
             DB::table((new Bleep())->getTable())

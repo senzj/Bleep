@@ -80,34 +80,6 @@
                             @enderror
                         </div>
                     </div>
-
-                    {{-- Security Tips Card --}}
-                    <div class="card bg-base-100 shadow-xl">
-                        <div class="card-body p-6">
-                            <h2 class="card-title text-base mb-3 flex items-center gap-2">
-                                <i data-lucide="shield-check" class="w-5 h-5 text-primary"></i>
-                                Security Best Practices
-                            </h2>
-                            <ul class="space-y-3">
-                                <li class="flex items-start gap-2">
-                                    <i data-lucide="check" class="w-4 h-4 text-success mt-0.5 shrink-0"></i>
-                                    <span class="text-sm">Use a unique password you haven't used elsewhere</span>
-                                </li>
-                                <li class="flex items-start gap-2">
-                                    <i data-lucide="check" class="w-4 h-4 text-success mt-0.5 shrink-0"></i>
-                                    <span class="text-sm">Mix uppercase, lowercase, numbers & special characters</span>
-                                </li>
-                                <li class="flex items-start gap-2">
-                                    <i data-lucide="check" class="w-4 h-4 text-success mt-0.5 shrink-0"></i>
-                                    <span class="text-sm">Avoid personal information like names or birthdays</span>
-                                </li>
-                                <li class="flex items-start gap-2">
-                                    <i data-lucide="check" class="w-4 h-4 text-success mt-0.5 shrink-0"></i>
-                                    <span class="text-sm">Consider using a password manager for extra security</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
                 </div>
 
                 {{-- MAIN FORM: Registration Fields (Desktop: 2/3 width) --}}

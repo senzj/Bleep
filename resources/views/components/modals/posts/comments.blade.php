@@ -11,6 +11,8 @@
     }
 @endphp
 
+{{-- Comments displayin for Bleep Post page --}}
+
 <div id="floating-comments-modal" class="hidden fixed z-50 bg-base-100 rounded-2xl shadow-2xl border border-base-200 flex flex-col overflow-hidden transition-all duration-300 ease-out">
     {{-- Sticky Header --}}
     <div id="floating-comments-header" class="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-base-200 bg-base-100/95 backdrop-blur-sm shrink-0">
@@ -23,7 +25,7 @@
         </button>
     </div>
 
-    {{-- Scrollable Content - Initially empty, populated by JavaScript --}}
+    {{-- Comments content, populated by JavaScript (resources/js/bleep/posts/comment.js --}}
     <div id="floating-comments-scroll" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-base-300/80">
         {{-- Loading state will be injected by JavaScript --}}
         <div class="flex justify-center items-center py-10">
@@ -34,8 +36,17 @@
     {{-- Sticky Input Footer --}}
     @auth
         <div class="sticky bottom-0 z-10 bg-base-100 p-6 shrink-0">
-            <form id="floating-comment-form" class="flex items-end gap-3" data-bleep-id="">
+            <div id="comment-media-preview" class="hidden mb-3">
+                <div class="inline-flex max-w-44 w-full relative rounded-xl overflow-hidden bg-base-200 shadow">
+                    <figure class="w-full"></figure>
+                    <button type="button" id="comment-media-clear" class="absolute top-2 right-2 btn btn-xs btn-circle btn-error text-white">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                </div>
+            </div>
+            <form id="floating-comment-form" class="flex items-end gap-3" data-bleep-id="" enctype="multipart/form-data">
                 @csrf
+                {{-- Text Area --}}
                 <div class="flex-1">
                     <textarea
                         name="message"
@@ -45,6 +56,20 @@
                         placeholder="Write a comment..."
                         required
                     ></textarea>
+                </div>
+
+                {{-- Media Upload --}}
+                <div class="relative flex items-center gap-2 rounded-full shadow-md border-base-100">
+                    <button type="button" id="comment-media-trigger" class="btn btn-ghost btn-circle shrink-0" aria-label="Attach media">
+                        <i data-lucide="paperclip" class="w-5 h-5"></i>
+                    </button>
+                    <input
+                        type="file"
+                        id="comment-media-input"
+                        name="media"
+                        class="hidden"
+                        accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/mp3,audio/wav"
+                    >
                 </div>
 
                 {{-- Toggle anonymous --}}

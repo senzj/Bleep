@@ -9,10 +9,10 @@
                 togglePassword.addEventListener('click', () => {
                     const type = passwordInput.type === 'password' ? 'text' : 'password';
                     passwordInput.type = type;
-                    
+
                     const eyeIcon = document.getElementById('login_eye_icon');
                     const eyeOffIcon = document.getElementById('login_eye_off_icon');
-                    
+
                     if (type === 'text') {
                         eyeIcon.classList.add('hidden');
                         eyeOffIcon.classList.remove('hidden');
@@ -38,14 +38,6 @@
             <div class="card w-full bg-base-100 shadow-xl">
                 <div class="card-body p-6 sm:p-8">
                     <h1 class="text-2xl sm:text-3xl font-bold text-center mb-4 sm:mb-6">Welcome Back</h1>
-
-                    {{-- Success Message from Registration --}}
-                    @if(session('success'))
-                        <div class="alert alert-success mb-4">
-                            <i data-lucide="check-circle" class="w-5 h-5"></i>
-                            <span>{{ session('success') }}</span>
-                        </div>
-                    @endif
 
                     <form method="POST" action="/login">
                         @csrf

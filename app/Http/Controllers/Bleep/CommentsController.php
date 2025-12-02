@@ -37,13 +37,29 @@ class CommentsController extends Controller
      */
     public function store(Request $request, Bleep $bleep)
     {
-        $request->validate(['message' => 'required|string|max:255']);
+        $validated = $request->validate([
+            'message'      => ['nullable', 'string', 'max:500'],
+            'is_anonymous' => ['boolean'],
+            'media'        => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,webp,mp4,quicktime,mp3,wav', 'max:20480'],
+        ]);
+
+        if (!$request->filled('message') && !$request->hasFile('media')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Write something or attach media.',
+            ], 422);
+        }
+
+        $mediaPath = $request->hasFile('media')
+            ? $request->file('media')->store('comments/media', 'public')
+            : null;
 
         $comment = $bleep->comments()->create([
-            'user_id' => Auth::id(),
-            'message' => $request->message,
+            'user_id'      => Auth::id(),
+            'message'      => $validated['message'],
+            'media_path'   => $mediaPath,
             'is_anonymous' => $request->boolean('is_anonymous'),
-        ])->load('user');
+        ])->load(['user', 'likes']);
 
         $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
         $transformed = $this->transformComment($comment, $bleep, $viewerSeed);
@@ -158,60 +174,28 @@ class CommentsController extends Controller
      */
     public function commentsHtml(Request $request, Bleep $bleep)
     {
-        $page = (int) $request->get('page', 1);
-        $perPage = 10;
+        $perPage = (int) $request->integer('per_page', 10);
 
-        // Paginate comments
-        $comments = $bleep->comments()
-            ->with('user')
-            ->latest()
-            ->paginate($perPage, ['*'], 'page', $page);
+        $comments = Comments::with(['user', 'likes'])
+            ->withCount('replies')
+            ->where('bleep_id', $bleep->id)
+            ->whereNull('parent_id')
+            ->orderByDesc('created_at')
+            ->paginate($perPage);
 
-        // Group by date with timezone
-        $groups = $comments->getCollection()->groupBy(function($c) {
-            $tz = $c->user?->timezone ?? config('app.timezone', 'UTC');
-            return $c->created_at->copy()->setTimezone($tz)->format('Y-m-d') . '|' . $tz;
-        });
-
-        // Build HTML
-        $html = '';
-
-        if ($groups->isEmpty()) {
-            $html = '
-                <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
-                    <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>
-                    <p class="text-sm font-semibold">No comments yet</p>
-                    <p class="text-xs">Be the first to share your thoughts.</p>
-                </div>
-            ';
-        } else {
-            foreach ($groups as $key => $group) {
-                [$date, $tz] = explode('|', $key);
-                $dt = \Carbon\Carbon::createFromFormat('Y-m-d', $date, $tz);
-                $showYear = $dt->year !== now()->year;
-                $label = $dt->format('F j') . ($showYear ? ', ' . $dt->year : '');
-
-                // Date header with unique data attribute for deduplication
-                $html .= '<div class="text-sm text-base-content/60 font-medium mb-2 comment-date-header" data-date="' . $date . '">' . $label . '</div>';
-
-                // Comments in this group
-                $html .= '<div class="space-y-3">';
-                foreach ($group as $comment) {
-                    $html .= view('components.subcomponents.comments.commentcard', [
-                        'comment' => $comment,
-                        'bleep' => $bleep
-                    ])->render();
-                }
-                $html .= '</div>';
-            }
-        }
+        $html = $comments->isEmpty()
+            ? '<p class="text-center text-sm text-base-content/60 py-6">Be the first to comment.</p>'
+            : $comments->map(fn ($comment) => view(
+                    'components.subcomponents.comments.commentcard',
+                    ['comment' => $comment, 'bleep' => $bleep, 'depth' => 0]
+                )->render()
+            )->implode('');
 
         return response()->json([
-            'html' => $html,
-            'has_more' => $comments->hasMorePages(),
-            'next_page' => $comments->currentPage() + 1,
+            'html'         => $html,
             'current_page' => $comments->currentPage(),
-            'total' => $comments->total(),
+            'has_more'     => $comments->hasMorePages(),
+            'total'        => $comments->total(),
         ]);
     }
 
