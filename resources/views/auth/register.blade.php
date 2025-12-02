@@ -66,11 +66,8 @@
                                 </p>
                             </div>
 
-                            <input type="file"
-                                id="profile_picture_input"
-                                name="profile_picture"
-                                class="hidden"
-                                accept="image/*">
+                            {{-- Profile Picture Form --}}
+                            <input type="file" id="profile_picture_input" name="profile_picture" class="hidden" accept="image/*" form="register-form" />
 
                             @error('profile_picture')
                                 <div class="alert alert-error py-2 text-xs mt-4">
