@@ -89,24 +89,20 @@ class Bleep extends Model
     // Helper to record a view
     public function recordView(?User $user = null, ?string $sessionId = null): void
     {
-        // Try to create a new view record
         $created = BleepViews::firstOrCreate([
-            'bleep_id' => $this->id,
-            'user_id' => $user?->id,
-            'session_id' => $user ? null : $sessionId,
+            'bleep_id'  => $this->id,
+            'user_id'   => $user?->id,
+            'session_id'=> $user ? null : $sessionId,
         ], [
             'viewed_at' => now(),
         ]);
 
-        // Only increment counter if a new view was created (not a duplicate)
         if ($created->wasRecentlyCreated) {
-            // Increment views column without touching updated_at
-            DB::table($this->getTable())
-                ->where('id', $this->id)
-                ->update(['views' => DB::raw('COALESCE(views,0) + 1')]);
+            static::withoutTimestamps(function () {
+                $this->newQuery()->whereKey($this->id)->increment('views');
+            });
 
-            // Refresh model to pick up latest views value (updated_at remains unchanged)
-            $this->refresh();
+            $this->refresh(['views']);
         }
     }
 
