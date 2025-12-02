@@ -74,8 +74,9 @@ class BleepController extends Controller
 
         // Create the bleep
         $bleep = $user->bleeps()->create([
-            'is_nsfw' => $request->boolean('is_nsfw'),
-            'message' => $request->input('message'),
+            'message'      => $request->input('message'),
+            'is_anonymous' => $request->boolean('is_anonymous'),
+            'is_nsfw'      => $request->boolean('is_nsfw'),
         ]);
 
         // Handle media uploads - SIMPLIFIED!

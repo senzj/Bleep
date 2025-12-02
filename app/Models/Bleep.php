@@ -14,15 +14,18 @@ class Bleep extends Model
     use HasAnonymousName, HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'user_id',
         'message',
         'is_anonymous',
         'is_nsfw',
+        'views',
         'deleted_by_author',
         'media_path',
-        'views',
     ];
 
     protected $casts = [
+        'is_anonymous'      => 'boolean',
+        'is_nsfw'           => 'boolean',
         'deleted_by_author' => 'boolean',
         'is_nsfw' => 'boolean',
         'views' => 'integer',

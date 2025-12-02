@@ -123,9 +123,6 @@ Route::middleware('auth')->group((function () {
     Route::post('/bleeps/comments/{comment}/replies', [CommentsRepliesController::class, 'store'])
         ->name('comments.replies.store');
 
-    // Shares
-    Route::post('/bleeps/{bleep}/share', [ShareController::class, 'store']);
-
     // Reposts
     Route::post('/bleeps/{bleep}/repost', [RepostController::class, 'store'])->name('bleeps.repost.store');
     Route::delete('/bleeps/{bleep}/repost', [RepostController::class, 'destroy'])->name('bleeps.repost.destroy');
