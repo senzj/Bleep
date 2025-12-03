@@ -46,7 +46,7 @@ class MediaUploadService
     }
 
     /**
-     * Save a bleep media file (image or video)
+     * Save a bleep media file (image, video, or audio)
      *
      * @param UploadedFile $file
      * @param string $username
@@ -55,24 +55,20 @@ class MediaUploadService
     public static function saveBleepMedia(UploadedFile $file, string $username): array
     {
         $mime = $file->getMimeType();
-        // Normalize type to match DB enum ('image' or 'video')
-        $type = (str_starts_with($mime, 'image/')) ? 'image' :
-                ((str_starts_with($mime, 'video/')) ? 'video' : 'file');
+        $type = str_starts_with($mime, 'image/')
+            ? 'image'
+            : (str_starts_with($mime, 'video/')
+                ? 'video'
+                : (str_starts_with($mime, 'audio/') ? 'audio' : 'file'));
 
-        // Generate filename: timestamp_random.ext
         $filename = time() . '_' . Str::random(8) . '.' . $file->extension();
-
-        // Store in: {username}/bleeps/{type}/{filename}
         $path = $file->storeAs("{$username}/bleeps/{$type}", $filename, 'public');
 
-        // build $mediaData (ensure 'type' uses normalized value)
-        $mediaData = [
+        return [
             'path' => $path,
             'type' => $type,
             'mime' => $mime,
         ];
-
-        return $mediaData;
     }
 
     /**

@@ -1,5 +1,16 @@
 @push('scripts')
-    @vite('resources/js/bleep/posts/comment.js')
+    @once('comments-audio-init')
+        @vite([
+            'resources/js/bleep/posts/comment.js',
+            'resources/js/bleep/posts/audio.js',
+        ])
+
+        <script>
+            window.requestAnimationFrame(() => {
+                document.dispatchEvent(new CustomEvent('bleeps:media:hydrated'));
+            });
+        </script>
+    @endonce
 @endpush
 
 @props([
@@ -20,12 +31,9 @@
         ? "@{$username}"
         : '@anonymous';
 
-    if ($user) {
-        if ($user->profile_picture && \Illuminate\Support\Facades\Storage::disk('public')->exists($user->profile_picture)) {
-            $userAvatarUrl = asset('storage/' . $user->profile_picture);
-        } else {
-            $userAvatarUrl = asset('images/avatar/default.jpg');
-        }
+    // Fix avatar URL generation
+    if ($user && $user->profile_picture && \Illuminate\Support\Facades\Storage::disk('public')->exists($user->profile_picture)) {
+        $userAvatarUrl = asset('storage/' . $user->profile_picture);
     } else {
         $userAvatarUrl = asset('images/avatar/default.jpg');
     }
@@ -68,7 +76,9 @@
                     </div>
                 @else
                     <a href="{{ $userProfileLink }}" class="group" title="View profile: {{ $username }}">
-                        <x-subcomponents.avatar :user="$user" size="10" />
+                        <div class="size-10 rounded-full overflow-hidden">
+                            <img src="{{ $userAvatarUrl }}" alt="{{ $displayName }}'s avatar" class="w-full h-full object-cover">
+                        </div>
                     </a>
                 @endif
             </div>
@@ -78,13 +88,13 @@
                 <div class="flex items-start justify-between gap-2">
                     @if(!$isAnonymous && $user)
                         <a href="{{ $userProfileLink }}" class="group flex flex-col min-w-0" title="View profile">
-                            <span class="font-semibold text-sm truncate group-hover:underline">{{ $displayName }}</span>
-                            <span class="text-xs text-base-content/50">{{ $usernameLine }}</span>
+                            <span class="font-semibold text-sm truncate group-hover:underline comment-display-name">{{ $displayName }}</span>
+                            <span class="text-xs text-base-content/50 comment-username">{{ $usernameLine }}</span>
                         </a>
                     @else
                         <div class="flex flex-col min-w-0">
-                            <span class="font-semibold text-sm truncate">{{ $displayName }}</span>
-                            <span class="text-xs text-base-content/50">{{ $usernameLine }}</span>
+                            <span class="font-semibold text-sm truncate comment-display-name">{{ $displayName }}</span>
+                            <span class="text-xs text-base-content/50 comment-username">{{ $usernameLine }}</span>
                         </div>
                     @endif
 
@@ -130,7 +140,7 @@
                                 $updatedHuman = $updatedWithin7 ? $updatedAt->diffForHumans() : null;
                             @endphp
                             <span class="comment-edited-tag text-xs text-base-content/50" title="Edited: {{ $updatedAt->format('M d, Y | g:i A') }}">
-                                Edited · @if($updatedWithin7) {{ ' ' . $updatedHuman }} @else {{ ' ' . $updatedTimeLabel }} @endif
+                                Edited · @if($updatedWithin7) {{ $updatedHuman }} @else {{ $updatedTimeLabel }} @endif
                             </span>
                         @endif
                     </div>
@@ -147,11 +157,11 @@
                                         <button type="button"
                                             class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-base-200 transition edit-comment-btn"
                                             data-comment-id="{{ $comment->id }}"
-                                            data-comment-message="{{ htmlspecialchars($comment->message, ENT_QUOTES) }}"
+                                            data-comment-message="{{ e($comment->message) }}"
                                             data-is-anonymous="{{ $comment->is_anonymous ? '1' : '0' }}"
-                                            data-user-name="{{ $user?->dname ?? 'Unknown' }}"
-                                            data-user-username="{{ $user?->username ?? 'unknown' }}"
-                                            data-user-email="{{ $user?->email ?? '' }}"
+                                            data-user-name="{{ e($user?->dname ?? 'Unknown') }}"
+                                            data-user-username="{{ e($user?->username ?? 'unknown') }}"
+                                            data-user-email="{{ e($user?->email ?? '') }}"
                                             data-user-avatar="{{ $userAvatarUrl }}"
                                             title="Edit this comment">
                                             <i data-lucide="pencil" class="w-4 h-4"></i>
@@ -187,26 +197,50 @@
             </div>
 
                 {{-- Message --}}
-                <p class="text-sm mb-1 mt-2.5 wrap-break-word leading-snug text-base-content/90 comment-message">
+                <p class="text-sm mb-1 mt-2.5 wrap-break-word leading-snug text-base-content/90 comment-message whitespace-pre-line">
                     {{ $comment->message }}
                 </p>
 
                 {{-- Media --}}
                 @if ($comment->media_path)
-                    <div class="mt-2 rounded-xl overflow-hidden bg-base-200">
-                        @php $mediaUrl = asset('storage/' . $comment->media_path); @endphp
-                        @if (Str::of($comment->media_path)->lower()->contains(['.mp4', '.mov', '.webm']))
-                            <video controls class="w-full rounded-xl">
-                                <source src="{{ $mediaUrl }}" type="video/mp4">
-                            </video>
-                        @elseif (Str::of($comment->media_path)->lower()->contains(['.mp3', '.wav', '.m4a']))
-                            <audio controls class="w-full">
-                                <source src="{{ $mediaUrl }}">
-                            </audio>
-                        @else
-                            <img src="{{ $mediaUrl }}" alt="Comment media" class="w-full h-auto object-cover">
-                        @endif
+                    @php
+                        $mediaPath = $comment->media_path;
+                        $isVideo = \Illuminate\Support\Str::of($mediaPath)->lower()->contains(['.mp4', '.mov', '.webm']);
+                        $isAudio = \Illuminate\Support\Str::of($mediaPath)->lower()->contains(['.mp3', '.wav', '.m4a']);
+
+                        $mediaItems = collect([
+                            (object) [
+                                'path' => $mediaPath,
+                                'type' => $isAudio ? 'audio' : ($isVideo ? 'video' : 'image'),
+                                'mime_type' => \Illuminate\Support\Facades\Storage::mimeType($mediaPath) ?? 'application/octet-stream',
+                                'original_name' => basename($mediaPath),
+                            ],
+                        ]);
+
+                        $bleepProxy = (object) [
+                            'id' => "comment-{$comment->id}",
+                            'is_nsfw' => false,
+                        ];
+                    @endphp
+
+                    <div class="mt-2" data-comment-media-wrapper="{{ $comment->id }}">
+                        @include('components.bleepsmedia', [
+                            'mediaItems' => $mediaItems,
+                            'isNsfw' => false,
+                            'bleep' => $bleepProxy,
+                        ])
                     </div>
+
+                    @once('comment-audio-reinit')
+                        <script>
+                            // Reinitialize audio players after comment renders
+                            if (typeof initAudioPlayers === 'function') {
+                                setTimeout(() => {
+                                    initAudioPlayers();
+                                }, 100);
+                            }
+                        </script>
+                    @endonce
                 @endif
 
                 {{-- Actions --}}

@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Auth\Logout;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\Register;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BleepController;
@@ -242,3 +243,68 @@ Route::post('/check-username', [ValidationController::class, 'checkUsername'])
 Route::post('/check-email', [ValidationController::class, 'checkEmail'])
     ->middleware(['throttle:60,1', 'guest'])
     ->name('check.email');
+
+
+// MEDIA STREAMING ROUTE
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+Route::get('/media/stream', function (Request $request) {
+    $path = $request->query('path');
+    $disk = Storage::disk('public');
+
+    if (!$path || !$disk->exists($path)) {
+        abort(404);
+    }
+
+    $fullPath = $disk->path($path);
+    $size = filesize($fullPath);
+    $mime = Storage::mimeType($path) ?? mime_content_type($fullPath) ?? 'application/octet-stream';
+    $range = $request->header('Range');
+
+    $start = 0;
+    $end = $size - 1;
+
+    if ($range && preg_match('/bytes=(\d+)-(\d*)/', $range, $matches)) {
+        $start = (int) $matches[1];
+        if ($matches[2] !== '') {
+            $end = min((int) $matches[2], $size - 1);
+        }
+    }
+
+    $length = $end - $start + 1;
+    $status = $range ? 206 : 200;
+    $headers = [
+        'Content-Type' => $mime,
+        'Accept-Ranges' => 'bytes',
+        'Cache-Control' => 'public, max-age=31536000',
+    ];
+
+    if ($status === 206) {
+        $headers['Content-Length'] = $length;
+        $headers['Content-Range'] = "bytes {$start}-{$end}/{$size}";
+    } else {
+        $headers['Content-Length'] = $size;
+    }
+
+    return new StreamedResponse(function () use ($fullPath, $start, $length) {
+        $handle = fopen($fullPath, 'rb');
+        if ($handle === false) {
+            return;
+        }
+
+        fseek($handle, $start);
+        $bytesRemaining = $length;
+
+        while ($bytesRemaining > 0 && !feof($handle)) {
+            $chunk = fread($handle, min(8192, $bytesRemaining));
+            if ($chunk === false) break;
+
+            $bytesRemaining -= strlen($chunk);
+            echo $chunk;
+            flush();
+        }
+
+        fclose($handle);
+    }, $status, $headers);
+})->name('media.stream');

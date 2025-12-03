@@ -57,20 +57,22 @@ class BleepController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'message' => 'nullable|string|max:255|required_without:media',
+            'message' => 'string|max:255|required_without:media',
             'is_anonymous' => 'nullable|boolean',
             'is_nsfw' => 'nullable|boolean',
             'media' => 'nullable|array|max:4|required_without:message',
-            'media.*' => 'file|max:102400|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm',
+            'media.*' => 'file|max:102400|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mp3,audio/mpeg,audio/wav',
         ], [
             'message.required_without' => 'Write something or attach media.',
             'media.required_without' => 'Attach media or write a message.',
             'media.max' => 'You can upload up to 4 files.',
-            'media.*.mimetypes' => 'Only images (jpg, png, webp, gif) or videos (mp4, webm) are allowed.',
+            'media.*.mimetypes' => 'Only images (jpg, png, webp, gif), videos (mp4, webm), or audio (mp3, wav) are allowed.',
             'media.*.max' => 'Each file must be at most 100MB.',
         ]);
 
         $user = Auth::user();
+
+        
 
         // Create the bleep
         $bleep = $user->bleeps()->create([

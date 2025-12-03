@@ -13,8 +13,8 @@ return new class extends Migration {
         Schema::create('bleep_media', function (Blueprint $table) {
             $table->id();
             $table->foreignId('bleep_id')->constrained('bleeps')->cascadeOnDelete();
-            $table->string('path');                 // storage relative path (public disk)
-            $table->enum('type', ['image', 'video']);
+            $table->string('path');
+            $table->enum('type', ['image', 'video', 'audio', 'file']);
             $table->string('original_name')->nullable();
             $table->string('mime_type', 50)->nullable();
             $table->unsignedBigInteger('size')->nullable();

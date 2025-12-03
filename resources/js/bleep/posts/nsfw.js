@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        console.log('Revealing NSFW content for bleep:', bleepId);
+        // console.log('Revealing NSFW content for bleep:', bleepId);
 
         try { localStorage.setItem(`nsfw_viewed_${bleepId}`, '1'); } catch (e) {}
 

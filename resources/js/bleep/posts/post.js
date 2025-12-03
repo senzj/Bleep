@@ -209,4 +209,161 @@ document.addEventListener('DOMContentLoaded', () => {
         setIconState(nsfwIcon, nsfwToggle.checked, 'bg-secondary');
         nsfwToggle.addEventListener('change', () => setIconState(nsfwIcon, nsfwToggle.checked, 'bg-secondary'));
     }
+
+    const mediaPicker = document.getElementById('bleep-media-input');
+    const mediaPreviewGrid = document.getElementById('bleep-media-preview');
+    const messageTextarea = document.querySelector('#bleep-form textarea[name="message"]');
+
+    function updateMediaCount(count, isAudio = false) {
+        const badge = document.getElementById('bleep-media-count');
+        // console.log('updateMediaCount called:', { count, isAudio, badge });
+        if (!badge) return;
+
+        const cap = isAudio ? 1 : 4;
+        // console.log('Setting badge:', { cap, text: `${Math.min(count, cap)}/${cap}` });
+
+        badge.textContent = `${Math.min(count, cap)}/${cap}`;
+        badge.classList.toggle('hidden', count === 0);
+
+        // Debug: Watch for changes to the badge
+        // const observer = new MutationObserver((mutations) => {
+        //     mutations.forEach((mutation) => {
+        //         console.log('Badge changed!', {
+        //             type: mutation.type,
+        //             oldValue: mutation.oldValue,
+        //             newValue: badge.textContent,
+        //             stack: new Error().stack
+        //         });
+        //     });
+        // });
+        // observer.observe(badge, { characterData: true, childList: true, subtree: true });
+
+        // Stop observing after 2 seconds to avoid memory leak
+        setTimeout(() => observer.disconnect(), 2000);
+    }
+
+    function isAudioFile(file) {
+        const isAudioMime = file.type.startsWith('audio/');
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        const isAudioExt = ['mp3', 'wav', 'mpeg', 'ogg', 'flac', 'm4a', 'aac'].includes(ext);
+        // console.log('isAudioFile check:', {
+        //     fileName: file.name,
+        //     fileType: file.type,
+        //     ext,
+        //     isAudioMime,
+        //     isAudioExt,
+        //     result: isAudioMime || isAudioExt
+        // });
+        return isAudioMime || isAudioExt;
+    }
+
+    function renderPreview(files) {
+        mediaPreviewGrid.innerHTML = '';
+
+        files.forEach((file, index) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'relative group';
+
+            if (file.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.className = 'w-full h-24 object-cover rounded-lg border border-base-300';
+                img.onload = () => URL.revokeObjectURL(img.src);
+                wrapper.appendChild(img);
+            } else if (file.type.startsWith('video/')) {
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(file);
+                video.className = 'w-full h-24 object-cover rounded-lg border border-base-300';
+                video.muted = true;
+                video.onloadeddata = () => URL.revokeObjectURL(video.src);
+                wrapper.appendChild(video);
+
+                // Play icon overlay
+                const playIcon = document.createElement('div');
+                playIcon.className = 'absolute inset-0 flex items-center justify-center pointer-events-none';
+                playIcon.innerHTML = '<i data-lucide="play" class="w-8 h-8 text-white drop-shadow-lg"></i>';
+                wrapper.appendChild(playIcon);
+            } else if (isAudioFile(file)) {
+                const audioWrapper = document.createElement('div');
+                audioWrapper.className = 'w-full h-24 flex flex-col items-center justify-center rounded-lg border border-base-300 bg-base-200';
+                audioWrapper.innerHTML = `
+                    <i data-lucide="music" class="w-8 h-8 text-base-content/60"></i>
+                    <span class="text-xs text-base-content/60 mt-1 truncate max-w-full px-2">${file.name}</span>
+                `;
+                wrapper.appendChild(audioWrapper);
+            }
+
+            // Remove button
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'absolute top-1 right-1 btn btn-circle btn-xs btn-error opacity-0 group-hover:opacity-100 transition-opacity';
+            removeBtn.innerHTML = '<i data-lucide="x" class="w-3 h-3"></i>';
+            removeBtn.addEventListener('click', () => {
+                removeFileAtIndex(index);
+            });
+            wrapper.appendChild(removeBtn);
+
+            mediaPreviewGrid.appendChild(wrapper);
+        });
+
+        // Re-initialize Lucide icons for the new elements
+        if (window.createLucideIcons) window.createLucideIcons();
+    }
+
+    mediaPicker?.addEventListener('change', () => {
+        // console.log('mediaPicker change event fired');
+        if (!mediaPicker.files) return;
+
+        const files = Array.from(mediaPicker.files);
+        // console.log('Files selected:', files.map(f => ({ name: f.name, type: f.type })));
+        // Check for audio files using helper function
+        const audioFiles = files.filter(file => isAudioFile(file));
+        const otherFiles = files.filter(file => !isAudioFile(file));
+
+        // console.log('Audio files:', audioFiles.length, 'Other files:', otherFiles.length);
+
+        if (audioFiles.length > 1 || (audioFiles.length === 1 && otherFiles.length)) {
+            showToast('Only one audio file is allowed and it cannot be combined.', 'warning');
+            mediaPicker.value = '';
+            mediaPreviewGrid.innerHTML = '';
+            mediaPreviewGrid.dataset.audioSelected = 'false';
+            updateMediaCount(0, false);
+            return;
+        }
+
+        // Enforce max 1 for audio, max 4 for other media
+        const isAudio = audioFiles.length === 1;
+        const maxAllowed = isAudio ? 1 : 4;
+
+        // console.log('isAudio:', isAudio, 'maxAllowed:', maxAllowed);
+
+        if (files.length > maxAllowed) {
+            showToast(`You can only upload up to ${maxAllowed} ${isAudio ? 'audio file' : 'files'}.`, 'warning');
+            mediaPicker.value = '';
+            mediaPreviewGrid.innerHTML = '';
+            mediaPreviewGrid.dataset.audioSelected = 'false';
+            updateMediaCount(0, false);
+            return;
+        }
+
+        mediaPreviewGrid.dataset.audioSelected = isAudio ? 'true' : 'false';
+
+        // Auto-fill message with audio filename if textarea is empty
+        if (isAudio && messageTextarea && !messageTextarea.value.trim()) {
+            const audioFile = audioFiles[0];
+            // Remove file extension from name
+            const fileName = audioFile.name.replace(/\.[^/.]+$/, '');
+            messageTextarea.value = fileName;
+        }
+
+        renderPreview(files);
+
+        // Use setTimeout to ensure updateMediaCount runs AFTER any other scripts
+        const fileCount = files.length;
+        const isAudioFinal = isAudio;
+        setTimeout(() => {
+            // console.log('Delayed updateMediaCount with:', fileCount, isAudioFinal);
+            updateMediaCount(fileCount, isAudioFinal);
+        }, 50);
+    });
 });

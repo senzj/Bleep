@@ -89,7 +89,7 @@
 /* Smooth theme change (enabled when .theme-transition is present) */
 .theme-transition, .theme-transition * {
     transition-property: background-color, color, border-color, fill, stroke, box-shadow;
-    transition-duration: 750ms;
+    transition-duration: 500ms;
     transition-timing-function: ease;
 }
 

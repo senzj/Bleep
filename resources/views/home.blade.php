@@ -61,8 +61,10 @@
                                     name="media[]"
                                     class="hidden"
                                     multiple
-                                    accept="image/*,video/mp4,video/webm"
+                                    accept="image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/mp3"
                                 />
+
+                                {{-- validation errors --}}
                                 @error('media') <div class="text-error text-xs mt-1">{{ $message }}</div> @enderror
                                 @error('media.*') <div class="text-error text-xs mt-1">{{ $message }}</div> @enderror
 
@@ -118,11 +120,13 @@
                                     {{-- Right buttons (remains second row on mobile because parent is flex-col on small screens) --}}
                                     <div class="flex flex-col sm:flex-row items-center justify-end gap-2 w-full sm:w-auto">
                                         <div class="flex w-full sm:w-auto justify-between gap-2">
+
                                             {{-- Add media button --}}
                                             <button type="button" id="open-media-picker" class="btn btn-ghost btn-sm flex-1 sm:flex-none justify-center">
                                                 <i data-lucide="image-plus" class="w-4 h-4 mr-1"></i>
                                                 Add media
-                                                <span id="bleep-media-count" class="badge badge-neutral badge-sm ml-2 hidden">0/4</span>
+
+                                                <span id="bleep-media-count" class="badge badge-neutral badge-sm ml-2 hidden"></span>
                                             </button>
 
                                             {{-- Submit post --}}
@@ -130,6 +134,7 @@
                                                 <i data-lucide="send" class="w-4 h-4"></i>
                                                 Post
                                             </button>
+
                                         </div>
                                     </div>
 
