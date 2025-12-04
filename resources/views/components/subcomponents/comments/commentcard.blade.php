@@ -3,6 +3,7 @@
         @vite([
             'resources/js/bleep/posts/comment.js',
             'resources/js/bleep/posts/audio.js',
+            'resources/js/bleep/posts/media-visibility.js',
         ])
 
         <script>
@@ -206,7 +207,7 @@
                     @php
                         $mediaPath = $comment->media_path;
                         $isVideo = \Illuminate\Support\Str::of($mediaPath)->lower()->contains(['.mp4', '.mov', '.webm']);
-                        $isAudio = \Illuminate\Support\Str::of($mediaPath)->lower()->contains(['.mp3', '.wav', '.m4a']);
+                        $isAudio = \Illuminate\Support\Str::of($mediaPath)->lower()->contains(['.mp3', '.wav', '.m4a', '.aac', '.ogg', '.flac']);
 
                         $mediaItems = collect([
                             (object) [
@@ -230,17 +231,6 @@
                             'bleep' => $bleepProxy,
                         ])
                     </div>
-
-                    @once('comment-audio-reinit')
-                        <script>
-                            // Reinitialize audio players after comment renders
-                            if (typeof initAudioPlayers === 'function') {
-                                setTimeout(() => {
-                                    initAudioPlayers();
-                                }, 100);
-                            }
-                        </script>
-                    @endonce
                 @endif
 
                 {{-- Actions --}}

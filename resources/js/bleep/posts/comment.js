@@ -532,9 +532,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 addCommentsLoadingIndicator();
             }
 
-            if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
-                lucide.createIcons();
-            }
+            // Initialize audio players for comments
+            setTimeout(() => {
+                if (typeof initAudioPlayers === 'function') {
+                    initAudioPlayers(floatingContent);
+                }
+
+                // Refresh media observer for new content
+                if (typeof refreshMediaObserver === 'function') {
+                    refreshMediaObserver();
+                }
+
+                // Reinitialize Lucide icons
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+
+                // Dispatch event for other listeners
+                document.dispatchEvent(new CustomEvent('bleeps:media:hydrated'));
+            }, 100);
         } catch (error) {
             console.error('Error loading comments:', error);
             const retryBtn = document.createElement('button');
@@ -622,9 +638,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     addCommentsLoadingIndicator();
                 }
 
-                if (typeof lucide !== 'undefined') {
-                    lucide.createIcons();
-                }
+                // Initialize audio players for new comments
+                setTimeout(() => {
+                    if (typeof initAudioPlayers === 'function') {
+                        initAudioPlayers(floatingContent);
+                    }
+
+                    // Refresh media observer for new content
+                    if (typeof refreshMediaObserver === 'function') {
+                        refreshMediaObserver();
+                    }
+
+                    // Reinitialize Lucide icons
+                    if (window.lucide) {
+                        window.lucide.createIcons();
+                    }
+
+                    // Dispatch event
+                    document.dispatchEvent(new CustomEvent('bleeps:media:hydrated'));
+                }, 100);
             } else {
                 hasMoreComments = false;
             }

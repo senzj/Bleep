@@ -30,6 +30,7 @@ export default defineConfig({
                 'resources/js/bleep/posts/repost.js',
                 'resources/js/bleep/posts/share.js',
                 'resources/js/bleep/posts/audio.js',
+                'resources/js/bleep/posts/media-visibility.js',
                 'resources/js/bleep/users/follow.js',
                 'resources/js/bleep/users/profile-lazyload.js',
                 'resources/js/bleep/users/profile.js',

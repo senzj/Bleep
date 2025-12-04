@@ -61,7 +61,15 @@ class MediaUploadService
                 ? 'video'
                 : (str_starts_with($mime, 'audio/') ? 'audio' : 'file'));
 
-        $filename = time() . '_' . Str::random(8) . '.' . $file->extension();
+        // For audio files, preserve original name with username prefix
+        if ($type === 'audio') {
+            $originalName = $file->getClientOriginalName();
+            $filename = "{$username}_{$originalName}";
+        } else {
+            // For images and videos, use timestamp + random string
+            $filename = time() . '_' . Str::random(8) . '.' . $file->extension();
+        }
+
         $path = $file->storeAs("{$username}/bleeps/{$type}", $filename, 'public');
 
         return [
@@ -121,7 +129,13 @@ class MediaUploadService
                 ? 'video'
                 : (str_starts_with($mime, 'audio/') ? 'audio' : 'file'));
 
-        $filename = time() . '_' . Str::random(6) . '.' . $file->extension();
+        // For audio files in comments, also preserve original name
+        if ($type === 'audio') {
+            $originalName = $file->getClientOriginalName();
+            $filename = "{$username}_{$originalName}";
+        } else {
+            $filename = time() . '_' . Str::random(6) . '.' . $file->extension();
+        }
 
         $path = $file->storeAs("{$username}/comments/{$type}", $filename, 'public');
 

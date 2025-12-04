@@ -23,6 +23,11 @@ use App\Http\Controllers\Api\Auth\ValidationController;
 use App\Http\Controllers\Bleep\CommentsLikesController;
 use App\Http\Controllers\Bleep\CommentsRepliesController;
 
+// php info test
+// Route::get('/phpinfo', function() {
+//     phpinfo();
+// });
+
 // REGISTER
 Route::view('/register', 'auth.register')
     ->middleware('guest')

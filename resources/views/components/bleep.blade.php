@@ -464,6 +464,7 @@
             'resources/js/bleep/posts/repost.js',
             'resources/js/bleep/posts/share.js',
             'resources/js/bleep/posts/audio.js',
+            'resources/js/bleep/posts/media-visibility.js',
             'resources/js/bleep/users/follow.js',
             'resources/js/bleep/modals/mediamodal.js',
             'resources/js/bleep/modals/posts/reports.js',
