@@ -38,19 +38,19 @@ function initAudioPlayers(container = document) {
         container = document;
     }
 
-    console.log('initAudioPlayers called, container:', container);
+    // console.log('initAudioPlayers called, container:', container);
 
     // Find all audio player wrappers in the specified container
     const wrappers = container.querySelectorAll('[data-bleep-media][data-audio-player]');
 
-    console.log('Found audio wrappers:', wrappers.length);
+    // console.log('Found audio wrappers:', wrappers.length);
 
     wrappers.forEach((wrapper, index) => {
-        console.log(`Processing wrapper ${index + 1}/${wrappers.length}`);
+        // console.log(`Processing wrapper ${index + 1}/${wrappers.length}`);
 
         // Skip if already initialized
         if (wrapper.dataset.playerReady === 'true') {
-            console.log(`Wrapper ${index + 1} already initialized, skipping`);
+            // console.log(`Wrapper ${index + 1} already initialized, skipping`);
             return;
         }
         wrapper.dataset.playerReady = 'true';
@@ -62,7 +62,7 @@ function initAudioPlayers(container = document) {
         }
 
         const audioId = audioEl.id;
-        console.log(`Initializing audio player: ${audioId}`);
+        // console.log(`Initializing audio player: ${audioId}`);
 
         const btnPlay = wrapper.querySelector(`.audio-play-btn[data-audio-id="${audioId}"]`);
         const progressTrack = wrapper.querySelector('[data-audio-progress-track]') ?? wrapper.querySelector('.relative.cursor-pointer');
@@ -289,7 +289,7 @@ function initAudioPlayers(container = document) {
             audioEl.load();
         }
 
-        console.log('Audio player initialized successfully:', audioId);
+        // console.log('Audio player initialized successfully:', audioId);
     });
 }
 
@@ -298,12 +298,12 @@ window.initAudioPlayers = initAudioPlayers;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOMContentLoaded - initializing audio players');
+    // console.log('DOMContentLoaded - initializing audio players');
     initAudioPlayers();
 });
 
 // Reinitialize when new content is loaded
 document.addEventListener('bleeps:media:hydrated', () => {
-    console.log('bleeps:media:hydrated - reinitializing audio players');
+    // console.log('bleeps:media:hydrated - reinitializing audio players');
     setTimeout(() => initAudioPlayers(), 100);
 });

@@ -73,16 +73,73 @@ document.addEventListener('click', (e) => {
             const data = await res.json();
             const b = data.bleep;
 
-            // safe DOM updates (use textContent)
-            const msgEl = document.querySelector(`.bleep-message[data-bleep-id="${b.id}"]`);
-            if (msgEl) msgEl.textContent = b.message;
+            // Update message in all contexts (normal and NSFW)
+            (function updateMessage() {
+                const wrapper = document.querySelector(`.bleep-nsfw-wrapper[data-bleep-id="${b.id}"]`);
+                if (!wrapper) return;
 
+                // Update normal content message
+                const normalContent = wrapper.querySelector('.normal-bleep-content');
+                if (normalContent) {
+                    // Find or create the message paragraph
+                    let msgContainer = normalContent.querySelector('.text-base.leading-relaxed');
+                    let msgParagraph = msgContainer?.querySelector('p');
+
+                    if (b.message && b.message.trim()) {
+                        // Message exists
+                        if (!msgContainer) {
+                            // Create new message container
+                            msgContainer = document.createElement('div');
+                            msgContainer.className = 'text-base leading-relaxed text-base-content/90 mb-3';
+                            msgParagraph = document.createElement('p');
+                            msgParagraph.className = 'whitespace-pre-line wrap-break-word';
+                            msgContainer.appendChild(msgParagraph);
+
+                            // Insert before media if exists, otherwise at the start
+                            const mediaGallery = normalContent.querySelector('[data-bleep-media]');
+                            if (mediaGallery) {
+                                normalContent.insertBefore(msgContainer, mediaGallery);
+                            } else {
+                                normalContent.insertBefore(msgContainer, normalContent.firstChild);
+                            }
+                        }
+
+                        if (!msgParagraph) {
+                            msgParagraph = document.createElement('p');
+                            msgParagraph.className = 'whitespace-pre-line wrap-break-word';
+                            msgContainer.appendChild(msgParagraph);
+                        }
+
+                        msgParagraph.textContent = b.message.trim();
+                    } else {
+                        // No message, remove the container if it exists
+                        if (msgContainer) {
+                            msgContainer.remove();
+                        }
+                    }
+                }
+
+                // Update NSFW deferred content message
+                const nsfwContent = wrapper.querySelector('.nsfw-content');
+                if (nsfwContent) {
+                    const nsfwMsg = nsfwContent.querySelector('.nsfw-message');
+                    if (nsfwMsg) {
+                        nsfwMsg.textContent = b.message ? b.message.trim() : '';
+                    }
+                    // Update data attribute
+                    nsfwContent.setAttribute('data-bleep-message', b.message || '');
+                }
+            })();
+
+            // Update display name
             const nameEl = document.querySelector(`.bleep-display-name[data-bleep-id="${b.id}"]`);
             if (nameEl) nameEl.textContent = b.display_name;
 
+            // Update username
             const unameEl = document.querySelector(`.bleep-username[data-bleep-id="${b.id}"]`);
             if (unameEl) unameEl.textContent = b.username;
 
+            // Update avatar
             const avatarEl = document.querySelector(`.bleep-avatar[data-bleep-id="${b.id}"]`);
             if (avatarEl) {
                 if (b.is_anonymous) {
@@ -99,26 +156,24 @@ document.addEventListener('click', (e) => {
                         </div>
                     `;
                 }
-                if (window.createLucideIcons) window.createLucideIcons();
+                if (window.lucide) window.lucide.createIcons();
             }
 
-            // --- NEW: update role badge + verified icon near the display name ---
+            // --- Update role badge + verified icon near the display name ---
             (function updateRoleAndVerified() {
                 const displayNameEl = document.querySelector(`.bleep-display-name[data-bleep-id="${b.id}"]`);
                 if (!displayNameEl) return;
 
-                // the container that holds name + badges in blade has classes "font-semibold ... flex items-center gap-1.5"
                 const nameContainer = displayNameEl.closest('.font-semibold');
                 if (!nameContainer) return;
 
-                // Remove any existing role badges or verified icons (server-rendered or client-added)
-                // remove server-rendered badge spans (ADMIN, MOD, other role text)
+                // Remove existing badges/icons
                 nameContainer.querySelectorAll('span, i[data-lucide="badge-check"]').forEach(el => {
                     if (el.tagName.toLowerCase() === 'i' && el.getAttribute('data-lucide') === 'badge-check') {
                         el.remove();
                         return;
                     }
-                    if (el.tagName.toLowerCase() === 'span') {
+                    if (el.tagName.toLowerCase() === 'span' && el !== displayNameEl) {
                         const txt = (el.textContent || '').trim().toUpperCase();
                         if (txt === 'ADMIN' || txt === 'MOD' || txt === '') {
                             el.remove();
@@ -126,14 +181,13 @@ document.addEventListener('click', (e) => {
                     }
                 });
 
-                // Also remove any previously inserted role-badge / verified-icon to be safe
                 nameContainer.querySelectorAll('.role-badge, .verified-icon').forEach(el => el.remove());
 
+                // Add role badge
                 if (!b.is_anonymous && b.user_role) {
                     const role = b.user_role;
                     let span = document.createElement('span');
 
-                    // use same styling as Blade so DOM stays consistent
                     if (role === 'admin') {
                         span.className = 'px-1 py-0.5 text-[10px] font-extrabold rounded bg-blue-500/20 text-blue-500 border border-blue-600/20 role-badge';
                         span.textContent = 'ADMIN';
@@ -145,45 +199,108 @@ document.addEventListener('click', (e) => {
                         span.textContent = role.toUpperCase();
                     }
 
-                    // insert after the displayName element
                     displayNameEl.insertAdjacentElement('afterend', span);
                 }
 
+                // Add verified icon
                 if (!b.is_anonymous && b.user_is_verified) {
                     const i = document.createElement('i');
                     i.setAttribute('data-lucide', 'badge-check');
                     i.className = 'verified-icon w-4 h-4 text-blue-500';
-                    // append after any role badge (if present) or after displayName
                     const afterEl = nameContainer.querySelector('.role-badge') || displayNameEl;
                     afterEl.insertAdjacentElement('afterend', i);
-                    if (window.createLucideIcons) window.createLucideIcons();
+                    if (window.lucide) window.lucide.createIcons();
                 }
             })();
 
             // Toggle header link wrapper to match anonymity
             updateBleepIdentityWrapper(b.id, !!b.is_anonymous, b.username);
 
-            const likesEl = document.querySelector(`.like-count[data-bleep-id="${b.id}"]`);
-            if (likesEl) likesEl.textContent = b.likes_count;
+            // --- Immediate UI feedback for NSFW changes ---
+            (function syncNsfwUI() {
+                const wrapper = document.querySelector(`.bleep-nsfw-wrapper[data-bleep-id="${b.id}"]`);
+                if (!wrapper) return;
 
-            const commentsBtn = document.querySelector(`.comment-btn[data-bleep-id="${b.id}"]`);
-            if (commentsBtn) {
-              const spans = commentsBtn.querySelectorAll('span');
-              let countSpan = null;
-              for (const s of spans) {
-                if (s.classList.contains('inline') || s.classList.contains('text-xs')) {
-                  countSpan = s;
-                  break;
+                // Update wrapper flags
+                wrapper.setAttribute('data-is-nsfw', b.is_nsfw ? '1' : '0');
+                wrapper.setAttribute('data-is-anonymous', b.is_anonymous ? '1' : '0');
+
+                const placeholder = wrapper.querySelector('.nsfw-placeholder');
+                const content = wrapper.querySelector('.nsfw-content');
+                const normalContent = wrapper.querySelector('.normal-bleep-content');
+                const gallery = normalContent?.querySelector('.bleep-media-gallery, [data-bleep-media]');
+
+                const isNsfw = Boolean(b.is_nsfw);
+
+                if (isNsfw) {
+                    // Show NSFW placeholder, hide normal content
+                    if (placeholder) placeholder.classList.remove('hidden');
+                    if (normalContent) normalContent.classList.add('hidden');
+                    if (content) content.classList.add('hidden');
+
+                    // Clear localStorage reveal state
+                    try { localStorage.removeItem(`nsfw_viewed_${b.id}`); } catch(e) {}
+                    delete wrapper.dataset.revealed;
+
+                    // Clear deferred content srcs
+                    if (content) {
+                        content.querySelectorAll('[data-media-src], .nsfw-media').forEach(el => {
+                            const tag = el.tagName.toLowerCase();
+                            if (tag === 'img') el.removeAttribute('src');
+                            if (tag === 'source') el.removeAttribute('src');
+                            if (tag === 'video') {
+                                try { el.pause(); } catch(e){}
+                                el.removeAttribute('src');
+                                const source = el.querySelector('source');
+                                if (source) source.removeAttribute('src');
+                            }
+                        });
+                    }
+                } else {
+                    // Not NSFW - show normal content, hide placeholder and deferred
+                    if (placeholder) placeholder.classList.add('hidden');
+                    if (content) {
+                        content.classList.add('hidden');
+                        // Clear deferred media
+                        content.querySelectorAll('[data-media-src], .nsfw-media').forEach(el => {
+                            const tag = el.tagName.toLowerCase();
+                            if (tag === 'img') el.removeAttribute('src');
+                            if (tag === 'source') el.removeAttribute('src');
+                            if (tag === 'video') {
+                                try { el.pause(); } catch(e){}
+                                el.removeAttribute('src');
+                            }
+                        });
+                    }
+
+                    // Show normal content
+                    if (normalContent) normalContent.classList.remove('hidden');
+
+                    // Restore gallery images
+                    if (gallery) {
+                        gallery.querySelectorAll('[data-media-src]').forEach(el => {
+                            const tag = el.tagName.toLowerCase();
+                            const src = el.getAttribute('data-media-src');
+                            if (!src) return;
+                            if (tag === 'img' && !el.getAttribute('src')) el.setAttribute('src', src);
+                            if (tag === 'source' && !el.getAttribute('src')) {
+                                el.setAttribute('src', src);
+                                const parentVideo = el.closest('video');
+                                try { parentVideo?.load(); } catch(e){}
+                            }
+                            if (tag === 'video' && !el.getAttribute('src')) {
+                                el.setAttribute('src', src);
+                                try { el.load(); } catch(e){}
+                            }
+                        });
+                    }
                 }
-              }
-              countSpan = countSpan || spans[0] || null;
-              if (countSpan) countSpan.textContent = b.comments_count;
-            }
+            })();
 
             // close modal
             document.getElementById('edit-bleep-modal')?.classList.add('hidden');
 
-            // update every edit button for this bleep (dropdowns / clones)
+            // update every edit button for this bleep
             document.querySelectorAll(`.edit-bleep-btn[data-bleep-id="${bleepId}"]`)
                 .forEach(btn => {
                     btn.dataset.bleepMessage = b.message;

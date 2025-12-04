@@ -254,62 +254,44 @@ Route::post('/check-email', [ValidationController::class, 'checkEmail'])
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-Route::get('/media/stream', function (Request $request) {
-    $path = $request->query('path');
-    $disk = Storage::disk('public');
+Route::get('/media/stream/{path}', function ($path) {
+    $fullPath = storage_path('app/public/' . $path);
 
-    if (!$path || !$disk->exists($path)) {
+    if (!file_exists($fullPath)) {
         abort(404);
     }
 
-    $fullPath = $disk->path($path);
-    $size = filesize($fullPath);
-    $mime = Storage::mimeType($path) ?? mime_content_type($fullPath) ?? 'application/octet-stream';
-    $range = $request->header('Range');
+    $mimeType = mime_content_type($fullPath);
+    $fileSize = filesize($fullPath);
 
-    $start = 0;
-    $end = $size - 1;
-
-    if ($range && preg_match('/bytes=(\d+)-(\d*)/', $range, $matches)) {
-        $start = (int) $matches[1];
-        if ($matches[2] !== '') {
-            $end = min((int) $matches[2], $size - 1);
-        }
-    }
-
-    $length = $end - $start + 1;
-    $status = $range ? 206 : 200;
+    // Support range requests for video/audio streaming
     $headers = [
-        'Content-Type' => $mime,
+        'Content-Type' => $mimeType,
         'Accept-Ranges' => 'bytes',
-        'Cache-Control' => 'public, max-age=31536000',
     ];
 
-    if ($status === 206) {
+    // Check if client sent a Range header
+    if (request()->hasHeader('Range')) {
+        $range = request()->header('Range');
+        preg_match('/bytes=(\d+)-(\d*)/', $range, $matches);
+
+        $start = intval($matches[1]);
+        $end = $matches[2] ? intval($matches[2]) : $fileSize - 1;
+        $length = $end - $start + 1;
+
+        $headers['Content-Range'] = "bytes $start-$end/$fileSize";
         $headers['Content-Length'] = $length;
-        $headers['Content-Range'] = "bytes {$start}-{$end}/{$size}";
-    } else {
-        $headers['Content-Length'] = $size;
+
+        $file = fopen($fullPath, 'rb');
+        fseek($file, $start);
+        $data = fread($file, $length);
+        fclose($file);
+
+        return response($data, 206, $headers);
     }
 
-    return new StreamedResponse(function () use ($fullPath, $start, $length) {
-        $handle = fopen($fullPath, 'rb');
-        if ($handle === false) {
-            return;
-        }
+    // No range request, send entire file
+    $headers['Content-Length'] = $fileSize;
 
-        fseek($handle, $start);
-        $bytesRemaining = $length;
-
-        while ($bytesRemaining > 0 && !feof($handle)) {
-            $chunk = fread($handle, min(8192, $bytesRemaining));
-            if ($chunk === false) break;
-
-            $bytesRemaining -= strlen($chunk);
-            echo $chunk;
-            flush();
-        }
-
-        fclose($handle);
-    }, $status, $headers);
-})->name('media.stream');
+    return response()->file($fullPath, $headers);
+})->name('media.stream')->where('path', '.*');

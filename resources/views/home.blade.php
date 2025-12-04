@@ -51,7 +51,7 @@
                                         class="textarea textarea-bordered w-full resize-none @error('message') textarea-error @enderror"
                                         rows="2"
                                         maxlength="255"
-                                    >{{ old('message') }}</textarea>
+                                    ></textarea>
                                 </div>
 
                                 {{-- hidden media input (single trigger button will open this) --}}

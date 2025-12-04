@@ -2,8 +2,9 @@
     @once('comments-audio-init')
         @vite([
             'resources/js/bleep/posts/comment.js',
-            'resources/js/bleep/posts/audio.js',
-            'resources/js/bleep/posts/media-visibility.js',
+            'resources/js/bleep/posts/media/audio.js',
+            'resources/js/bleep/posts/media/video.js',
+            'resources/js/bleep/posts/media/visibility.js',
         ])
 
         <script>
@@ -198,9 +199,15 @@
             </div>
 
                 {{-- Message --}}
-                <p class="text-sm mb-1 mt-2.5 wrap-break-word leading-snug text-base-content/90 comment-message whitespace-pre-line">
-                    {{ $comment->message }}
-                </p>
+                @php
+                    $cleanMessage = trim($comment->message);
+                @endphp
+
+                @if($cleanMessage)
+                    <div class="text-sm mb-1 mt-2.5 leading-snug text-base-content/90">
+                        <p class="whitespace-pre-line wrap-break-word comment-message">{{ $cleanMessage }}</p>
+                    </div>
+                @endif
 
                 {{-- Media --}}
                 @if ($comment->media_path)

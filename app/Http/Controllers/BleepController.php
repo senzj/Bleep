@@ -10,8 +10,9 @@ use App\Models\BleepViews;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Services\MediaUploadService;
+use Illuminate\Support\Facades\Log;
 
+use App\Services\MediaUploadService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
@@ -56,12 +57,14 @@ class BleepController extends Controller
      */
     public function store(Request $request)
     {
+        Log::info("Request", $request->all());
+
         $validated = $request->validate([
             'message' => 'string|max:255|required_without:media',
             'is_anonymous' => 'nullable|boolean',
             'is_nsfw' => 'nullable|boolean',
             'media' => 'nullable|array|max:4|required_without:message',
-            'media.*' => 'file|max:102400|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mp3,audio/mpeg,audio/wav',
+            'media.*' => 'file|max:102400000|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mp3,audio/mpeg,audio/wav',
         ], [
             'message.required_without' => 'Write something or attach media.',
             'media.required_without' => 'Attach media or write a message.',
@@ -72,7 +75,7 @@ class BleepController extends Controller
 
         $user = Auth::user();
 
-        
+
 
         // Create the bleep
         $bleep = $user->bleeps()->create([

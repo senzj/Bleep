@@ -17,7 +17,7 @@ function pauseMedia(mediaElement) {
         if (mediaElement.tagName === 'AUDIO' || mediaElement.tagName === 'VIDEO') {
             if (!mediaElement.paused) {
                 mediaElement.pause();
-                console.log('Media paused:', mediaElement.id || 'unnamed');
+                // console.log('Media paused:', mediaElement.id || 'unnamed');
             }
         }
     } catch (error) {
@@ -160,10 +160,7 @@ function pauseMediaOnCommentsClose() {
  */
 function pauseMediaOnNavigation() {
     window.addEventListener('beforeunload', () => {
-        // Pause all audio elements
         document.querySelectorAll('audio').forEach(audio => pauseMedia(audio));
-
-        // Pause all video elements
         document.querySelectorAll('video').forEach(video => pauseMedia(video));
     });
 }
@@ -174,7 +171,6 @@ function pauseMediaOnNavigation() {
 function pauseMediaOnPageHidden() {
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
-            // Page is hidden, pause all media
             document.querySelectorAll('audio').forEach(audio => pauseMedia(audio));
             document.querySelectorAll('video').forEach(video => pauseMedia(video));
         }
@@ -197,7 +193,7 @@ function initMediaVisibilityControls() {
     // Pause media when page is hidden (tab switching)
     pauseMediaOnPageHidden();
 
-    console.log('Media visibility controls initialized');
+    // console.log('Media visibility controls initialized');
 }
 
 /**

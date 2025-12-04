@@ -129,9 +129,18 @@
                         alt="{{ $m->original_name }}"
                         loading="lazy">
                 @else
-                    <video class="{{ $nsfwClass }} max-h-96 w-auto rounded-lg object-contain" controls preload="metadata">
-                        <source {{ $nsfwAttr }}="{{ asset('storage/'.$m->path) }}"
-                                {{ !$isNsfw ? 'type="' . $m->mime_type . '"' : 'data-media-mime="' . $m->mime_type . '"' }}>
+                    <video class="{{ $nsfwClass }} max-h-96 w-auto rounded-lg object-contain"
+                           controls
+                           preload="metadata"
+                           playsinline>
+                        @if($isNsfw)
+                            <source data-media-src="{{ asset('storage/'.$m->path) }}"
+                                    data-media-mime="{{ $m->mime_type }}">
+                        @else
+                            <source src="{{ asset('storage/'.$m->path) }}"
+                                    type="{{ $m->mime_type }}">
+                        @endif
+                        Your browser does not support the video tag.
                     </video>
                 @endif
             </div>

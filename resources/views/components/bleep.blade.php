@@ -306,11 +306,17 @@
 
                 {{-- Normal Content (shown when NOT NSFW) --}}
                 <div class="normal-bleep-content {{ $isNsfw ? 'hidden' : '' }}">
-                    <p class="text-base">
-                        @if(!empty($bleep->message))
-                            {{ $bleep->message }}
+                    @if(!empty($bleep->message))
+                        @php
+                            $cleanMessage = trim($bleep->message);
+                        @endphp
+
+                        @if($cleanMessage)
+                            <div class="text-base leading-relaxed text-base-content/90 mb-3">
+                                <p class="whitespace-pre-line wrap-break-word">{{ $cleanMessage }}</p>
+                            </div>
                         @endif
-                    </p>
+                    @endif
 
                     @if($hasMedia)
                         @include('components.bleepsmedia', ['mediaItems' => $mediaItems, 'isNsfw' => false])
@@ -463,8 +469,9 @@
             'resources/js/bleep/posts/nsfw.js',
             'resources/js/bleep/posts/repost.js',
             'resources/js/bleep/posts/share.js',
-            'resources/js/bleep/posts/audio.js',
-            'resources/js/bleep/posts/media-visibility.js',
+            'resources/js/bleep/posts/media/audio.js',
+            'resources/js/bleep/posts/media/video.js',
+            'resources/js/bleep/posts/media/visibility.js',
             'resources/js/bleep/users/follow.js',
             'resources/js/bleep/modals/mediamodal.js',
             'resources/js/bleep/modals/posts/reports.js',

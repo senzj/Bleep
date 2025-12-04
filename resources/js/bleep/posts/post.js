@@ -216,44 +216,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateMediaCount(count, isAudio = false) {
         const badge = document.getElementById('bleep-media-count');
-        // console.log('updateMediaCount called:', { count, isAudio, badge });
         if (!badge) return;
 
         const cap = isAudio ? 1 : 4;
-        // console.log('Setting badge:', { cap, text: `${Math.min(count, cap)}/${cap}` });
-
         badge.textContent = `${Math.min(count, cap)}/${cap}`;
         badge.classList.toggle('hidden', count === 0);
-
-        // Debug: Watch for changes to the badge
-        // const observer = new MutationObserver((mutations) => {
-        //     mutations.forEach((mutation) => {
-        //         console.log('Badge changed!', {
-        //             type: mutation.type,
-        //             oldValue: mutation.oldValue,
-        //             newValue: badge.textContent,
-        //             stack: new Error().stack
-        //         });
-        //     });
-        // });
-        // observer.observe(badge, { characterData: true, childList: true, subtree: true });
-
-        // Stop observing after 2 seconds to avoid memory leak
-        setTimeout(() => observer.disconnect(), 2000);
     }
 
     function isAudioFile(file) {
         const isAudioMime = file.type.startsWith('audio/');
         const ext = file.name.split('.').pop()?.toLowerCase();
         const isAudioExt = ['mp3', 'wav', 'mpeg', 'ogg', 'flac', 'm4a', 'aac'].includes(ext);
-        // console.log('isAudioFile check:', {
-        //     fileName: file.name,
-        //     fileType: file.type,
-        //     ext,
-        //     isAudioMime,
-        //     isAudioExt,
-        //     result: isAudioMime || isAudioExt
-        // });
         return isAudioMime || isAudioExt;
     }
 
@@ -270,6 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 img.className = 'w-full h-24 object-cover rounded-lg border border-base-300';
                 img.onload = () => URL.revokeObjectURL(img.src);
                 wrapper.appendChild(img);
+                
             } else if (file.type.startsWith('video/')) {
                 const video = document.createElement('video');
                 video.src = URL.createObjectURL(file);
@@ -283,6 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 playIcon.className = 'absolute inset-0 flex items-center justify-center pointer-events-none';
                 playIcon.innerHTML = '<i data-lucide="play" class="w-8 h-8 text-white drop-shadow-lg"></i>';
                 wrapper.appendChild(playIcon);
+
             } else if (isAudioFile(file)) {
                 const audioWrapper = document.createElement('div');
                 audioWrapper.className = 'w-full h-24 flex flex-col items-center justify-center rounded-lg border border-base-300 bg-base-200';
@@ -298,9 +273,11 @@ document.addEventListener('DOMContentLoaded', () => {
             removeBtn.type = 'button';
             removeBtn.className = 'absolute top-1 right-1 btn btn-circle btn-xs btn-error opacity-0 group-hover:opacity-100 transition-opacity';
             removeBtn.innerHTML = '<i data-lucide="x" class="w-3 h-3"></i>';
+
             removeBtn.addEventListener('click', () => {
                 removeFileAtIndex(index);
             });
+
             wrapper.appendChild(removeBtn);
 
             mediaPreviewGrid.appendChild(wrapper);
@@ -316,6 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const files = Array.from(mediaPicker.files);
         // console.log('Files selected:', files.map(f => ({ name: f.name, type: f.type })));
+
         // Check for audio files using helper function
         const audioFiles = files.filter(file => isAudioFile(file));
         const otherFiles = files.filter(file => !isAudioFile(file));
@@ -351,6 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Auto-fill message with audio filename if textarea is empty
         if (isAudio && messageTextarea && !messageTextarea.value.trim()) {
             const audioFile = audioFiles[0];
+
             // Remove file extension from name
             const fileName = audioFile.name.replace(/\.[^/.]+$/, '');
             messageTextarea.value = fileName;
@@ -361,6 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Use setTimeout to ensure updateMediaCount runs AFTER any other scripts
         const fileCount = files.length;
         const isAudioFinal = isAudio;
+
         setTimeout(() => {
             // console.log('Delayed updateMediaCount with:', fileCount, isAudioFinal);
             updateMediaCount(fileCount, isAudioFinal);

@@ -100,6 +100,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const file = mediaInput.files[0];
 
+        // Auto-insert audio filename into textarea if it's an audio file and textarea is empty
+        if (isAudioFile(file) && floatingTextarea && !floatingTextarea.value.trim()) {
+            // Remove file extension and clean up the filename
+            let fileName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+
+            // Optional: Clean up common patterns like "username_" prefix
+            // fileName = fileName.replace(/^[^_]+_/, ''); // Remove "username_" prefix if exists
+
+            floatingTextarea.value = fileName;
+            autoGrow(floatingTextarea);
+        }
+
         const previewShell = mediaPreview?.querySelector('figure');
         if (!previewShell) return;
 
@@ -116,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (/\.(mp4|mov|webm)$/.test(lower)) {
             markup = `<video controls class="w-full max-h-40 object-contain bg-black"><source src="${url}"></video>`;
-        } else if (/\.(mp3|wav|m4a)$/.test(lower)) {
+        } else if (/\.(mp3|wav|m4a|aac|ogg|flac)$/.test(lower)) {
             markup = `<audio controls class="w-full"><source src="${url}"></audio>`;
         } else {
             markup = `<img src="${url}" alt="Attachment preview" class="w-full h-auto object-contain">`;
@@ -532,10 +544,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 addCommentsLoadingIndicator();
             }
 
-            // Initialize audio players for comments
+            // Initialize audio and video players for comments
             setTimeout(() => {
                 if (typeof initAudioPlayers === 'function') {
                     initAudioPlayers(floatingContent);
+                }
+
+                if (typeof initVideoPlayers === 'function') {
+                    initVideoPlayers(floatingContent);
                 }
 
                 // Refresh media observer for new content
@@ -638,10 +654,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     addCommentsLoadingIndicator();
                 }
 
-                // Initialize audio players for new comments
+                // Initialize audio and video players for new comments
                 setTimeout(() => {
                     if (typeof initAudioPlayers === 'function') {
                         initAudioPlayers(floatingContent);
+                    }
+
+                    if (typeof initVideoPlayers === 'function') {
+                        initVideoPlayers(floatingContent);
                     }
 
                     // Refresh media observer for new content
@@ -1269,5 +1289,14 @@ document.addEventListener('DOMContentLoaded', function() {
             displayNameEl.textContent = displayName || displayNameEl.textContent;
             usernameEl.textContent = '@' + (userUsername || usernameEl.textContent.replace(/^@/, ''));
         }
+    }
+
+    // Add this helper function after the clearMediaState function
+    function isAudioFile(file) {
+        if (!file) return false;
+        const name = file.name.toLowerCase();
+        const type = file.type.toLowerCase();
+        return type.startsWith('audio/') ||
+               /\.(mp3|wav|m4a|aac|ogg|flac|opus|wma)$/i.test(name);
     }
 });
