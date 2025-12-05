@@ -161,10 +161,25 @@
                                 alt="{{ $m->original_name }}"
                                 loading="lazy">
                         @else
-                            <video class="{{ $nsfwClass }} max-h-64 w-full rounded-lg object-contain" controls preload="metadata">
-                                <source {{ $nsfwAttr }}="{{ asset('storage/'.$m->path) }}"
-                                        {{ !$isNsfw ? 'type="' . $m->mime_type . '"' : 'data-media-mime="' . $m->mime_type . '"' }}>
-                            </video>
+                            <div class="relative w-full h-64 bg-base-300 rounded-lg overflow-hidden flex items-center justify-center">
+                                @if($isNsfw)
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <i data-lucide="play-circle" class="w-16 h-16 text-base-content/30"></i>
+                                    </div>
+                                @endif
+                                <video class="{{ $nsfwClass }} w-full h-full object-cover rounded-lg"
+                                       controls
+                                       preload="metadata"
+                                       playsinline>
+                                    @if($isNsfw)
+                                        <source data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                data-media-mime="{{ $m->mime_type }}">
+                                    @else
+                                        <source src="{{ asset('storage/'.$m->path) }}"
+                                                type="{{ $m->mime_type }}">
+                                    @endif
+                                </video>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -186,10 +201,25 @@
                                 alt="{{ $m->original_name }}"
                                 loading="lazy">
                         @else
-                            <video class="{{ $nsfwClass }} w-full {{ $index === 2 ? 'h-full' : 'h-40' }} object-contain rounded-lg" controls preload="metadata">
-                                <source {{ $nsfwAttr }}="{{ asset('storage/'.$m->path) }}"
-                                        {{ !$isNsfw ? 'type="' . $m->mime_type . '"' : 'data-media-mime="' . $m->mime_type . '"' }}>
-                            </video>
+                            <div class="relative w-full {{ $index === 2 ? 'h-full' : 'h-40' }} bg-base-300 rounded-lg overflow-hidden flex items-center justify-center">
+                                @if($isNsfw)
+                                    <div class="absolute inset-0 flex items-center justify-center z-10">
+                                        <i data-lucide="play-circle" class="w-16 h-16 text-base-content/30"></i>
+                                    </div>
+                                @endif
+                                <video class="{{ $nsfwClass }} w-full h-full object-cover rounded-lg"
+                                       controls
+                                       preload="metadata"
+                                       playsinline>
+                                    @if($isNsfw)
+                                        <source data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                data-media-mime="{{ $m->mime_type }}">
+                                    @else
+                                        <source src="{{ asset('storage/'.$m->path) }}"
+                                                type="{{ $m->mime_type }}">
+                                    @endif
+                                </video>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -211,10 +241,25 @@
                                 alt="{{ $m->original_name }}"
                                 loading="lazy">
                         @else
-                            <video class="{{ $nsfwClass }} w-full h-40 rounded-lg object-contain" controls preload="metadata">
-                                <source {{ $nsfwAttr }}="{{ asset('storage/'.$m->path) }}"
-                                        {{ !$isNsfw ? 'type="' . $m->mime_type . '"' : 'data-media-mime="' . $m->mime_type . '"' }}>
-                            </video>
+                            <div class="relative w-full h-40 bg-base-300 rounded-lg overflow-hidden flex items-center justify-center">
+                                @if($isNsfw)
+                                    <div class="absolute inset-0 flex items-center justify-center z-10">
+                                        <i data-lucide="play-circle" class="w-16 h-16 text-base-content/30"></i>
+                                    </div>
+                                @endif
+                                <video class="{{ $nsfwClass }} w-full h-full object-cover rounded-lg"
+                                       controls
+                                       preload="metadata"
+                                       playsinline>
+                                    @if($isNsfw)
+                                        <source data-media-src="{{ asset('storage/'.$m->path) }}"
+                                                data-media-mime="{{ $m->mime_type }}">
+                                    @else
+                                        <source src="{{ asset('storage/'.$m->path) }}"
+                                                type="{{ $m->mime_type }}">
+                                    @endif
+                                </video>
+                            </div>
                         @endif
                     </div>
                 </div>

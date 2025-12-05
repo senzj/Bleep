@@ -1,5 +1,5 @@
 {{-- Media Viewer Modal --}}
-<div id="media-modal" class="!m-0 hidden fixed inset-0 z-50 items-center justify-center bg-black/95 backdrop-blur-sm media-modal">
+<div id="media-modal" class="m-0! hidden fixed inset-0 z-60 items-center justify-center bg-black/95 backdrop-blur-sm media-modal">
     {{-- Top controls --}}
     <div class="absolute top-4 right-4 z-50 flex items-center gap-2">
         {{-- Zoom controls --}}
