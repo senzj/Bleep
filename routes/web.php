@@ -155,14 +155,14 @@ Route::middleware('auth')->group((function () {
     Route::put('/settings/password', [SettingsController::class, 'updatePassword'])
         ->name('settings.password.update');
 
-    Route::get('settings/devices', [SettingsController::class, 'devices'])
+    Route::get('/settings/devices', [SettingsController::class, 'devices'])
         ->name('settings.devices');
-    Route::delete('settings/devices/{sessionId}/revoke/session', [SettingsController::class, 'revokeSession'])
-        ->name('settings.devices.revoke');
-    Route::delete('settings/devices/{device}/revoke/device', [SettingsController::class, 'revokeDevice'])
+    Route::delete('/settings/devices/{sessionId}/revoke/session', [SettingsController::class, 'revokeSession'])
+        ->name('/settings.devices.revoke');
+    Route::delete('/settings/devices/{device}/revoke/device', [SettingsController::class, 'revokeDevice'])
         ->name('settings.devices.device.revoke');
 
-    Route::get('settings/logs', [SettingsController::class, 'logs'])
+    Route::get('/settings/logs', [SettingsController::class, 'logs'])
         ->name('settings.logs');
 
     // User report submission
@@ -219,17 +219,15 @@ Route::middleware('auth')->group((function () {
         Route::get('/admin/logs', [AdminController::class, 'logs'])
             ->name('admin.logs');
 
+        // System Visits
+        Route::get('/admin/visits', [AdminController::class, 'visits'])
+            ->name('admin.visits');
+
+        Route::get('/admin/visits/data', [AdminController::class, 'visitsData'])
+            ->name('admin.visits.data');
 
     });
 }));
-
-// remembered devices routes
-Route::middleware(['auth'])->group(function () {
-    Route::get('/settings/devices', [SettingsController::class, 'devices'])->name('settings.devices');
-    Route::delete('/settings/devices/{remembered_device}', [RememberedDeviceController::class, 'destroy'])
-        ->name('settings.devices.destroy');
-});
-
 
 
 /*

@@ -9,16 +9,18 @@ use App\Models\Bleep;
 use App\Models\Likes;
 use App\Models\Share;
 use App\Models\Repost;
+use App\Models\Visits;
 use App\Models\Comments;
-use App\Models\RememberedDevice;
+use Carbon\CarbonPeriod;
 
+use Carbon\CarbonInterval;
 use Illuminate\Http\Request;
+use App\Helpers\UserAgentParser;
+use App\Models\RememberedDevice;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Carbon\CarbonInterval;
-use Carbon\CarbonPeriod;
 
 class AdminController extends Controller
 {
@@ -99,7 +101,7 @@ class AdminController extends Controller
                 $dateFormat = $interval === 'month' ? '%Y-%m' : ($interval === 'year' ? '%Y' : '%Y-%m-%d');
                 $usersTimeSeries = DB::table('users')
                     ->select(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}') as period"), DB::raw('COUNT(*) as total'))
-                    ->whereBetween('created_at', $start, $end)
+                    ->whereBetween('created_at', [$start, $end])
                     ->groupBy('period')
                     ->orderBy('period')
                     ->pluck('total', 'period')
@@ -459,4 +461,93 @@ class AdminController extends Controller
     }
 
 
+    /**
+     * Visits page
+     */
+     public function visits(Request $request)
+    {
+        // Base query
+        $query = Visits::query();
+
+        // Apply Filters
+        if ($request->filled('ip')) {
+            $query->where('ip_address', 'like', '%' . $request->get('ip') . '%');
+        }
+        if ($request->filled('platform')) {
+            $query->where('platform', $request->get('platform'));
+        }
+        if ($request->filled('browser')) {
+            $query->where('browser', $request->get('browser'));
+        }
+
+        // Get filter options
+        $platforms = Visits::select('platform')->distinct()->whereNotNull('platform')->orderBy('platform')->pluck('platform');
+        $browsers = Visits::select('browser')->distinct()->whereNotNull('browser')->orderBy('browser')->pluck('browser');
+
+        // Global stats (keep these global so admin sees total context)
+        $totalVisits = Visits::count();
+        $uniqueIPs = Visits::distinct()->count('ip_address');
+
+        // Get paginated results (Newest on top is default via orderByDesc)
+        $recentVisits = $query->orderByDesc('created_at')->paginate(25)->withQueryString();
+
+        // Transform the collection to include parsed UA
+        $recentVisits->getCollection()->transform(function ($visit) {
+            $visit->parsed_ua = UserAgentParser::parse($visit->user_agent);
+            return $visit;
+        });
+
+        return view('admin.visits', compact('totalVisits', 'uniqueIPs', 'recentVisits', 'platforms', 'browsers'));
+    }
+
+    public function visitsData(Request $request)
+    {
+        $days = (int) $request->get('days', 90);
+        $end = now()->endOfDay();
+        $start = now()->subDays($days)->startOfDay();
+
+        // aggregate visits by day
+        $rows = DB::table('visits')
+            ->select(DB::raw("DATE(created_at) as day"), DB::raw("COUNT(*) as total"))
+            ->whereBetween('created_at', [$start, $end])
+            ->groupBy('day')
+            ->orderBy('day')
+            ->pluck('total', 'day')
+            ->toArray();
+
+        // build day labels for the full range
+        $period = CarbonPeriod::create($start, CarbonInterval::day(), $end);
+        $labels = [];
+        foreach ($period as $dt) { $labels[] = $dt->format('Y-m-d'); }
+
+        $series = array_map(fn($l) => (int) ($rows[$l] ?? 0), $labels);
+
+        // top browsers / devices / platforms
+        $browsers = Visits::select(DB::raw("COALESCE(browser, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+            ->groupBy('label')->orderByRaw('total DESC')->limit(10)
+            ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
+
+        $devices = Visits::select(DB::raw("COALESCE(device, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+            ->groupBy('label')->orderByRaw('total DESC')->limit(10)
+            ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
+
+        $platforms = Visits::select(DB::raw("COALESCE(platform, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+            ->groupBy('label')->orderByRaw('total DESC')->limit(10)
+            ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
+
+        return response()->json([
+            'meta' => ['days' => $days, 'start' => $start->toDateString(), 'end' => $end->toDateString()],
+            'labels' => $labels,
+            'series' => $series,
+            'totals' => [
+                'visits' => Visits::count(),
+                'unique_ips' => Visits::distinct()->count('ip_address'),
+            ],
+            'top' => [
+                'browsers' => $browsers,
+                'devices' => $devices,
+                'platforms' => $platforms,
+            ],
+        ]);
+    }
 }

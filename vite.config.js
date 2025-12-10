@@ -15,6 +15,7 @@ export default defineConfig({
                 'resources/js/admin/devices.js',
                 'resources/js/admin/reports.js',
                 'resources/js/admin/users.js',
+                'resources/js/admin/visits.js',
                 'resources/js/auth/register.js',
                 'resources/js/bleep/modals/mediamodal.js',
                 'resources/js/bleep/modals/posts/edit.js',

@@ -140,7 +140,7 @@
                         class="group flex items-start gap-3">
 
                             <div class="avatar shrink-0 bleep-avatar" data-bleep-id="{{ $bleep->id }}">
-                                <x-subcomponents.avatar :user="$bleep->user" :size="12" />
+                                <x-subcomponents.avatar :user="$bleep->user" :size="10" />
                             </div>
 
                             <div class="min-w-0">

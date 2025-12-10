@@ -34,9 +34,9 @@
                          data-display-name="{{ $user->dname }}"
                          data-is-mutual="{{ $isMutual ? '1' : '0' }}">
                         <a href="/bleeper/{{ $user->username }}" class="shrink-0">
-                            <img src="{{ $user->profile_picture_url }}" 
-                                 alt="{{ $user->dname }}'s Avatar" 
-                                 class="w-12 h-12 rounded-full hover:ring-2 hover:ring-primary transition-all">
+                            <img src="{{ $user->profile_picture_url }}"
+                                 alt="{{ $user->dname }}'s Avatar"
+                                 class="size-10 rounded-full hover:ring-2 hover:ring-primary transition-all">
                         </a>
 
                         <div class="flex-1 min-w-0">

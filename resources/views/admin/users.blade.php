@@ -178,8 +178,6 @@
         {{ $users->links() }}
     </div>
 
-
-
     {{-- Edit User Modal --}}
     <input type="checkbox" id="edit_user_modal" class="modal-toggle" />
     <div class="modal">
@@ -334,6 +332,5 @@
 
         </div>
     </div>
-
 
 </x-admin.layout>

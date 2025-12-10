@@ -11,7 +11,7 @@ class UserAgentParser
         }
 
         return sprintf(
-            '%s <span class="opacity-50">·</span> %s',
+            '%s <span class="opacity-50"> · </span> %s',
             self::parseOS($ua),
             self::parseBrowser($ua)
         );

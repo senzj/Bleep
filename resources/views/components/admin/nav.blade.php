@@ -9,6 +9,7 @@
             ['route' => 'admin.reports', 'icon' => 'flag', 'label' => 'Reports'],
             ['route' => 'admin.users', 'icon' => 'users', 'label' => 'User Management'],
             ['route' => 'admin.devices', 'icon' => 'monitor-smartphone', 'label' => 'Devices & Sessions'],
+            ['route' => 'admin.visits', 'icon' => 'bar-chart-2', 'label' => 'Site Visits'],
             ['route' => 'admin.logs', 'icon' => 'file-text', 'label' => 'System Logs'],
         ];
     @endphp
