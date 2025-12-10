@@ -9,7 +9,6 @@ use App\Models\Bleep;
 use App\Models\Likes;
 use App\Models\Share;
 use App\Models\Repost;
-use App\Models\Reports;
 use App\Models\Comments;
 use App\Models\RememberedDevice;
 
@@ -26,10 +25,13 @@ class AdminController extends Controller
     public function index(Request $request)
     {
         $totalUsers = User::count();
-        $newToday = User::whereDate('created_at', now()->toDateString())->count();
-        $bannedUsers = User::where('is_banned', true)->count();
+        $newToday = User::whereDate('created_at', now()->toDateString())
+            ->count();
+        $bannedUsers = User::where('is_banned', true)
+            ->count();
 
-        $totalSessions = DB::table('sessions')->count();
+        $totalSessions = DB::table('sessions')
+            ->count();
         $activeSessions = DB::table('sessions')
             ->whereNotNull('user_id')
             ->where('last_activity', '>=', now()->subMinutes(5)->timestamp)
@@ -42,9 +44,10 @@ class AdminController extends Controller
         try {
             $reportsPending = DB::table('reports')->where('status', 'pending')->count();
             $reportsOngoing = DB::table('reports')->whereIn('status', ['ongoing','open','in_progress'])->count();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $reportsPending = 0;
             $reportsOngoing = 0;
+            Log::error($e);
         }
 
         return view('admin.dashboard', compact(
@@ -94,9 +97,9 @@ class AdminController extends Controller
 
                 // Users time series
                 $dateFormat = $interval === 'month' ? '%Y-%m' : ($interval === 'year' ? '%Y' : '%Y-%m-%d');
-                $usersTimeseries = DB::table('users')
+                $usersTimeSeries = DB::table('users')
                     ->select(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}') as period"), DB::raw('COUNT(*) as total'))
-                    ->whereBetween('created_at', [$start, $end])
+                    ->whereBetween('created_at', $start, $end)
                     ->groupBy('period')
                     ->orderBy('period')
                     ->pluck('total', 'period')
@@ -170,10 +173,13 @@ class AdminController extends Controller
                 // Build labels for series using CarbonInterval
                 if ($interval === 'day') {
                     $step = CarbonInterval::day();
+
                 } elseif ($interval === 'week') {
                     $step = CarbonInterval::week();
+
                 } elseif ($interval === 'month') {
                     $step = CarbonInterval::month();
+
                 } else {
                     $step = CarbonInterval::year();
                 }
@@ -182,7 +188,7 @@ class AdminController extends Controller
                 foreach ($period as $dt) {
                     $labels[] = $dt->format($format);
                 }
-                $userSeries = array_map(fn($l) => (int)($usersTimeseries[$l] ?? 0), $labels);
+                $userSeries = array_map(fn($l) => (int)($usersTimeSeries[$l] ?? 0), $labels);
 
                 return [
                     'meta' => ['range' => $range, 'start' => $start->toDateString(), 'end' => $end->toDateString()],

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BleepViews extends Model
 {
@@ -19,12 +20,12 @@ class BleepViews extends Model
         'viewed_at' => 'datetime',
     ];
 
-    public function bleep()
+    public function bleep(): BelongsTo
     {
         return $this->belongsTo(Bleep::class);
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }

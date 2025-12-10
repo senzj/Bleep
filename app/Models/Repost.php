@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Ramsey\Collection\Collection;
 
 class Repost extends Model
 {
@@ -16,19 +18,21 @@ class Repost extends Model
     ];
 
     // Relationships to user
-    public function user() {
+    public function user(): BelongsTo
+    {
         return $this->belongsTo(User::class);
     }
 
     // Relationships to bleep
-    public function bleep() {
+    public function bleep(): BelongsTo
+    {
         return $this->belongsTo(Bleep::class);
     }
 
     /**
      * Get reposts visible to a given user (only from followed users)
      */
-    public static function visibleToUser($userId, $bleepId)
+    public static function visibleToUser($userId, $bleepId): \Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection
     {
         if (!$userId) {
             return collect();

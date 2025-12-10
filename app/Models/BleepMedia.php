@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BleepMedia extends Model
 {
@@ -17,7 +18,7 @@ class BleepMedia extends Model
         'size',
     ];
 
-    public function bleep()
+    public function bleep(): BelongsTo
     {
         return $this->belongsTo(Bleep::class);
     }

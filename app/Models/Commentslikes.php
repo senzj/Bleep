@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
 use App\Models\Comment;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Commentslikes extends Model
 {
@@ -15,12 +16,12 @@ class Commentslikes extends Model
         'comments_id',
     ];
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function comment()
+    public function comment(): BelongsTo
     {
         return $this->belongsTo(Comments::class, 'comments_id');
     }

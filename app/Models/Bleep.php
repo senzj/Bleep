@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Traits\HasAnonymousName;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -27,14 +29,13 @@ class Bleep extends Model
         'is_anonymous'      => 'boolean',
         'is_nsfw'           => 'boolean',
         'deleted_by_author' => 'boolean',
-        'is_nsfw' => 'boolean',
         'views' => 'integer',
     ];
 
     /**
      * Relation to User model
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -42,7 +43,7 @@ class Bleep extends Model
     /**
      * Relation to Likes model
      */
-    public function likes()
+    public function likes(): HasMany
     {
         return $this->hasMany(Likes::class);
     }
@@ -50,7 +51,7 @@ class Bleep extends Model
     /**
      * Relation to Comments model
      */
-    public function comments()
+    public function comments(): HasMany
     {
         return $this->hasMany(Comments::class);
     }
@@ -58,7 +59,7 @@ class Bleep extends Model
     /**
      * Relation to Shares model
      */
-    public function shares()
+    public function shares(): HasMany
     {
         return $this->hasMany(Share::class);
     }
@@ -66,19 +67,19 @@ class Bleep extends Model
     /**
      * Relation to Reposts model
      */
-    public function reposts()
+    public function reposts(): HasMany
     {
         return $this->hasMany(Repost::class);
     }
 
     // Media relation
-    public function media()
+    public function media(): HasMany
     {
         return $this->hasMany(BleepMedia::class);
     }
 
     // Views relation
-    public function views()
+    public function views(): HasMany
     {
         return $this->hasMany(BleepViews::class);
     }

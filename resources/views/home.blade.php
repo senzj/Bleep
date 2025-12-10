@@ -60,6 +60,7 @@
                                     type="file"
                                     name="media[]"
                                     class="hidden"
+                                    class="hidden"
                                     multiple
                                     accept="image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/mp3"
                                 />

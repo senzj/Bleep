@@ -30,7 +30,7 @@ class RememberedDevice extends Model
     }
 
     // Optional: parse UA during model events (example stub)
-    protected static function booted()
+    protected static function booted(): void
     {
         static::creating(function ($model) {
             if (!$model->parsed_os && $model->user_agent) {

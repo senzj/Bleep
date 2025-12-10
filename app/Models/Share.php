@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
 
@@ -35,12 +36,14 @@ class Share extends Model
     }
 
     // Relationships to user
-    public function user() {
+    public function user(): BelongsTo
+    {
         return $this->belongsTo(User::class);
     }
 
     // Relationships to bleep (include soft-deleted)
-    public function bleep() {
+    public function bleep(): BelongsTo
+    {
         return $this->belongsTo(Bleep::class)->withTrashed();
     }
 }

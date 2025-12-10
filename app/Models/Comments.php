@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Models\User;
 use App\Models\Commentslikes;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\HasAnonymousName;
 
@@ -34,25 +36,25 @@ class Comments extends Model
     */
 
     /** User who posted the comment */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
     /** Bleep this comment belongs to */
-    public function bleep()
+    public function bleep(): BelongsTo
     {
         return $this->belongsTo(Bleep::class);
     }
 
     /** Parent comment (for replies) */
-    public function parent()
+    public function parent(): BelongsTo
     {
         return $this->belongsTo(Comments::class, 'parent_id');
     }
 
     /** Replies to this comment */
-    public function replies()
+    public function replies(): HasMany
     {
         return $this->hasMany(Comments::class, 'parent_id')
             ->with(['user', 'likes'])
@@ -60,7 +62,7 @@ class Comments extends Model
     }
 
     /** Likes for this comment */
-    public function likes()
+    public function likes(): HasMany
     {
         return $this->hasMany(Commentslikes::class, 'comments_id');
     }

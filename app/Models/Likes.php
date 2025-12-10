@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Likes extends Model
 {
@@ -11,7 +12,7 @@ class Likes extends Model
     /**
      * Relation to User model
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -19,7 +20,7 @@ class Likes extends Model
     /**
      * Relation to Bleep model
      */
-    public function bleep()
+    public function bleep(): BelongsTo
     {
         return $this->belongsTo(Bleep::class);
     }
