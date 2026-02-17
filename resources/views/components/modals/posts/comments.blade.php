@@ -73,18 +73,20 @@
                 </div>
 
                 {{-- Toggle anonymous --}}
-                <div class="flex items-end gap-2 shrink-0">
-                    <label class="relative inline-flex cursor-pointer">
-                        <input type="checkbox" id="comment-anonymous-toggle" name="is_anonymous" value="1" class="peer sr-only">
-                        <div class="w-15 h-9 bg-base-300 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
-                        <div id="toggle-indicator"
-                            class="absolute top-1 left-1 size-7 rounded-full transition-all duration-300 peer-checked:left-7 bg-cover bg-center flex items-center justify-center"
-                            data-user-email="{{ Auth::user()->email ?? '' }}"
-                            data-user-avatar="{{ $UserAvatarUrl }}"
-                            style="background-image: url('{{ $UserAvatarUrl }}');">
-                        </div>
-                    </label>
-                </div>
+                @if (env('ANONYMITY', true))
+                    <div class="flex items-end gap-2 shrink-0">
+                        <label class="relative inline-flex cursor-pointer">
+                            <input type="checkbox" id="comment-anonymous-toggle" name="is_anonymous" value="1" class="peer sr-only">
+                            <div class="w-15 h-9 bg-base-300 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
+                            <div id="toggle-indicator"
+                                class="absolute top-1 left-1 size-7 rounded-full transition-all duration-300 peer-checked:left-7 bg-cover bg-center flex items-center justify-center"
+                                data-user-email="{{ Auth::user()->email ?? '' }}"
+                                data-user-avatar="{{ $UserAvatarUrl }}"
+                                style="background-image: url('{{ $UserAvatarUrl }}');">
+                            </div>
+                        </label>
+                    </div>
+                @endif
 
                 <button type="submit" class="btn btn-primary btn-base btn-circle self-end shrink-0">
                     <i data-lucide="send" class="w-5 h-5"></i>

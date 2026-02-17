@@ -1,9 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('report_modal');
+    const modal = document.getElementById('report_modal_toggle');
     const form = document.getElementById('report-form');
     const bleepIdInput = document.getElementById('report_bleep_id');
-    const reason = document.getElementById('reason');
-    const counter = document.getElementById('reason-counter');
+    const reason = document.getElementById('report_reason');
+    const counter = document.getElementById('report_reason_counter');
 
     // Toast helper (mirrors server-rendered markup)
     function showToast(type, text) {

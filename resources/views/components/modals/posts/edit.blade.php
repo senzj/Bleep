@@ -31,17 +31,19 @@
                 <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div class="flex items-center justify-start gap-4">
                         {{-- Anonymous icon + dot-toggle --}}
-                        <div class="flex items-center gap-2">
-                            <label for="edit-is-anonymous" id="edit-anon-icon" class="p-2 rounded-full bg-transparent cursor-pointer transition-colors duration-150" title="Post anonymously" aria-hidden="true">
-                                <i data-lucide="hat-glasses" class="w-5 h-5"></i>
-                            </label>
-                            <input id="edit-is-anonymous"
-                                   name="is_anonymous"
-                                   type="checkbox"
-                                   value="1"
-                                   class="toggle toggle-sm"
-                                   {{ old('is_anonymous') ? 'checked' : '' }}>
-                        </div>
+                        @if (env('ANONYMITY', true))
+                            <div class="flex items-center gap-2">
+                                <label for="edit-is-anonymous" id="edit-anon-icon" class="p-2 rounded-full bg-transparent cursor-pointer transition-colors duration-150" title="Post anonymously" aria-hidden="true">
+                                    <i data-lucide="hat-glasses" class="w-5 h-5"></i>
+                                </label>
+                                <input id="edit-is-anonymous"
+                                    name="is_anonymous"
+                                    type="checkbox"
+                                    value="1"
+                                    class="toggle toggle-sm"
+                                    {{ old('is_anonymous') ? 'checked' : '' }}>
+                            </div>
+                        @endif
 
                         {{-- NSFW icon + dot-toggle --}}
                         <div class="flex items-center gap-2">

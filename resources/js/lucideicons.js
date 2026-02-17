@@ -7,7 +7,17 @@ window.lucide = {
 };
 
 // Optional helper
-window.createLucideIcons = (opts = {}) => window.lucide.createIcons(opts);
+if (typeof window.lucide.replace === 'undefined') {
+    window.lucide.replace = function(opts = {}) {
+        if (typeof window.lucide.createIcons === 'function') {
+            try {
+                window.lucide.createIcons(opts);
+            } catch (e) {
+                console.error('Error replacing icons:', e);
+            }
+        }
+    };
+}
 
 // Initialize icons after DOM load
 document.addEventListener('DOMContentLoaded', () => {

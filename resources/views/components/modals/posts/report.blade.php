@@ -1,8 +1,8 @@
-<input type="checkbox" id="report_modal" class="modal-toggle" />
+<input type="checkbox" id="report_modal_toggle" class="modal-toggle" />
 <div class="modal">
     <div class="modal-box relative max-w-md">
         {{-- Close button --}}
-        <label for="report_modal" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
+        <label for="report_modal_toggle" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
 
         <h3 class="font-bold text-lg mb-4">Report Bleep</h3>
 
@@ -11,12 +11,12 @@
         <input type="hidden" id="report_bleep_id" name="bleep_id" />
 
         <div class="form-control">
-            <label class="label" for="category">
+            <label class="label" for="report_category">
             <span class="label-text">Category</span>
             </label>
             <select
             name="category"
-            id="category"
+            id="report_category"
             class="select select-bordered w-full"
             required
             >
@@ -31,23 +31,23 @@
         </div>
 
         <div class="form-control">
-            <label class="label" for="reason">
+            <label class="label" for="report_reason">
             <span class="label-text">Reason</span>
             </label>
             <textarea
             name="reason"
-            id="reason"
+            id="report_reason"
             class="textarea textarea-bordered w-full"
             rows="4"
             maxlength="500"
             placeholder="Explain why you're reporting this..."
             required
             ></textarea>
-            <p class="text-xs text-base-content/50 mt-1" id="reason-counter">0 / 500</p>
+            <p class="text-xs text-base-content/50 mt-1" id="report_reason_counter">0 / 500</p>
         </div>
 
         <div class="modal-action pt-2">
-            <label for="report_modal" class="btn btn-ghost">Cancel</label>
+            <label for="report_modal_toggle" class="btn btn-ghost">Cancel</label>
             <button type="submit" class="btn btn-primary" id="submit-report-btn">
             Submit Report
             </button>

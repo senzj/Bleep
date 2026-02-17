@@ -31,17 +31,15 @@
             @php
                 $stats = [
                     ['label' => 'Total Users', 'value' => $totalUsers, 'desc' => 'New today: '.$newToday],
-                    ['label' => 'Active Now', 'value' => $activeSessions, 'class' => 'text-success', 'desc' => 'Last 5 minutes'],
-                    ['label' => 'Total Sessions', 'value' => $totalSessions],
-                    ['label' => 'Remembered Devices', 'value' => $totalDevices, 'class' => 'text-warning'],
+                    ['label' => 'Online Now', 'value' => $activeSessions, 'class' => 'text-success', 'desc' => 'Out of '.$totalSessions],
                     ['label' => 'Reports', 'value' => $reportsPending + $reportsOngoing, 'desc' => "Pending: $reportsPending · Ongoing: $reportsOngoing"]
                 ];
             @endphp
 
             @foreach ($stats as $stat)
-                <div class="stat bg-base-100 rounded-xl border border-base-300 min-w-[200px]">
+                <div class="stat bg-base-100 rounded-xl border border-gray-300/50 min-w-[180px] shadow-xl">
                     <div class="stat-title">{{ $stat['label'] }}</div>
-                    <div class="stat-value text-2xl {{ $stat['class'] ?? '' }}">
+                    <div class="stat-value text-xl {{ $stat['class'] ?? '' }}">
                         {{ number_format($stat['value']) }}
                     </div>
                     @isset($stat['desc'])
@@ -71,20 +69,6 @@
 
         {{-- Charts Grid --}}
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-
-            {{-- Users Chart --}}
-            <div class="bg-base-100 p-4 rounded-xl border border-base-300">
-                <h3 class="text-sm uppercase opacity-70 mb-2">Users</h3>
-                <details class="md:block">
-                    <summary class="md:hidden cursor-pointer flex items-center justify-between">
-                        <span class="text-sm">Users (tap to expand)</span>
-                        <span class="text-xs opacity-70">New: {{ number_format($newToday) }}</span>
-                    </summary>
-                    <div class="mt-2 h-44 md:h-52 overflow-hidden">
-                        <canvas id="admin-dashboard-chart" class="w-full h-full"></canvas>
-                    </div>
-                </details>
-            </div>
 
             {{-- Device OS Chart --}}
             <div class="bg-base-100 p-4 rounded-xl border border-base-300">
@@ -116,12 +100,6 @@
                 <div class="h-44 md:h-52">
                     <canvas id="admin-reports-category-chart"></canvas>
                 </div>
-            </div>
-
-            {{-- Top Bleeps --}}
-            <div class="bg-base-100 p-4 rounded-xl border border-base-300">
-                <h3 class="text-sm uppercase opacity-70 mb-2">Top Bleeps</h3>
-                <div id="top-bleeps-list" class="divide-y"></div>
             </div>
 
         </div>

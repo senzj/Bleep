@@ -27,7 +27,7 @@
             })();
         </script>
         @vite(['resources/js/init.js','resources/css/app.css','resources/js/app.js'])
-        <title>{{ isset($title) ? $title : 'Bleep' }}</title>
+        <title>Bleep | {{ isset($title) ? $title : '' }}</title>
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
         <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
@@ -56,7 +56,7 @@
         @endif
 
         {{-- main content --}}
-        <main class="flex-1 container mx-auto px-4 py-6">
+        <main class="flex-1 container mx-auto px-1 py-4">
             {{ $slot }}
         </main>
 

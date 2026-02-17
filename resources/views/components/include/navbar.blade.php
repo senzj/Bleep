@@ -1,6 +1,21 @@
 <nav class="navbar bg-base-100">
     <div class="navbar-start">
-        <a href="/" class="btn btn-ghost text-2xl">Bleep</a>
+        <a href="/" class="btn btn-ghost text-2xl">
+            <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="w-6 h-6 mr-2">
+            Bleep
+        </a>
+
+        {{-- Divider --}}
+        <div class="divider divider-horizontal"></div>
+
+        {{-- Nav Links --}}
+        @auth
+            <a href="{{ route('messages') }}" class="btn btn-ghost">
+                <i data-lucide="message-square" class="w-4 h-4 mr-1"></i>
+                Bleep Messages
+            </a>
+        @endauth
+
     </div>
 
     <div class="navbar-end gap-2">
@@ -44,7 +59,7 @@
         @auth
             {{-- Profile Dropdown --}}
             <div class="dropdown dropdown-end">
-                <button tabindex="0" class="flex items-center gap-3 px-3 py-2 shadow-sm rounded-md hover:bg-base-200 transition-colors cursor-pointer">
+                <button tabindex="0" class="flex items-center gap-3 px-3 py-2 shadow-lg border border-gray-200 rounded-md hover:bg-base-200 transition-colors cursor-pointer">
                     {{-- Avatar --}}
                     <div class="avatar shrink-0">
                         <x-subcomponents.avatar :user="Auth::user()" :size="10" />

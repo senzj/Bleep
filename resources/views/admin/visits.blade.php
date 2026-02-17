@@ -13,7 +13,7 @@
             </div>
 
             {{-- Date Range Picker --}}
-            <div class="join shadow-sm self-start sm:self-auto">
+            <div class="join shadow-md self-start sm:self-auto">
                 <button class="join-item btn btn-sm btn-active" data-range="30">30 Days</button>
                 <button class="join-item btn btn-sm" data-range="90">90 Days</button>
                 <button class="join-item btn btn-sm" data-range="180">6 Months</button>
@@ -61,14 +61,6 @@
             <div class="card-body p-4 sm:p-6">
                 <div class="flex items-start justify-between gap-4 mb-4">
                     <h2 class="card-title text-lg">Traffic Overview</h2>
-                    <div class="hidden sm:flex items-center gap-2">
-                        <span class="text-sm text-base-content/50">Range:</span>
-                        <div class="join">
-                            <button class="join-item btn btn-sm btn-outline" data-range="30">30d</button>
-                            <button class="join-item btn btn-sm btn-outline" data-range="90">90d</button>
-                            <button class="join-item btn btn-sm btn-outline" data-range="180">180d</button>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="h-[260px] sm:h-80 w-full relative">

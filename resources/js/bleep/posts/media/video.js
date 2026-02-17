@@ -64,7 +64,7 @@ function initVideoPlayers(container = document) {
             pauseAllVideosExcept(video);
         });
 
-        console.log(`Video player initialized with volume: ${storedVolume}`);
+        // console.log(`Video player initialized with volume: ${storedVolume}`);
     });
 }
 
@@ -104,13 +104,13 @@ window.pauseAllVideos = pauseAllVideos;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Initializing video players on page load');
+    // console.log('Initializing video players on page load');
     initVideoPlayers();
 });
 
 // Reinitialize when new content is loaded
 document.addEventListener('bleeps:media:hydrated', () => {
-    console.log('Reinitializing video players after media hydration');
+    // console.log('Reinitializing video players after media hydration');
     setTimeout(() => initVideoPlayers(), 100);
 });
 

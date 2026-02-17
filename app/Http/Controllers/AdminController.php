@@ -27,20 +27,21 @@ class AdminController extends Controller
     public function index(Request $request)
     {
         $totalUsers = User::count();
+
         $newToday = User::whereDate('created_at', now()->toDateString())
             ->count();
+
         $bannedUsers = User::where('is_banned', true)
             ->count();
 
         $totalSessions = DB::table('sessions')
             ->count();
+
         $activeSessions = DB::table('sessions')
             ->whereNotNull('user_id')
             ->where('last_activity', '>=', now()->subMinutes(5)->timestamp)
             ->distinct()
             ->count('user_id');
-
-        $totalDevices = RememberedDevice::count();
 
         // Reports counts (fallback to 0 if table doesn't exist)
         try {
@@ -58,7 +59,6 @@ class AdminController extends Controller
             'bannedUsers',
             'totalSessions',
             'activeSessions',
-            'totalDevices',
             'reportsPending',
             'reportsOngoing'
         ));

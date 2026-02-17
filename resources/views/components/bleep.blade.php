@@ -117,15 +117,16 @@
                                         {{ $displayName }}
                                     </span>
 
+                                    {{-- Verification tag --}}
+                                    @if (! $isAnonymous && $bleep->user && $bleep->user->is_verified)
+                                        <i data-lucide="badge-check" class="w-4 h-4 text-blue-500"></i>
+                                    @endif
+
                                     {{-- Role Tag moved beside name using only spacing --}}
                                     @if (! $isAnonymous && $bleep->user && $bleep->user->role === 'moderator')
                                         <span class="px-1 py-0.5 text-xs font-extrabold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-600/20">
                                             MOD
                                         </span>
-                                    @endif
-
-                                    @if (! $isAnonymous && $bleep->user && $bleep->user->is_verified)
-                                        <i data-lucide="badge-check" class="w-4 h-4 text-blue-500"></i>
                                     @endif
                                 </div>
 
@@ -284,9 +285,9 @@
                     </div>
                     <p class="mb-1 font-semibold text-lg">This Bleep is marked as <span class="text-red-500">NSFW</span></p>
                     <p class="text-sm text-base-content/60 mb-4">Content may be sensitive or inappropriate</p>
-                    <button type="button" class="btn btn-sm btn-error nsfw-reveal-btn" data-bleep-id="{{ $bleep->id }}">
+                    <button type="button" class="btn btn-sm btn-error nsfw-reveal-btn shadow-sm" data-bleep-id="{{ $bleep->id }}">
                         <i data-lucide="eye" class="w-4 h-4"></i>
-                        View Content
+                        View
                     </button>
                 </div>
 
@@ -297,7 +298,7 @@
                         @include('components.bleepsmedia', ['mediaItems' => $mediaItems, 'isNsfw' => true])
                     @endif
                     <div class="mt-3 text-center">
-                        <button type="button" class="btn btn-sm btn-outline hide-nsfw-btn" data-bleep-id="{{ $bleep->id }}">
+                        <button type="button" class="btn btn-sm btn-outline hide-nsfw-btn shadow-sm" data-bleep-id="{{ $bleep->id }}">
                             <i data-lucide="eye-off" class="w-4 h-4"></i>
                             Hide Content
                         </button>

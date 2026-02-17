@@ -44,12 +44,10 @@ function getResponsiveOptions(type) {
 
 function ensureElements() {
     elements = {
-        usersCanvas: document.getElementById('admin-dashboard-chart'),
         reportsCanvas: document.getElementById('admin-reports-category-chart'),
         osCanvas: document.getElementById('admin-top-os-chart'),
         browserCanvas: document.getElementById('admin-top-browser-chart'),
         hourlyCanvas: document.getElementById('admin-hourly-activity-chart'),
-        topBleepsList: document.getElementById('top-bleeps-list'), // added
         rangeSelect: document.getElementById('dashboard-range'),
         refreshBtn: document.getElementById('dashboard-refresh'),
     };
@@ -67,32 +65,6 @@ function mountChartOnVisible(canvasEl, createFn) {
     }, { threshold: 0.05 });
     io.observe(canvasEl);
     chartObservers.push(io);
-}
-
-/* Example: Users chart create function */
-function buildUserChart(data) {
-    if (!data) return;
-    const labels = data.labels;
-    const canvas = elements.usersCanvas;
-    if (!canvas) return;
-
-    const createUsers = () => {
-        const ds = [ simpleSeries('New users', data.series[0], 0, 'line') ];
-        const options = getResponsiveOptions('line');
-        if (!charts.users) {
-            charts.users = createChart(canvas, 'line', labels, ds, options);
-        } else {
-            updateChart(charts.users, labels, ds);
-        }
-    };
-
-    // Mobile optimization: lazy render only when visible
-    if (isMobile()) {
-        if (!charts.users) mountChartOnVisible(canvas, createUsers);
-        else createUsers();
-    } else {
-        createUsers();
-    }
 }
 
 // Repeat pattern for other charts — for heavy charts (like browser distro) use lazy mount and smaller options
@@ -163,12 +135,11 @@ async function fetchDashboard(range = 'daily') {
         return;
     }
     const payload = await resp.json();
+
     // Render parts
-    buildUserChart(payload.users);
     buildReportsChart(payload.reports);
     buildDeviceCharts(payload.devices);
     buildHourlyChart(payload.sessions);
-    renderTopBleeps(payload.bleeps.top);
 }
 
 // Handle resize to update chart size and toggles
@@ -211,29 +182,6 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
-
-// Add missing renderTopBleeps function
-function renderTopBleeps(list) {
-    const container = elements.topBleepsList;
-    if (!container || !Array.isArray(list)) return;
-
-    container.innerHTML = '';
-    list.forEach(item => {
-        const el = document.createElement('div');
-        el.className = 'p-2 border-b';
-        const likes = Number(item.likes ?? 0).toLocaleString();
-        const userName = item.user?.dname ?? 'Anonymous';
-        const msg = (typeof item.message === 'string') ? item.message : '';
-        el.innerHTML = `
-            <div class="flex items-center justify-between gap-3">
-                <div class="text-sm font-semibold">${likes} ❤ — ${escapeHtml(userName)}</div>
-                <div class="text-xs opacity-70">${new Date(item.created_at ?? Date.now()).toLocaleDateString()}</div>
-            </div>
-            <div class="text-xs opacity-70 mt-1">${escapeHtml(msg)}</div>
-        `;
-        container.appendChild(el);
-    });
-}
 
 // small helper: prevent raw HTML injection
 function escapeHtml(unsafe) {

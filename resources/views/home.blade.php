@@ -9,18 +9,18 @@
 
 <x-layout>
     <x-slot:title>
-        Bleep
+        Home
     </x-slot:title>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {{-- Left panel --}}
-        <div class="hidden lg:block lg:col-span-3" id="left-panel">
+        <div class="hidden lg:block lg:col-span-2 mt-1" id="left-panel">
                 {{-- Server Announcement --}}
                 <x-announcement.system />
         </div>
 
         {{-- Center panel --}}
-        <div class="lg:block lg:col-span-6">
+        <div class="lg:block lg:col-span-7">
             {{-- Mobile tabs: only visible on small screens --}}
             <div class="flex items-center justify-between mb-3 lg:hidden">
                 <div class="flex gap-2 w-full" role="tablist" aria-label="Main tabs">
@@ -29,10 +29,8 @@
                 </div>
             </div>
 
-            <h1 class="text-3xl font-bold mt-1">What's new on Bleep?</h1>
-
             {{-- mobile people panel (in-center render for small screens) --}}
-            <div id="mobile-people-panel" class="mt-3 lg:hidden hidden" aria-hidden="true">
+            <div id="mobile-people-panel" class="mt-1 lg:hidden hidden" aria-hidden="true">
                 <x-social.people />
             </div>
 
@@ -40,7 +38,7 @@
             <div id="feed-panel">
                 {{-- Post Form --}}
                 @auth
-                    <div class="card bg-base-100 shadow mt-3">
+                    <div class="card bg-base-100 shadow mt-1">
                         <div class="card-body">
                             <form method="POST" action="/bleeps" enctype="multipart/form-data" id="bleep-form">
                                 @csrf
@@ -70,7 +68,7 @@
                                 @error('media.*') <div class="text-error text-xs mt-1">{{ $message }}</div> @enderror
 
                                 {{-- preview grid --}}
-                                <div id="bleep-media-preview" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+                                <div id="bleep-media-preview" class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
 
                                 {{-- upload progress --}}
                                 <div id="upload-progress" class="mt-3 hidden">
@@ -87,19 +85,21 @@
                                     <div class="flex w-full sm:w-auto items-center justify-end sm:space-y-5 gap-3">
                                         <div class="flex items-center gap-8">
                                             {{-- Anonymous: icon/label + toggle --}}
-                                            <div class="flex items-center gap-1">
-                                                <label for="post-anonymous-toggle" class="flex items-center gap-2 cursor-pointer select-none">
-                                                    <span id="post-anonymous-icon" class="p-2 rounded-full bg-base-400 transition-colors duration-150" title="Post anonymously" aria-hidden="true">
-                                                        <i data-lucide="hat-glasses" class="w-5 h-5"></i>
-                                                    </span>
-                                                </label>
-                                                <input id="post-anonymous-toggle"
-                                                       name="is_anonymous"
-                                                       type="checkbox"
-                                                       value="1"
-                                                       class="toggle toggle-sm"
-                                                       {{ old('is_anonymous') ? 'checked' : '' }}>
-                                            </div>
+                                            @if (env('ANONYMITY', true))
+                                                <div class="flex items-center gap-1">
+                                                    <label for="post-anonymous-toggle" class="flex items-center gap-2 cursor-pointer select-none">
+                                                        <span id="post-anonymous-icon" class="p-2 rounded-full bg-base-400 transition-colors duration-150" title="Post anonymously" aria-hidden="true">
+                                                            <i data-lucide="hat-glasses" class="w-5 h-5"></i>
+                                                        </span>
+                                                    </label>
+                                                    <input id="post-anonymous-toggle"
+                                                        name="is_anonymous"
+                                                        type="checkbox"
+                                                        value="1"
+                                                        class="toggle toggle-sm"
+                                                        {{ old('is_anonymous') ? 'checked' : '' }}>
+                                                </div>
+                                            @endif
 
                                             {{-- NSFW: icon/label + toggle --}}
                                             <div class="flex items-center gap-1">
@@ -147,7 +147,7 @@
                 @endauth
 
                 {{-- bleeps container --}}
-                <div id="bleeps-container" class="space-y-4 mt-8">
+                <div id="bleeps-container" class="space-y-4 mt-5">
                     @forelse ($bleeps as $bleep)
                         <x-bleep :bleep="$bleep" />
                     @empty
@@ -180,7 +180,7 @@
         </div>
 
         {{-- Right panel --}}
-        <div class="hidden lg:block lg:col-span-3" id="right-panel">
+        <div class="hidden lg:block lg:col-span-3 mt-1" id="right-panel">
             <x-social.people />
         </div>
     </div>

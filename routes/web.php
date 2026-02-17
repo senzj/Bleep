@@ -4,8 +4,9 @@ use App\Http\Controllers\Auth\Login;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Auth\Logout;
 use Illuminate\Support\Facades\Route;
+
 use App\Http\Controllers\Auth\Register;
-use Illuminate\Support\Facades\Storage;
+
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BleepController;
@@ -13,15 +14,18 @@ use App\Http\Controllers\SocialController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\FollowingController;
+
 use App\Http\Controllers\Bleep\LikesController;
 use App\Http\Controllers\Bleep\ShareController;
 use App\Http\Controllers\Bleep\RepostController;
-use App\Http\Controllers\Users\ProfileController;
 use App\Http\Controllers\Bleep\CommentsController;
-use App\Http\Controllers\RememberedDeviceController;
-use App\Http\Controllers\Api\Auth\ValidationController;
 use App\Http\Controllers\Bleep\CommentsLikesController;
 use App\Http\Controllers\Bleep\CommentsRepliesController;
+
+use App\Http\Controllers\Users\ProfileController;
+
+// API
+use App\Http\Controllers\Api\Auth\ValidationController;
 
 // php info test
 // Route::get('/phpinfo', function() {
@@ -107,6 +111,11 @@ Route::get('/banned', function () {
 
 // Protected Auth Routes
 Route::middleware('auth')->group((function () {
+
+    // Bleep Chat/Message Page
+    Route::get('/messages', function () {
+        return view('message');
+    })->name('messages');
 
     // Bleep Resource Routes
     Route::post('/bleeps', [BleepController::class, 'store']);
@@ -246,6 +255,11 @@ Route::post('/check-username', [ValidationController::class, 'checkUsername'])
 Route::post('/check-email', [ValidationController::class, 'checkEmail'])
     ->middleware(['throttle:60,1', 'guest'])
     ->name('check.email');
+
+// Generate random username
+Route::post('/generate-username', [ValidationController::class, 'generateRandomUsername'])
+    ->middleware(['throttle:60,1', 'guest'])
+    ->name('generate.username');
 
 
 // MEDIA STREAMING ROUTE
