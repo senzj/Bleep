@@ -11,6 +11,8 @@ import './theme';
 
 // vue js
 import { createApp } from 'vue';
-import App from './App.vue';
+import App from './vue/App/Message.vue';
 
-createApp(App).mount('#app');
+if (document.getElementById('vue-message-app')) {
+    createApp(App).mount('#vue-message-app');
+}
