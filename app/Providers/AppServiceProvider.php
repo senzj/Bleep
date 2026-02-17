@@ -7,6 +7,7 @@ use App\Models\Visits;
 use App\Models\Comments;
 use App\Policies\BleepPolicy;
 use App\Policies\CommentsPolicy;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -42,13 +43,43 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasAdminAccess();
         });
 
-        // Records site visits
+        // Records site visits ONLY for landing pages to avoid double logging
         Event::listen(RequestHandled::class, function (RequestHandled $event) {
             try {
                 $req = $event->request;
+                $path = $req->path();
+
+                // Only track specific landing pages and entry points
+                // Skip API routes, static assets, and non-GET requests
+                $trackedPages = [
+                    '/' => 'Homepage',                              // Home/feed
+                    'bleeper/*' => 'Profile',                       // User profiles
+                    'bleeps/*' => 'Post',                           // Individual post view
+                ];
+
+                // Check if route should be tracked
+                $shouldTrack = false;
+                foreach ($trackedPages as $pattern => $label) {
+                    if ($this->pathMatches($path, $pattern)) {
+                        $shouldTrack = true;
+                        break;
+                    }
+                }
+
+                // Skip if:
+                // 1. Not a GET request
+                // 2. Not a tracked page
+                // 3. API routes
+                // 4. Static assets
+                if (!$shouldTrack || $req->method() !== 'GET' ||
+                    str_starts_with($path, 'api/') ||
+                    str_starts_with($path, 'admin/')) {
+                    return;
+                }
+
                 $ua = $req->header('User-Agent') ?? '';
 
-                // basic platform detection
+                // Basic platform detection
                 $platform = 'Unknown';
                 if (preg_match('/Windows NT/i', $ua)) {
                     $platform = 'Windows';
@@ -62,7 +93,7 @@ class AppServiceProvider extends ServiceProvider
                     $platform = 'Linux';
                 }
 
-                // basic browser detection (order matters)
+                // Basic browser detection (order matters)
                 $browser = 'Unknown';
                 if (preg_match('/EdgA|Edg|Edge\/|Edge/i', $ua)) {
                     $browser = 'Edge';
@@ -78,7 +109,7 @@ class AppServiceProvider extends ServiceProvider
                     $browser = 'Safari';
                 }
 
-                // basic device type detection
+                // Basic device type detection
                 $device = 'Desktop';
                 if (preg_match('/iPad|tablet|playbook|silk/i', $ua) && !preg_match('/Mobile/i', $ua)) {
                     $device = 'Tablet';
@@ -86,7 +117,9 @@ class AppServiceProvider extends ServiceProvider
                     $device = 'Mobile';
                 }
 
+                // Track visit with user_id (null for anonymous/unregistered users)
                 Visits::create([
+                    'user_id'    => Auth::id() ?? null,
                     'ip_address' => $req->ip() ?? '0.0.0.0',
                     'user_agent' => substr($ua, 0, 191),
                     'browser'    => substr($browser, 0, 64),
@@ -97,5 +130,15 @@ class AppServiceProvider extends ServiceProvider
                 // swallow errors so site is not impacted
             }
         });
+    }
+
+    /**
+     * Check if a path matches a pattern (supports wildcards)
+     */
+    private function pathMatches(string $path, string $pattern): bool
+    {
+        // Convert pattern to regex
+        $pattern = str_replace('\*', '.*', preg_quote($pattern, '/'));
+        return (bool) preg_match('/^' . $pattern . '$/', $path);
     }
 }

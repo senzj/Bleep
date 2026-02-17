@@ -180,7 +180,7 @@
                     <table class="table table-zebra w-full">
                         <thead>
                             <tr>
-                                <th class="w-40 text-center">Time</th>
+                                <th class="w-40 text-center">Date & Time</th>
                                 <th class="w-32 text-center">IP Address</th>
                                 <th class="w-50 text-center">Device Info</th>
                             </tr>
@@ -241,9 +241,7 @@
 
                 {{-- Pagination --}}
                 @if($recentVisits->hasPages())
-                    <div class="p-4 border-t border-base-200">
-                        {{ $recentVisits->links() }}
-                    </div>
+                    <x-pagination :paginator="$recentVisits" class="justify-center mt-4" />
                 @endif
             </div>
         </div>

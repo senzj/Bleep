@@ -224,4 +224,10 @@ class SettingsController extends Controller
             'dateTo' => $request->get('date_to'),
         ]);
     }
+
+    // Show preferences page
+    public function showPreferences(Request $request)
+    {
+        return view('settings.preferences');
+    }
 }

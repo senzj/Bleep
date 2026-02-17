@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('visits', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
             $table->ipAddress('ip_address');
             $table->string('user_agent')->nullable();
             $table->string('browser')->nullable();

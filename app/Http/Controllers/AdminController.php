@@ -464,7 +464,7 @@ class AdminController extends Controller
     /**
      * Visits page
      */
-     public function visits(Request $request)
+    public function visits(Request $request)
     {
         // Base query
         $query = Visits::query();

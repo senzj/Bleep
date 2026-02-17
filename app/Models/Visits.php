@@ -13,6 +13,7 @@ class Visits extends Model
     protected $fillable = [
         'ip_address',
         'user_agent',
+        'user_id',
         'browser',
         'device',
         'platform',
