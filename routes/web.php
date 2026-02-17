@@ -159,6 +159,9 @@ Route::middleware('auth')->group((function () {
     Route::put('/settings/profile', [SettingsController::class, 'updateProfile'])
         ->name('settings.profile.update');
 
+    Route::get('/settings/preferences', [SettingsController::class, 'showPreferences'])
+        ->name('settings.preferences');
+
     Route::get('/settings/password', [SettingsController::class, 'editPassword'])
         ->name('settings.password');
     Route::put('/settings/password', [SettingsController::class, 'updatePassword'])

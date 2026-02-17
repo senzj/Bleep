@@ -3,7 +3,6 @@
     @keydown.escape.window="open = false"
     class="relative"
     aria-label="Settings navigation"
-    x-cloak
 >
     {{-- Mobile toggle (floating top-left) --}}
     <button @click="open = true"
@@ -50,6 +49,16 @@
                 <span>Edit Profile</span>
             </a>
 
+            {{-- Preferences --}}
+            <a href="{{ route('settings.preferences') }}"
+                aria-current="{{ request()->routeIs('settings.preferences') ? 'page' : 'false' }}"
+                class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors border-l-2 text-base-content/70 hover:bg-base-200 hover:text-base-content border-transparent"
+                {{ request()->routeIs('settings.preferences') ? 'bg-base-200 text-base-content border-primary' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content border-transparent' }}"
+                @click.prevent="document.querySelector('.theme-button').click(); open = false">
+                <i data-lucide="palette" class="w-4 h-4" aria-hidden="true"></i>
+                <span>Preferences</span>
+            </a>
+
             {{-- Password change --}}
             <a href="{{ route('settings.password') }}"
                aria-current="{{ request()->routeIs('settings.password') ? 'page' : 'false' }}"
@@ -92,6 +101,15 @@
                {{ request()->routeIs('settings.profile') ? 'bg-base-200 text-base-content border-primary' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content border-transparent' }}">
                 <i data-lucide="user-round-pen" class="w-4 h-4" aria-hidden="true"></i>
                 <span>Edit Profile</span>
+            </a>
+
+            {{-- Preferences --}}
+            <a href="{{ route('settings.preferences') }}"
+               aria-current="{{ request()->routeIs('settings.preferences') ? 'page' : 'false' }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors border-l-2
+               {{ request()->routeIs('settings.preferences') ? 'bg-base-200 text-base-content border-primary' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content border-transparent' }}">
+                <i data-lucide="palette" class="w-4 h-4" aria-hidden="true"></i>
+                <span>Preferences</span>
             </a>
 
             {{-- Change Password --}}

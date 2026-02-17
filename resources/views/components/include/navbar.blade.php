@@ -70,7 +70,7 @@
                     <li>
                         <span class="text-xs text-base-content/70 inline-flex items-center gap-2">
                             Theme:
-                            <i data-lucide="sun" class="w-2 h-2 theme-current-icon"></i>
+                            <i data-lucide="sun" class="w-4 h-4 theme-current-icon"></i>
                             <span class="font-semibold theme-current-label">System</span>
                         </span>
                     </li>
