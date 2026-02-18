@@ -1,0 +1,14 @@
+export {
+    Camera,
+    ImagePlus,
+    Music,
+    Paperclip,
+    Pause,
+    Play,
+    PlayCircle,
+    Volume1,
+    Volume2,
+    VolumeX,
+    ZoomIn,
+    ZoomOut,
+} from 'lucide';

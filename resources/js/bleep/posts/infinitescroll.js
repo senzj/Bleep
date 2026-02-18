@@ -66,16 +66,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     child.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
                 });
 
-                // Initialize media/icons ONLY on new elements (scoped to tempDiv)
+                // Initialize media ONLY on new elements (scoped to tempDiv)
                 // Done BEFORE inserting into visible DOM — prevents reprocessing existing bleeps
                 if (window.loadNewMedia) {
                     window.loadNewMedia(tempDiv);
                 }
                 if (window.initVideoPlayers) {
                     window.initVideoPlayers(tempDiv);
-                }
-                if (window.lucide) {
-                    window.lucide.createIcons({ nodes: tempDiv.querySelectorAll('[data-lucide]') });
                 }
 
                 // Lock current scroll position before DOM change
@@ -90,6 +87,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Restore scroll position to prevent any jump
                 window.scrollTo(0, scrollBefore);
+
+                // Render lucide icons ONLY in newly added elements (AFTER DOM insertion)
+                // Must be done after insertion — lucide replaces <i> with <svg> and
+                // needs elements in the live DOM to work correctly
+                newElements.forEach(el => {
+                    if (window.createLucideIcons) {
+                        window.createLucideIcons(el);
+                    }
+                });
 
                 // Fade in new elements with stagger
                 requestAnimationFrame(() => {
