@@ -1,8 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     function setSrcForDeferred(container) {
-        container.querySelectorAll('[data-media-src]').forEach(el => {
+        // Handle both data-media-src and data-src attributes
+        container.querySelectorAll('[data-media-src], [data-src]').forEach(el => {
             const tag = el.tagName.toLowerCase();
-            const src = el.getAttribute('data-media-src');
+            const src = el.getAttribute('data-media-src') || el.getAttribute('data-src');
             if (!src) return;
             if (tag === 'img') el.setAttribute('src', src);
             if (tag === 'source') {
@@ -10,26 +11,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 const parentVideo = el.closest('video');
                 const mime = el.getAttribute('data-media-mime') || el.getAttribute('type');
                 if (mime) el.setAttribute('type', mime);
-                try { parentVideo?.load(); } catch (e) {}
+                if (parentVideo) {
+                    try {
+                        parentVideo.load();
+                        // Autoplay video after it's loaded (muted to respect browser policies)
+                        parentVideo.addEventListener('loadedmetadata', () => {
+                            if (parentVideo.muted) {
+                                parentVideo.play().catch(() => {});
+                            }
+                        }, { once: true });
+                    } catch (e) {}
+                }
             }
             if (tag === 'video') {
                 el.setAttribute('src', src);
-                try { el.load(); } catch (e) {}
+                try {
+                    el.load();
+                    // Autoplay after loaded
+                    el.addEventListener('loadedmetadata', () => {
+                        if (el.muted) {
+                            el.play().catch(() => {});
+                        }
+                    }, { once: true });
+                } catch (e) {}
             }
         });
     }
 
     function clearDeferred(container) {
+        // Pause and clear all videos in the container
+        container.querySelectorAll('video').forEach(video => {
+            try {
+                video.pause();
+                video.currentTime = 0;
+            } catch(e) {}
+            video.removeAttribute('src');
+            video.querySelectorAll('source').forEach(source => {
+                source.removeAttribute('src');
+            });
+        });
+
+        // Clear image sources
         container.querySelectorAll('[data-media-src], .nsfw-media').forEach(el => {
             const tag = el.tagName.toLowerCase();
             if (tag === 'img') el.removeAttribute('src');
-            if (tag === 'source') el.removeAttribute('src');
-            if (tag === 'video') {
-                try { el.pause(); } catch(e) {}
-                el.removeAttribute('src');
-                const source = el.querySelector('source');
-                if (source) source.removeAttribute('src');
-            }
         });
     }
 

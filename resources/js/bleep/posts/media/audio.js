@@ -194,10 +194,22 @@ function initAudioPlayers(container = document) {
         audioEl.addEventListener('seeked', updateProgressUI);
 
         btnPlay.addEventListener('click', () => {
+            // Lazy load audio src if not yet loaded
+            if (!audioEl.src && audioEl.dataset.src) {
+                setLoadingState();
+                audioEl.src = audioEl.dataset.src;
+                audioEl.removeAttribute('data-src');
+                audioEl.load();
+            }
+
             if (audioEl.paused) {
                 // Pause other audio players
                 if (activeAudio && activeAudio !== audioEl) {
                     activeAudio.pause();
+                }
+                // Pause all videos when audio plays
+                if (window.pauseAllVideos) {
+                    window.pauseAllVideos();
                 }
                 audioEl.play().catch(() => setPlayState(false));
                 activeAudio = audioEl;
@@ -293,8 +305,24 @@ function initAudioPlayers(container = document) {
     });
 }
 
-// Make globally accessible for comments
+/**
+ * Pause all audio players
+ */
+function pauseAllAudio() {
+    if (activeAudio && !activeAudio.paused) {
+        activeAudio.pause();
+    }
+    // Also pause any audio that might not be tracked
+    document.querySelectorAll('audio').forEach((audio) => {
+        if (!audio.paused) {
+            audio.pause();
+        }
+    });
+}
+
+// Make globally accessible
 window.initAudioPlayers = initAudioPlayers;
+window.pauseAllAudio = pauseAllAudio;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {

@@ -283,11 +283,11 @@
                     <div class="flex items-center justify-center mb-3">
                         <i data-lucide="eye-off" class="w-8 h-8 text-red-500"></i>
                     </div>
-                    <p class="mb-1 font-semibold text-lg">This Bleep is marked as <span class="text-red-500">NSFW</span></p>
+                    <p class="mb-1 font-semibold text-lg">This Bleep is marked as <span class="text-red-500 font-bold">NSFW</span></p>
                     <p class="text-sm text-base-content/60 mb-4">Content may be sensitive or inappropriate</p>
-                    <button type="button" class="btn btn-sm btn-error nsfw-reveal-btn shadow-sm" data-bleep-id="{{ $bleep->id }}">
+                    <button type="button" class="text-white! btn btn-sm btn-error nsfw-reveal-btn shadow-sm" data-bleep-id="{{ $bleep->id }}">
                         <i data-lucide="eye" class="w-4 h-4"></i>
-                        View
+                        <p class="font-semibold">View</p>
                     </button>
                 </div>
 
@@ -298,9 +298,9 @@
                         @include('components.bleepsmedia', ['mediaItems' => $mediaItems, 'isNsfw' => true])
                     @endif
                     <div class="mt-3 text-center">
-                        <button type="button" class="btn btn-sm btn-outline hide-nsfw-btn shadow-sm" data-bleep-id="{{ $bleep->id }}">
+                        <button type="button" class="text-white! btn btn-sm btn-outline hide-nsfw-btn shadow-sm bg-gray-500" data-bleep-id="{{ $bleep->id }}">
                             <i data-lucide="eye-off" class="w-4 h-4"></i>
-                            Hide Content
+                            <p class="font-semibold">Hide Content</p>
                         </button>
                     </div>
                 </div>
@@ -472,6 +472,7 @@
             'resources/js/bleep/posts/share.js',
             'resources/js/bleep/posts/media/audio.js',
             'resources/js/bleep/posts/media/video.js',
+            'resources/js/bleep/posts/media/lazyload.js',
             'resources/js/bleep/posts/media/visibility.js',
             'resources/js/bleep/users/follow.js',
             'resources/js/bleep/modals/mediamodal.js',
@@ -482,5 +483,3 @@
         @endif
     @endpush
 @endonce
-
-{{-- Anonymity & content update is live updated via resources/js/bleep/modals/posts/edit.js --}}

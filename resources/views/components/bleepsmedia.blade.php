@@ -1,7 +1,8 @@
 @php
     $count = $mediaItems->count();
     $nsfwClass = $isNsfw ? 'nsfw-media' : '';
-    $nsfwAttr = $isNsfw ? 'data-media-src' : 'src';
+    // Always use data-src - media loads asynchronously in background
+    $nsfwAttr = $isNsfw ? 'data-media-src' : 'data-src';
     $firstItem = $mediaItems->first();
     $isAudioOnly = $firstItem && $firstItem->type === 'audio';
 
@@ -102,11 +103,11 @@
                 </div>
             </div>
 
-            {{-- Hidden Audio Element --}}
+            {{-- Hidden Audio Element - deferred loading --}}
             <audio class="hidden audio-element"
                 id="{{ $uniqueAudioId }}"
-                preload="metadata"
-                src="{{ route('media.stream', ['path' => $firstItem->path]) }}">
+                preload="none"
+                data-src="{{ route('media.stream', ['path' => $firstItem->path]) }}">
             </audio>
         </div>
     </div>
@@ -132,14 +133,10 @@
                     <video class="{{ $nsfwClass }} max-h-96 w-auto rounded-lg object-contain"
                            controls
                            preload="metadata"
+                           muted
                            playsinline>
-                        @if($isNsfw)
-                            <source data-media-src="{{ asset('storage/'.$m->path) }}"
-                                    data-media-mime="{{ $m->mime_type }}">
-                        @else
-                            <source src="{{ asset('storage/'.$m->path) }}"
-                                    type="{{ $m->mime_type }}">
-                        @endif
+                        <source {{ $nsfwAttr }}="{{ route('media.stream', ['path' => $m->path]) }}"
+                                type="{{ $m->mime_type }}">
                         Your browser does not support the video tag.
                     </video>
                 @endif
@@ -170,14 +167,10 @@
                                 <video class="{{ $nsfwClass }} w-full h-full object-cover rounded-lg"
                                        controls
                                        preload="metadata"
+                                       muted
                                        playsinline>
-                                    @if($isNsfw)
-                                        <source data-media-src="{{ asset('storage/'.$m->path) }}"
-                                                data-media-mime="{{ $m->mime_type }}">
-                                    @else
-                                        <source src="{{ asset('storage/'.$m->path) }}"
-                                                type="{{ $m->mime_type }}">
-                                    @endif
+                                    <source {{ $nsfwAttr }}="{{ route('media.stream', ['path' => $m->path]) }}"
+                                            type="{{ $m->mime_type }}">
                                 </video>
                             </div>
                         @endif
@@ -210,14 +203,10 @@
                                 <video class="{{ $nsfwClass }} w-full h-full object-cover rounded-lg"
                                        controls
                                        preload="metadata"
+                                       muted
                                        playsinline>
-                                    @if($isNsfw)
-                                        <source data-media-src="{{ asset('storage/'.$m->path) }}"
-                                                data-media-mime="{{ $m->mime_type }}">
-                                    @else
-                                        <source src="{{ asset('storage/'.$m->path) }}"
-                                                type="{{ $m->mime_type }}">
-                                    @endif
+                                    <source {{ $nsfwAttr }}="{{ route('media.stream', ['path' => $m->path]) }}"
+                                            type="{{ $m->mime_type }}">
                                 </video>
                             </div>
                         @endif
@@ -250,14 +239,10 @@
                                 <video class="{{ $nsfwClass }} w-full h-full object-cover rounded-lg"
                                        controls
                                        preload="metadata"
+                                       muted
                                        playsinline>
-                                    @if($isNsfw)
-                                        <source data-media-src="{{ asset('storage/'.$m->path) }}"
-                                                data-media-mime="{{ $m->mime_type }}">
-                                    @else
-                                        <source src="{{ asset('storage/'.$m->path) }}"
-                                                type="{{ $m->mime_type }}">
-                                    @endif
+                                    <source {{ $nsfwAttr }}="{{ route('media.stream', ['path' => $m->path]) }}"
+                                            type="{{ $m->mime_type }}">
                                 </video>
                             </div>
                         @endif

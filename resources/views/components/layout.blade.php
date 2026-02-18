@@ -26,11 +26,6 @@
                 document.documentElement.setAttribute('data-theme', t);
             })();
         </script>
-        <style>
-            /* Prevent icon flash during rendering */
-            [data-lucide] { display: inline-block; }
-            i[data-lucide]:not(svg) { min-width: 1em; min-height: 1em; }
-        </style>
         @vite(['resources/js/init.js','resources/css/app.css','resources/js/app.js'])
         <title>Bleep | {{ isset($title) ? $title : '' }}</title>
         <link rel="preconnect" href="https://fonts.bunny.net">

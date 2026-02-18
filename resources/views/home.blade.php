@@ -147,7 +147,7 @@
                 @endauth
 
                 {{-- bleeps container --}}
-                <div id="bleeps-container" class="space-y-4 mt-5">
+                <div id="bleeps-container" class="space-y-4 mt-5" style="overflow-anchor: auto;">
                     @forelse ($bleeps as $bleep)
                         <x-bleep :bleep="$bleep" />
                     @empty

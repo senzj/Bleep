@@ -114,7 +114,7 @@ Route::middleware('auth')->group((function () {
 
     // Bleep Chat/Message Page
     Route::get('/messages', function () {
-        return view('message');
+        return view('chat');
     })->name('messages');
 
     // Bleep Resource Routes
@@ -266,8 +266,8 @@ Route::post('/generate-username', [ValidationController::class, 'generateRandomU
 
 
 // MEDIA STREAMING ROUTE
-use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+// use Illuminate\Http\Request;
+// use Symfony\Component\HttpFoundation\StreamedResponse;
 
 Route::get('/media/stream/{path}', function ($path) {
     $fullPath = storage_path('app/public/' . $path);

@@ -1,5 +1,8 @@
 const VIDEO_VOLUME_STORAGE_KEY = 'bleepVideoVolume';
 
+// Intersection observer for autoplay
+let videoObserver = null;
+
 /**
  * Get stored video volume from localStorage
  */
@@ -25,6 +28,88 @@ function setStoredVideoVolume(vol) {
 }
 
 /**
+ * Load video source if needed
+ */
+function loadVideoSource(video) {
+    const source = video.querySelector('source[data-src], source[data-media-src]');
+    if (source) {
+        const src = source.dataset.src || source.dataset.mediaSrc;
+        if (src && !source.src) {
+            source.src = src;
+            source.removeAttribute('data-src');
+            source.removeAttribute('data-media-src');
+            video.load();
+            return true; // Source was loaded
+        }
+    }
+    return false; // Source already loaded or no source
+}
+
+/**
+ * Check if video source is loaded
+ */
+function isVideoSourceLoaded(video) {
+    const source = video.querySelector('source');
+    return source && source.src && source.src !== '' && !source.src.startsWith('about:');
+}
+
+/**
+ * Create intersection observer for video autoplay
+ */
+function createVideoObserver() {
+    if (videoObserver) return videoObserver;
+
+    videoObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const video = entry.target;
+
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+                // Video is at least 50% visible - try to autoplay
+                if (!isVideoSourceLoaded(video)) {
+                    loadVideoSource(video);
+                }
+
+                // Wait for metadata to be ready before playing
+                if (video.readyState >= 1) {
+                    tryAutoplay(video);
+                } else {
+                    video.addEventListener('loadedmetadata', () => {
+                        tryAutoplay(video);
+                    }, { once: true });
+                }
+            } else if (!entry.isIntersecting) {
+                // Video is not visible - pause it
+                if (!video.paused) {
+                    video.pause();
+                }
+            }
+        });
+    }, {
+        threshold: [0, 0.5, 1.0],
+        rootMargin: '0px'
+    });
+
+    return videoObserver;
+}
+
+/**
+ * Try to autoplay video (muted to comply with browser policies)
+ */
+function tryAutoplay(video) {
+    if (video.paused) {
+        // Ensure video is muted for autoplay (browser policy)
+        video.muted = true;
+        pauseAllVideosExcept(video);
+        if (window.pauseAllAudio) {
+            window.pauseAllAudio();
+        }
+        video.play().catch(() => {
+            // Autoplay failed - user will need to click play
+        });
+    }
+}
+
+/**
  * Initialize video players with volume persistence
  */
 function initVideoPlayers(container = document) {
@@ -43,6 +128,7 @@ function initVideoPlayers(container = document) {
     if (videoElements.length === 0) return;
 
     const storedVolume = getStoredVideoVolume();
+    const observer = createVideoObserver();
 
     videoElements.forEach((video) => {
         // Skip if already initialized
@@ -52,19 +138,39 @@ function initVideoPlayers(container = document) {
         // Set stored volume
         video.volume = storedVolume;
 
+        // Observe video for autoplay when in view
+        observer.observe(video);
+
+        // Handle manual play
+        video.addEventListener('play', (e) => {
+            // Check if source needs to be loaded
+            if (!isVideoSourceLoaded(video)) {
+                e.preventDefault();
+                video.pause();
+
+                // Load the source
+                loadVideoSource(video);
+
+                // Play after metadata loads
+                video.addEventListener('loadedmetadata', () => {
+                    video.play().catch(() => {});
+                }, { once: true });
+                return;
+            }
+
+            pauseAllVideosExcept(video);
+            // Pause all audio players
+            if (window.pauseAllAudio) {
+                window.pauseAllAudio();
+            }
+        });
+
         // Save volume when user changes it
         video.addEventListener('volumechange', () => {
             if (!video.muted) {
                 setStoredVideoVolume(video.volume);
             }
         });
-
-        // Pause other videos when this one plays
-        video.addEventListener('play', () => {
-            pauseAllVideosExcept(video);
-        });
-
-        // console.log(`Video player initialized with volume: ${storedVolume}`);
     });
 }
 
