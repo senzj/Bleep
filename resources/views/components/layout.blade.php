@@ -43,12 +43,24 @@
 
     @php
         $navLayout = 'horizontal';
+        $preferences = null;
         if (Auth::check()) {
             $navLayout = Auth::user()->getNavLayout();
+            $preferences = Auth::user()->getPreferences();
         }
+
+        $showNsfw = $preferences?->show_nsfw ?? false;
+        $blurNsfw = $preferences?->blur_nsfw_media ?? true;
+        $autoplayVideos = $preferences?->autoplay_videos ?? true;
+        $autoplayAudio = $preferences?->autoplay_audio ?? false;
     @endphp
 
-    <body class="min-h-screen font-sans bg-base-300/90" data-nav-layout="{{ $navLayout }}">
+    <body class="min-h-screen font-sans bg-base-300/90"
+          data-nav-layout="{{ $navLayout }}"
+          data-show-nsfw="{{ $showNsfw ? '1' : '0' }}"
+          data-blur-nsfw="{{ $blurNsfw ? '1' : '0' }}"
+          data-autoplay-videos="{{ $autoplayVideos ? '1' : '0' }}"
+          data-autoplay-audio="{{ $autoplayAudio ? '1' : '0' }}">
         @if($navLayout === 'vertical')
             {{-- Vertical nav layout: flex container with sidebar + content --}}
             <div class="flex min-h-screen">

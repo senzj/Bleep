@@ -106,11 +106,12 @@
                     {{-- Bleeps Per Page --}}
                     <div class="form-control flex flex-col justify-center border border-base-200 p-3 rounded-lg">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="label-text">Bleeps per page</span>
+                            <span class="label-text">Number of Bleeps</span>
                             <select class="select select-bordered select-sm pref-select" data-pref="bleeps_per_page">
                                 <option value="10" {{ $preferences->bleeps_per_page == 10 ? 'selected' : '' }}>10</option>
-                                <option value="15" {{ $preferences->bleeps_per_page == 15 ? 'selected' : '' }}>15</option>
-                                <option value="25" {{ $preferences->bleeps_per_page == 25 ? 'selected' : '' }}>25</option>
+                                <option value="20" {{ $preferences->bleeps_per_page == 20 ? 'selected' : '' }}>20</option>
+                                <option value="30" {{ $preferences->bleeps_per_page == 30 ? 'selected' : '' }}>30</option>
+                                <option value="40" {{ $preferences->bleeps_per_page == 40 ? 'selected' : '' }}>40</option>
                                 <option value="50" {{ $preferences->bleeps_per_page == 50 ? 'selected' : '' }}>50</option>
                             </select>
                         </div>

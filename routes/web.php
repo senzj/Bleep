@@ -146,6 +146,9 @@ Route::middleware('auth')->group((function () {
     Route::post('/bleeper/{user}/follow', [FollowingController::class, 'toggle']);
 
     // Socials Routes
+    // Social Page
+    Route::get('/people', [SocialController::class, 'peoplePage'])
+        ->name('social.people');
     // Search users for people suggestions
     Route::get('/api/users/search', [SocialController::class, 'searchUsers'])
         ->name('api.users.search');

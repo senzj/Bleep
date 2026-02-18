@@ -2,6 +2,7 @@ const VIDEO_VOLUME_STORAGE_KEY = 'bleepVideoVolume';
 
 // Intersection observer for autoplay
 let videoObserver = null;
+const AUTOPLAY_ENABLED = document.body?.dataset?.autoplayVideos !== '0';
 
 /**
  * Get stored video volume from localStorage
@@ -57,6 +58,7 @@ function isVideoSourceLoaded(video) {
  * Create intersection observer for video autoplay
  */
 function createVideoObserver() {
+    if (!AUTOPLAY_ENABLED) return null;
     if (videoObserver) return videoObserver;
 
     videoObserver = new IntersectionObserver((entries) => {
@@ -96,6 +98,7 @@ function createVideoObserver() {
  * Try to autoplay video (muted to comply with browser policies)
  */
 function tryAutoplay(video) {
+    if (!AUTOPLAY_ENABLED) return;
     if (video.paused) {
         // Ensure video is muted for autoplay (browser policy)
         video.muted = true;
@@ -139,7 +142,9 @@ function initVideoPlayers(container = document) {
         video.volume = storedVolume;
 
         // Observe video for autoplay when in view
-        observer.observe(video);
+        if (observer) {
+            observer.observe(video);
+        }
 
         // Handle manual play
         video.addEventListener('play', (e) => {

@@ -22,7 +22,7 @@
     </div>
 
     {{-- RIGHT --}}
-    <div class="navbar-end hidden lg:flex gap-2 ml-auto w-45">
+    <div class="navbar-end hidden lg:flex gap-2 ml-auto w-64">
         <x-include.userprofile />
     </div>
 

@@ -45,11 +45,38 @@
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
                         <div>
+                        {{-- Name Row --}}
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            {{-- User Display Name --}}
                             <h1 class="text-2xl font-bold text-base-content truncate">
                                 {{ $user->dname ?? $user->username }}
                             </h1>
-                            <p class="text-base-content/60 text-sm">{{"@" . $user->username }}</p>
+
+                            {{-- Role --}}
+                            @if ($user->role === 'admin')
+                                <span class="px-1 py-1 text-[10px] font-extrabold rounded bg-blue-500/20 text-blue-500 border border-blue-600/20 shrink-0">
+                                    ADMIN
+                                </span>
+                            @elseif ($user->role === 'moderator')
+                                <span class="px-1 py-1 text-[10px] font-extrabold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-600/20 shrink-0">
+                                    MOD
+                                </span>
+                            @endif
+
+                            {{-- Verified Badge --}}
+                            @if ($user->is_verified)
+                                <i data-lucide="badge-check" class="w-5 h-5 text-blue-500 shrink-0"></i>
+                            @endif
+
+                            {{-- Private Lock --}}
+                            @if ($user->is_private)
+                                <i data-lucide="lock" class="w-5 h-5 text-base-content/60 shrink-0" title="This profile is private"></i>
+                            @endif
                         </div>
+
+                        {{-- User Alias Name --}}
+                        <p class="text-base-content/60 text-sm">{{ "@" . $user->username }}</p>
+                    </div>
 
                         {{-- Follow/Edit Button --}}
                         <div class="flex justify-end gap-2">
@@ -93,10 +120,20 @@
                         <p class="text-base-content/80 text-sm mb-3">{{ $user->bio }}</p>
                     @endif
 
-                    {{-- Joined Date --}}
-                    <div class="flex items-center gap-2 text-xs text-base-content/60">
-                        <i data-lucide="calendar" class="w-4 h-4"></i>
-                        <span>Joined {{ $user->created_at->format('F Y') }}</span>
+                    <div class="">
+                        {{-- Joined Date --}}
+                        <div class="flex items-center gap-2 text-xs text-base-content/60">
+                            <i data-lucide="calendar" class="w-4 h-4"></i>
+                            <span>Joined {{ $user->created_at->format('F Y') }}</span>
+                        </div>
+
+                        {{-- Location --}}
+                        @if($user->timezone)
+                            <div class="flex items-center gap-2 text-xs text-base-content/60 mt-1">
+                                <i data-lucide="map-pin" class="w-4 h-4"></i>
+                                <span>{{ $user->timezone }}</span>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

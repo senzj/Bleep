@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const prefs = {
+        showNsfw: document.body?.dataset?.showNsfw === '1',
+        blurNsfw: document.body?.dataset?.blurNsfw !== '0',
+        autoplayVideos: document.body?.dataset?.autoplayVideos !== '0',
+    };
+
     function setSrcForDeferred(container) {
         // Handle both data-media-src and data-src attributes
         container.querySelectorAll('[data-media-src], [data-src]').forEach(el => {
@@ -19,14 +25,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             parentVideo.load();
                             // Autoplay video after it's loaded (muted to respect browser policies)
-                            parentVideo.addEventListener('loadedmetadata', () => {
-                                if (parentVideo.muted) {
-                                    parentVideo.play().catch(() => {});
-                                }
-                            }, { once: true });
+                            if (prefs.autoplayVideos) {
+                                parentVideo.addEventListener('loadedmetadata', () => {
+                                    if (parentVideo.muted) {
+                                        parentVideo.play().catch(() => {});
+                                    }
+                                }, { once: true });
+                            }
                         } catch (e) {}
                     }
-                } else if (parentVideo && parentVideo.muted) {
+                } else if (parentVideo && parentVideo.muted && prefs.autoplayVideos) {
                     // Source already loaded — just autoplay if needed
                     parentVideo.play().catch(() => {});
                 }
@@ -38,13 +46,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         el.load();
                         // Autoplay after loaded
-                        el.addEventListener('loadedmetadata', () => {
-                            if (el.muted) {
-                                el.play().catch(() => {});
-                            }
-                        }, { once: true });
+                        if (prefs.autoplayVideos) {
+                            el.addEventListener('loadedmetadata', () => {
+                                if (el.muted) {
+                                    el.play().catch(() => {});
+                                }
+                            }, { once: true });
+                        }
                     } catch (e) {}
-                } else if (el.muted) {
+                } else if (el.muted && prefs.autoplayVideos) {
                     // Video already loaded — just autoplay if needed
                     el.play().catch(() => {});
                 }
@@ -72,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function revealNsfw(bleepId) {
         if (!bleepId) return;
+        if (!prefs.showNsfw) return;
         const wrapper = document.querySelector(`.nsfw-wrapper[data-bleep-id="${bleepId}"], .bleep-nsfw-wrapper[data-bleep-id="${bleepId}"]`);
         if (!wrapper) {
             console.error('NSFW wrapper not found for bleepId:', bleepId);
@@ -80,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // console.log('Revealing NSFW content for bleep:', bleepId);
 
-        try { localStorage.setItem(`nsfw_viewed_${bleepId}`, '1'); } catch (e) {}
+        try { sessionStorage.setItem(`nsfw_viewed_${bleepId}`, '1'); } catch (e) {}
 
         // Find elements within the wrapper (not by data-bleep-id)
         const content = wrapper.querySelector('.nsfw-content');
@@ -121,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const wrapper = document.querySelector(`.nsfw-wrapper[data-bleep-id="${bleepId}"], .bleep-nsfw-wrapper[data-bleep-id="${bleepId}"]`);
         if (!wrapper) return;
 
-        try { localStorage.removeItem(`nsfw_viewed_${bleepId}`); } catch (e) {}
+        try { sessionStorage.removeItem(`nsfw_viewed_${bleepId}`); } catch (e) {}
 
         // Find elements within the wrapper
         const content = wrapper.querySelector('.nsfw-content');
@@ -190,16 +201,45 @@ document.addEventListener('DOMContentLoaded', () => {
     // click handlers
     document.addEventListener('click', (e) => {
         const reveal = e.target.closest('.nsfw-reveal-btn');
-        if (reveal) { revealNsfw(reveal.getAttribute('data-bleep-id')); return; }
+        if (reveal) {
+            if (!prefs.showNsfw) return;
+            revealNsfw(reveal.getAttribute('data-bleep-id'));
+            return;
+        }
         const hideBtn = e.target.closest('.hide-nsfw-btn');
         if (hideBtn) { hideNsfw(hideBtn.getAttribute('data-bleep-id')); return; }
     });
 
-    // auto-reveal from localStorage
+    // apply initial preference state
     document.querySelectorAll('.nsfw-wrapper[data-bleep-id], .bleep-nsfw-wrapper[data-bleep-id]').forEach(w => {
         const id = w.getAttribute('data-bleep-id');
+        const isNsfw = w.getAttribute('data-is-nsfw') === '1';
+        if (!isNsfw) return;
+
+        if (!prefs.showNsfw) {
+            hideNsfw(id);
+            const revealBtn = w.querySelector('.nsfw-reveal-btn');
+            if (revealBtn) {
+                revealBtn.setAttribute('disabled', 'true');
+                revealBtn.classList.add('opacity-60', 'cursor-not-allowed');
+            }
+            return;
+        }
+
+        if (!prefs.blurNsfw) {
+            revealNsfw(id);
+            return;
+        }
+
+        // When blur is enabled, hide by default unless revealed in this session
         try {
-            if (id && localStorage.getItem(`nsfw_viewed_${id}`) === '1') revealNsfw(id);
-        } catch (e) {}
+            if (id && sessionStorage.getItem(`nsfw_viewed_${id}`) === '1') {
+                revealNsfw(id);
+            } else {
+                hideNsfw(id);
+            }
+        } catch (e) {
+            hideNsfw(id);
+        }
     });
 });

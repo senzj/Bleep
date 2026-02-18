@@ -14,11 +14,21 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-12 lg:gap-3">
         {{-- Left panel - left navivation, hidden when vertical navbar --}}
-        <div class="lg:block lg:col-span-3" id="left-panel">
-        </div>
+        @php
+            // Get user's nav layout preference, default to horizontal
+            $navLayout = 'horizontal';
+            if (Auth::check()) {
+                $navLayout = Auth::user()->getNavLayout();
+            }
+        @endphp
+
+        @if ($navLayout !== 'vertical')
+            <div class="lg:block lg:col-span-3" id="left-panel">
+            </div>
+        @endif
 
         {{-- Center panel - main content --}}
-        <div class="lg:block lg:col-span-6" id="center-panel">
+        <div class="lg:block {{ $navLayout === 'vertical' ? 'lg:col-span-8 lg:ml-20' : 'lg:col-span-6' }}" id="center-panel">
 
             {{-- Feed panel: post form + bleeps (toggled as a single unit on mobile) --}}
             <div id="feed-panel">
@@ -136,7 +146,7 @@
                 <div class="">
                     {{-- Sticky top Bleep Sort --}}
                     @auth
-                        <div class="sticky top-16 z-20 mt-5 border border-base-200 px-3 py-2 bg-base-100/95 backdrop-blur rounded-lg shadow-sm">
+                        <div class="sticky top-0 z-20 mt-5 border border-base-200 px-3 py-2 bg-base-100/95 backdrop-blur rounded-lg shadow-sm">
                             <div class="flex gap-2 w-full" role="tablist" aria-label="Main tabs">
                                 {{-- Shows For You Page --}}
                                 <button type="button" class="flex-1 btn btn-sm btn-ghost data-tab-active" data-tab="bleep" aria-controls="bleeps-container" aria-selected="true">For You</button>
