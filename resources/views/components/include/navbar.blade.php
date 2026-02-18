@@ -7,7 +7,7 @@
 @endphp
 
 @if($navLayout === 'vertical')
-    @include('components.include.ver_navbar')
+    @include('components.include.vnavbar')
 @else
-    @include('components.include.hor_navbar')
+    @include('components.include.hnavbar')
 @endif

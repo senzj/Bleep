@@ -12,26 +12,13 @@
         Home
     </x-slot:title>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {{-- Left panel - left nav bar--}}
-        <div class="hidden lg:block lg:col-span-2 mt-1" id="left-panel">
-
+    <div class="grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
+        {{-- Left panel - left navivation, hidden when vertical navbar --}}
+        <div class="lg:block lg:col-span-2 mt-1" id="left-panel">
         </div>
 
         {{-- Center panel - main content --}}
         <div class="lg:block lg:col-span-7">
-            {{-- Mobile tabs: only visible on small screens --}}
-            <div class="flex items-center justify-between mb-3 lg:hidden">
-                <div class="flex gap-2 w-full" role="tablist" aria-label="Main tabs">
-                    <button type="button" class="flex-1 btn btn-sm btn-ghost data-tab-active" data-tab="bleep" aria-controls="bleeps-container" aria-selected="true">Bleep</button>
-                    <button type="button" class="flex-1 btn btn-sm btn-ghost" data-tab="people" aria-controls="mobile-people-panel" aria-selected="false">People</button>
-                </div>
-            </div>
-
-            {{-- mobile people panel (in-center render for small screens) --}}
-            <div id="mobile-people-panel" class="mt-1 lg:hidden hidden" aria-hidden="true">
-                <x-social.people />
-            </div>
 
             {{-- Feed panel: post form + bleeps (toggled as a single unit on mobile) --}}
             <div id="feed-panel">
@@ -145,43 +132,65 @@
                     </div>
                 @endauth
 
-                {{-- bleeps container --}}
-                <div id="bleeps-container" class="space-y-4 mt-5" style="overflow-anchor: auto;">
-                    @forelse ($bleeps as $bleep)
-                        <x-bleep :bleep="$bleep" />
-                    @empty
-                        <div class="hero py-12">
-                            <div class="hero-content text-center">
-                                <div>
-                                    <i data-lucide="inbox" class="w-16 h-16 mx-auto text-base-content/40"></i>
-                                    <p class="mt-4 text-base-content/60">No bleeps yet. Be the first to share!</p>
-                                </div>
+                {{-- Bleep feed --}}
+                <div class="">
+                    {{-- Sticky top Bleep Sort --}}
+                    @auth
+                        <div class="flex items-center justify-between mt-5 border border-base-200 px-3 py-2 bg-base-100 rounded-lg shadow-sm">
+                            <div class="flex gap-2 w-full" role="tablist" aria-label="Main tabs">
+                                {{-- Shows For You Page --}}
+                                <button type="button" class="flex-1 btn btn-sm btn-ghost data-tab-active" data-tab="bleep" aria-controls="bleeps-container" aria-selected="true">Bleep</button>
+
+                                {{-- Shows Followings Bleep Only --}}
+                                <button type="button" class="flex-1 btn btn-sm btn-ghost" data-tab="following" aria-controls="mobile-following-panel" aria-selected="false">Following</button>
+
+                                {{-- Shows Friends Bleep Only --}}
+                                <button type="button" class="flex-1 btn btn-sm btn-ghost" data-tab="friends" aria-controls="mobile-friends-panel" aria-selected="false">Friends</button>
                             </div>
                         </div>
-                    @endforelse
-                </div>
+                    @endauth
 
-                {{-- Loading indicator --}}
-                <div id="loading-indicator" class="hidden text-center py-8">
-                    <span class="loading loading-spinner loading-lg text-primary"></span>
-                    <p class="mt-2 text-base-content/60">Loading more bleeps...</p>
-                </div>
+                    {{-- bleeps container --}}
+                    <div id="bleeps-container" class="space-y-4 mt-1" style="overflow-anchor: auto;">
+                        @forelse ($bleeps as $bleep)
+                            <x-bleep :bleep="$bleep" />
+                        @empty
+                            <div class="hero py-12">
+                                <div class="hero-content text-center">
+                                    <div>
+                                        <i data-lucide="inbox" class="w-16 h-16 mx-auto text-base-content/40"></i>
+                                        <p class="mt-4 text-base-content/60">No bleeps yet. Be the first to share!</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforelse
+                    </div>
 
-                {{-- End of content indicator --}}
-                <div id="end-of-content" class="hidden text-center py-8">
-                    <i data-lucide="circle-check" class="w-8 h-8 mx-auto text-base-content/40"></i>
-                    <p class="mt-2 text-base-content/60">You've reached the end of the bleeps!</p>
-                </div>
+                    {{-- Loading indicator --}}
+                    <div id="loading-indicator" class="hidden text-center py-8">
+                        <span class="loading loading-spinner loading-lg text-primary"></span>
+                        <p class="mt-2 text-base-content/60">Loading more bleeps...</p>
+                    </div>
 
-                {{-- Infinite scroll trigger --}}
-                <div id="infinite-scroll-trigger" data-page="2" data-has-more="{{ $bleeps->hasMorePages() ? 'true' : 'false' }}"></div>
+                    {{-- End of content indicator --}}
+                    <div id="end-of-content" class="hidden text-center py-8">
+                        <i data-lucide="circle-check" class="w-8 h-8 mx-auto text-base-content/40"></i>
+                        <p class="mt-2 text-base-content/60">You've reached the end of the bleeps!</p>
+                    </div>
+
+                    {{-- Infinite scroll trigger --}}
+                    <div id="infinite-scroll-trigger" data-page="2" data-has-more="{{ $bleeps->hasMorePages() ? 'true' : 'false' }}"></div>
+                </div>
             </div>
         </div>
 
-        {{-- Right panel - announcement --}}
+        {{-- Right panel - announcement & notifications --}}
         <div class="hidden lg:block lg:col-span-3 mt-1" id="right-panel">
             {{-- Server Announcement --}}
             <x-announcement.system />
+
+            {{-- Quick Few Notifications --}}
+
         </div>
     </div>
 

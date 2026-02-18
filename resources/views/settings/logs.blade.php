@@ -4,7 +4,7 @@
 
 <x-settings.layout>
     <div class="mb-8">
-        <h1 class="text-2xl font-bold mb-2">Your Activity Log</h1>
+        <h1 class="text-2xl font-bold mb-2">Your Account Activity</h1>
         <p class="text-sm text-base-content/70">Track all actions and events on your account</p>
     </div>
 

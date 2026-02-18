@@ -78,7 +78,7 @@ class PreferencesManager {
 
                 // Special handling for preferences that require page reload
                 if (key === 'nav_layout') {
-                    this.showToast(true, 'Navigation layout changed! Reloading...');
+                    this.showToast(true, 'Navigation layout updated! Please wait while the page reloads...');
                     setTimeout(() => window.location.reload(), 1500);
                     return;
                 }
