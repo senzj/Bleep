@@ -12,13 +12,13 @@
         Home
     </x-slot:title>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 lg:gap-3">
         {{-- Left panel - left navivation, hidden when vertical navbar --}}
-        <div class="lg:block lg:col-span-2 mt-1" id="left-panel">
+        <div class="lg:block lg:col-span-3" id="left-panel">
         </div>
 
         {{-- Center panel - main content --}}
-        <div class="lg:block lg:col-span-7">
+        <div class="lg:block lg:col-span-6" id="center-panel">
 
             {{-- Feed panel: post form + bleeps (toggled as a single unit on mobile) --}}
             <div id="feed-panel">
@@ -185,7 +185,7 @@
         </div>
 
         {{-- Right panel - announcement & notifications --}}
-        <div class="hidden lg:block lg:col-span-3 mt-1" id="right-panel">
+        <div class="hidden lg:block lg:col-span-3" id="right-panel">
             {{-- Server Announcement --}}
             <x-announcement.system />
 

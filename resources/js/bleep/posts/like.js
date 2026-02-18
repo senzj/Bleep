@@ -13,8 +13,8 @@ document.addEventListener('mouseover', (e) => {
     // Only show heart-crack on hover if already liked
     if (isLiked && heartIcon) {
         heartIcon.setAttribute('data-lucide', 'heart-crack');
-        if (window.lucide) {
-            window.lucide.createIcons();
+        if (window.createLucideIcons) {
+            window.createLucideIcons(button);
         }
     }
 });
@@ -30,8 +30,8 @@ document.addEventListener('mouseout', (e) => {
     // Restore heart icon when mouse leaves if still liked
     if (isLiked && heartIcon) {
         heartIcon.setAttribute('data-lucide', 'heart');
-        if (window.lucide) {
-            window.lucide.createIcons();
+        if (window.createLucideIcons) {
+            window.createLucideIcons(button);
         }
     }
 });
@@ -72,13 +72,13 @@ document.addEventListener('submit', async (e) => {
 
     // Always show heart icon on click and add animation
     heartIcon?.setAttribute('data-lucide', 'heart');
-    heartIcon?.classList.add('animate-like-heart');
-    setTimeout(() => heartIcon?.classList.remove('animate-like-heart'), 600);
 
-    // Re-create the lucide icon immediately
-    if (window.lucide) {
-        window.lucide.createIcons();
+    if (window.createLucideIcons) {
+        window.createLucideIcons(button);
     }
+
+    button.classList.add('like-animate');
+    setTimeout(() => button.classList.remove('like-animate'), 600);
 
     // Update counts
     if (mobileElem) {
@@ -112,8 +112,8 @@ document.addEventListener('submit', async (e) => {
             // Revert on error
             button.classList.toggle('text-red-600', isLiked);
             heartIcon?.setAttribute('data-lucide', 'heart');
-            if (window.lucide) {
-                window.lucide.createIcons();
+            if (window.createLucideIcons) {
+                window.createLucideIcons(button);
             }
             if (mobileElem) mobileElem.textContent = String(currentCount);
             if (desktopElem) {
@@ -149,8 +149,8 @@ document.addEventListener('submit', async (e) => {
         // Revert on error
         button.classList.toggle('text-red-600', isLiked);
         heartIcon?.setAttribute('data-lucide', 'heart');
-        if (window.lucide) {
-            window.lucide.createIcons();
+        if (window.createLucideIcons) {
+            window.createLucideIcons(button);
         }
         if (mobileElem) mobileElem.textContent = String(currentCount);
         if (desktopElem) {

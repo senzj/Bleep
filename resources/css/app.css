@@ -61,7 +61,7 @@
 }
 
 /* Apply the animation */
-.animate-like-heart {
+.like-animate .heart-icon {
     animation: like-heart 1.0s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -104,7 +104,7 @@
         transition: none !important;
     }
 
-    .animate-like-heart {
+    .like-animate .heart-icon {
         animation: none !important;
     }
 }

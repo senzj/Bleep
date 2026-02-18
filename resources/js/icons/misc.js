@@ -4,6 +4,7 @@ export {
     Database,
     Globe,
     Heart,
+    HeartCrack,
     HatGlasses,
     Glasses,
     MoreVertical,
