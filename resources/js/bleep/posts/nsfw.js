@@ -7,54 +7,66 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!src) return;
             if (tag === 'img') el.setAttribute('src', src);
             if (tag === 'source') {
-                el.setAttribute('src', src);
                 const parentVideo = el.closest('video');
-                const mime = el.getAttribute('data-media-mime') || el.getAttribute('type');
-                if (mime) el.setAttribute('type', mime);
-                if (parentVideo) {
-                    try {
-                        parentVideo.load();
-                        // Autoplay video after it's loaded (muted to respect browser policies)
-                        parentVideo.addEventListener('loadedmetadata', () => {
-                            if (parentVideo.muted) {
-                                parentVideo.play().catch(() => {});
-                            }
-                        }, { once: true });
-                    } catch (e) {}
+
+                // Only set src if not already set (to avoid refetching)
+                if (!el.src || el.src !== src) {
+                    el.setAttribute('src', src);
+                    const mime = el.getAttribute('data-media-mime') || el.getAttribute('type');
+                    if (mime) el.setAttribute('type', mime);
+
+                    if (parentVideo) {
+                        try {
+                            parentVideo.load();
+                            // Autoplay video after it's loaded (muted to respect browser policies)
+                            parentVideo.addEventListener('loadedmetadata', () => {
+                                if (parentVideo.muted) {
+                                    parentVideo.play().catch(() => {});
+                                }
+                            }, { once: true });
+                        } catch (e) {}
+                    }
+                } else if (parentVideo && parentVideo.muted) {
+                    // Source already loaded — just autoplay if needed
+                    parentVideo.play().catch(() => {});
                 }
             }
             if (tag === 'video') {
-                el.setAttribute('src', src);
-                try {
-                    el.load();
-                    // Autoplay after loaded
-                    el.addEventListener('loadedmetadata', () => {
-                        if (el.muted) {
-                            el.play().catch(() => {});
-                        }
-                    }, { once: true });
-                } catch (e) {}
+                // Only set src if not already set
+                if (!el.src || el.src !== src) {
+                    el.setAttribute('src', src);
+                    try {
+                        el.load();
+                        // Autoplay after loaded
+                        el.addEventListener('loadedmetadata', () => {
+                            if (el.muted) {
+                                el.play().catch(() => {});
+                            }
+                        }, { once: true });
+                    } catch (e) {}
+                } else if (el.muted) {
+                    // Video already loaded — just autoplay if needed
+                    el.play().catch(() => {});
+                }
             }
         });
     }
 
     function clearDeferred(container) {
-        // Pause and clear all videos in the container
+        // Pause all videos in the container (but keep sources cached for reuse)
         container.querySelectorAll('video').forEach(video => {
             try {
                 video.pause();
                 video.currentTime = 0;
             } catch(e) {}
-            video.removeAttribute('src');
-            video.querySelectorAll('source').forEach(source => {
-                source.removeAttribute('src');
-            });
+            // Keep src attributes so video stays in browser cache — don't refetch on re-reveal
+            // Remove initialization marker so video can be re-initialized when revealed again
+            video.removeAttribute('data-volume-initialized');
         });
 
-        // Clear image sources
-        container.querySelectorAll('[data-media-src], .nsfw-media').forEach(el => {
-            const tag = el.tagName.toLowerCase();
-            if (tag === 'img') el.removeAttribute('src');
+        // Clear image sources (images don't cache the same way as videos)
+        container.querySelectorAll('img[data-media-src], img[data-src]').forEach(el => {
+            el.removeAttribute('src');
         });
     }
 
@@ -82,6 +94,12 @@ document.addEventListener('DOMContentLoaded', () => {
             content.classList.remove('hidden');
             setSrcForDeferred(content);
 
+            // Re-initialize video players for videos in revealed content
+            // This ensures they get added back to the intersection observer for autoplay
+            if (window.initVideoPlayers) {
+                window.initVideoPlayers(content);
+            }
+
             // Add red border to indicate NSFW content
             content.classList.add('border-2', 'border-red-500/20', 'rounded-lg', 'p-1');
         } else {
@@ -95,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         wrapper.dataset.revealed = '1';
 
         // Re-render Lucide icons if they exist in the revealed content
-        if (window.createLucideIcons) window.createLucideIcons();
+        if (window.createLucideIcons) window.createLucideIcons(content);
     }
 
     function hideNsfw(bleepId) {

@@ -121,7 +121,7 @@
             <div class="relative cursor-pointer group"
                 data-media-index="0"
                 data-media-type="{{ $m->type }}"
-                data-media-src="{{ asset('storage/'.$m->path) }}"
+                data-media-src="{{ $m->type === 'video' ? route('media.stream', ['path' => $m->path]) : asset('storage/'.$m->path) }}"
                 data-media-alt="{{ $m->original_name }}"
                 data-media-mime="{{ $m->mime_type }}">
                 @if($m->type === 'image')
@@ -149,7 +149,7 @@
                     <div class="relative cursor-pointer group w-full"
                         data-media-index="{{ $index }}"
                         data-media-type="{{ $m->type }}"
-                        data-media-src="{{ asset('storage/'.$m->path) }}"
+                        data-media-src="{{ $m->type === 'video' ? route('media.stream', ['path' => $m->path]) : asset('storage/'.$m->path) }}"
                         data-media-alt="{{ $m->original_name }}"
                         data-media-mime="{{ $m->mime_type }}">
                         @if($m->type === 'image')
@@ -185,7 +185,7 @@
                     <div class="relative cursor-pointer group h-full"
                         data-media-index="{{ $index }}"
                         data-media-type="{{ $m->type }}"
-                        data-media-src="{{ asset('storage/'.$m->path) }}"
+                        data-media-src="{{ $m->type === 'video' ? route('media.stream', ['path' => $m->path]) : asset('storage/'.$m->path) }}"
                         data-media-alt="{{ $m->original_name }}"
                         data-media-mime="{{ $m->mime_type }}">
                         @if($m->type === 'image')
@@ -221,7 +221,7 @@
                     <div class="relative cursor-pointer group"
                         data-media-index="{{ $index }}"
                         data-media-type="{{ $m->type }}"
-                        data-media-src="{{ asset('storage/'.$m->path) }}"
+                        data-media-src="{{ $m->type === 'video' ? route('media.stream', ['path' => $m->path]) : asset('storage/'.$m->path) }}"
                         data-media-alt="{{ $m->original_name }}"
                         data-media-mime="{{ $m->mime_type }}">
                         @if($m->type === 'image')
