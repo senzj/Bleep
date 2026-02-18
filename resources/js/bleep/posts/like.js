@@ -2,39 +2,43 @@
  * Likes Functionality with Optimistic UI
  */
 
-// Handle hover effect for liked buttons
-document.addEventListener('mouseover', (e) => {
-    const button = e.target.closest('.like-btn');
-    if (!button) return;
+const canHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
 
-    const isLiked = button.classList.contains('text-red-600');
-    const heartIcon = button.querySelector('.heart-icon');
+// Handle hover effect for liked buttons (pointer devices only)
+if (canHover) {
+    document.addEventListener('pointerenter', (e) => {
+        const button = e.target.closest('.like-btn');
+        if (!button) return;
 
-    // Only show heart-crack on hover if already liked
-    if (isLiked && heartIcon) {
-        heartIcon.setAttribute('data-lucide', 'heart-crack');
-        if (window.createLucideIcons) {
-            window.createLucideIcons(button);
+        const isLiked = button.classList.contains('text-red-600');
+        const heartIcon = button.querySelector('.heart-icon');
+
+        // Only show heart-crack on hover if already liked
+        if (isLiked && heartIcon) {
+            heartIcon.setAttribute('data-lucide', 'heart-crack');
+            if (window.createLucideIcons) {
+                window.createLucideIcons(button);
+            }
         }
-    }
-});
+    }, true);
 
-// Handle mouse leave to restore heart icon
-document.addEventListener('mouseout', (e) => {
-    const button = e.target.closest('.like-btn');
-    if (!button) return;
+    // Handle pointer leave to restore heart icon
+    document.addEventListener('pointerleave', (e) => {
+        const button = e.target.closest('.like-btn');
+        if (!button) return;
 
-    const isLiked = button.classList.contains('text-red-600');
-    const heartIcon = button.querySelector('.heart-icon');
+        const isLiked = button.classList.contains('text-red-600');
+        const heartIcon = button.querySelector('.heart-icon');
 
-    // Restore heart icon when mouse leaves if still liked
-    if (isLiked && heartIcon) {
-        heartIcon.setAttribute('data-lucide', 'heart');
-        if (window.createLucideIcons) {
-            window.createLucideIcons(button);
+        // Restore heart icon when pointer leaves if still liked
+        if (isLiked && heartIcon) {
+            heartIcon.setAttribute('data-lucide', 'heart');
+            if (window.createLucideIcons) {
+                window.createLucideIcons(button);
+            }
         }
-    }
-});
+    }, true);
+}
 
 // Use event delegation so forms added later also work
 document.addEventListener('submit', async (e) => {

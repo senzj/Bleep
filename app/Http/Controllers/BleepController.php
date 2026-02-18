@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Logs;
 use App\Models\Bleep;
-use App\Models\Repost;
 
 use App\Models\BleepViews;
 
@@ -15,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\MediaUploadService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Services\FeedService;
 
 class BleepController extends Controller
 {
@@ -22,6 +22,13 @@ class BleepController extends Controller
      * Use authorizeResource to apply policies.
      */
     use AuthorizesRequests;
+
+    protected FeedService $feedService;
+
+    public function __construct(FeedService $feedService)
+    {
+        $this->feedService = $feedService;
+    }
 
     /**
      * Display a listing of the resource.
@@ -31,11 +38,23 @@ class BleepController extends Controller
         // fetch first page via reusable fetchBleeps
         $bleeps = $this->fetchBleeps($request);
 
-        // Record views for the fetched bleeps
+        $followingBleeps = Auth::check()
+            ? $this->fetchBleeps($request, null, null, 'following')
+            : null;
+
+        $friendsBleeps = Auth::check()
+            ? $this->fetchBleeps($request, null, null, 'friends')
+            : null;
+
+        // Record views for the fetched bleeps (active tab only)
         $this->recordBleepsViews($bleeps);
 
         // Remove the AJAX check since lazyLoad handles it
-        return view('home', ['bleeps' => $bleeps]);
+        return view('home', [
+            'bleeps' => $bleeps,
+            'followingBleeps' => $followingBleeps,
+            'friendsBleeps' => $friendsBleeps,
+        ]);
     }
 
 
@@ -200,9 +219,10 @@ class BleepController extends Controller
     public function lazyLoad(Request $request)
     {
         $page = (int) $request->get('page', 2);
+        $tab = $request->get('tab', 'for-you');
 
         // fetch requested page via reusable fetchBleeps
-        $bleeps = $this->fetchBleeps($request, $page);
+        $bleeps = $this->fetchBleeps($request, $page, null, $tab);
 
         // Record views for the fetched bleeps
         $this->recordBleepsViews($bleeps);
@@ -224,24 +244,9 @@ class BleepController extends Controller
      * @param int $perPage
      * @return \Illuminate\Pagination\LengthAwarePaginator
      */
-    protected function fetchBleeps(Request $request, ?int $page = null, int $perPage = 10)
+    protected function fetchBleeps(Request $request, ?int $page = null, ?int $perPage = null, string $tab = 'for-you')
     {
-        $query = Bleep::with(['user', 'media'])->latest();
-
-        if ($page) {
-            $bleeps = $query->paginate($perPage, ['*'], 'page', $page);
-        } else {
-            $bleeps = $query->paginate($perPage);
-        }
-
-        if (Auth::check()) {
-            $bleeps->getCollection()->transform(function ($bleep) {
-                $bleep->followedReposts = Repost::visibleToUser(Auth::id(), $bleep->id);
-                return $bleep;
-            });
-        }
-
-        return $bleeps;
+        return $this->feedService->getFeed($request, $tab, $page, $perPage);
     }
 
     /**

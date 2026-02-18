@@ -136,22 +136,22 @@
                 <div class="">
                     {{-- Sticky top Bleep Sort --}}
                     @auth
-                        <div class="flex items-center justify-between mt-5 border border-base-200 px-3 py-2 bg-base-100 rounded-lg shadow-sm">
+                        <div class="sticky top-16 z-20 mt-5 border border-base-200 px-3 py-2 bg-base-100/95 backdrop-blur rounded-lg shadow-sm">
                             <div class="flex gap-2 w-full" role="tablist" aria-label="Main tabs">
                                 {{-- Shows For You Page --}}
-                                <button type="button" class="flex-1 btn btn-sm btn-ghost data-tab-active" data-tab="bleep" aria-controls="bleeps-container" aria-selected="true">Bleep</button>
+                                <button type="button" class="flex-1 btn btn-sm btn-ghost data-tab-active" data-tab="bleep" aria-controls="bleeps-container" aria-selected="true">For You</button>
 
                                 {{-- Shows Followings Bleep Only --}}
-                                <button type="button" class="flex-1 btn btn-sm btn-ghost" data-tab="following" aria-controls="mobile-following-panel" aria-selected="false">Following</button>
+                                <button type="button" class="flex-1 btn btn-sm btn-ghost" data-tab="following" aria-controls="following-container" aria-selected="false">Following</button>
 
                                 {{-- Shows Friends Bleep Only --}}
-                                <button type="button" class="flex-1 btn btn-sm btn-ghost" data-tab="friends" aria-controls="mobile-friends-panel" aria-selected="false">Friends</button>
+                                <button type="button" class="flex-1 btn btn-sm btn-ghost" data-tab="friends" aria-controls="friends-container" aria-selected="false">Friends</button>
                             </div>
                         </div>
                     @endauth
 
-                    {{-- bleeps container --}}
-                    <div id="bleeps-container" class="space-y-4 mt-1" style="overflow-anchor: auto;">
+                    {{-- For You --}}
+                    <div id="bleeps-container" class="space-y-4 mt-1" data-tab-panel="bleep" style="overflow-anchor: auto;">
                         @forelse ($bleeps as $bleep)
                             <x-bleep :bleep="$bleep" />
                         @empty
@@ -164,6 +164,64 @@
                                 </div>
                             </div>
                         @endforelse
+                    </div>
+
+                    {{-- Following --}}
+                    <div id="following-container" class="space-y-4 mt-1 hidden" data-tab-panel="following" aria-hidden="true">
+                        @auth
+                            @if ($followingBleeps && $followingBleeps->count())
+                                @foreach ($followingBleeps as $bleep)
+                                    <x-bleep :bleep="$bleep" />
+                                @endforeach
+                            @else
+                                <div class="hero py-12">
+                                    <div class="hero-content text-center">
+                                        <div>
+                                            <i data-lucide="users" class="w-16 h-16 mx-auto text-base-content/40"></i>
+                                            <p class="mt-4 text-base-content/60">No posts from people you follow yet.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+                        @else
+                            <div class="hero py-12">
+                                <div class="hero-content text-center">
+                                    <div>
+                                        <i data-lucide="log-in" class="w-16 h-16 mx-auto text-base-content/40"></i>
+                                        <p class="mt-4 text-base-content/60">Sign in to see followed posts.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endauth
+                    </div>
+
+                    {{-- Friends --}}
+                    <div id="friends-container" class="space-y-4 mt-1 hidden" data-tab-panel="friends" aria-hidden="true">
+                        @auth
+                            @if ($friendsBleeps && $friendsBleeps->count())
+                                @foreach ($friendsBleeps as $bleep)
+                                    <x-bleep :bleep="$bleep" />
+                                @endforeach
+                            @else
+                                <div class="hero py-12">
+                                    <div class="hero-content text-center">
+                                        <div>
+                                            <i data-lucide="user-check" class="w-16 h-16 mx-auto text-base-content/40"></i>
+                                            <p class="mt-4 text-base-content/60">No posts from mutuals yet.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+                        @else
+                            <div class="hero py-12">
+                                <div class="hero-content text-center">
+                                    <div>
+                                        <i data-lucide="log-in" class="w-16 h-16 mx-auto text-base-content/40"></i>
+                                        <p class="mt-4 text-base-content/60">Sign in to see friends posts.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endauth
                     </div>
 
                     {{-- Loading indicator --}}

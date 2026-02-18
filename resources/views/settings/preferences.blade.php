@@ -93,11 +93,11 @@
                     {{-- Default Feed Sort --}}
                     <div class="form-control flex flex-col justify-center border border-base-200 p-3 rounded-lg">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="label-text">Default feed sort</span>
+                            <span class="label-text">Default For You sort</span>
                             <select class="select select-bordered select-sm pref-select" data-pref="default_feed_sort">
                                 <option value="newest" {{ $preferences->default_feed_sort === 'newest' ? 'selected' : '' }}>Newest first</option>
                                 <option value="popular" {{ $preferences->default_feed_sort === 'popular' ? 'selected' : '' }}>Most popular</option>
-                                <option value="following" {{ $preferences->default_feed_sort === 'following' ? 'selected' : '' }}>Following only</option>
+                                <option value="following" {{ $preferences->default_feed_sort === 'following' ? 'selected' : '' }}>Following first</option>
                             </select>
                         </div>
                         <p class="text-sm text-base-content/70">How bleeps are sorted when you open your feed.</p>

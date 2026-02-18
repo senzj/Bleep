@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadMoreBleeps() {
         if (isLoading || !hasMore) return;
+        if (bleepsContainer.classList.contains('hidden')) return;
 
         isLoading = true;
         loadingIndicator.classList.remove('hidden');
@@ -40,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
-            const response = await fetch(`/bleeps/lazy-load?page=${currentPage}`, {
+            const response = await fetch(`/bleeps/lazy-load?page=${currentPage}&tab=bleep`, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json',

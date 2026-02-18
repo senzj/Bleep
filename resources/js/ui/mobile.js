@@ -2,8 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabButtons = document.querySelectorAll('[data-tab]');
     const feedPanel = document.getElementById('feed-panel'); // entire feed (form + bleeps)
     const mobilePeoplePanel = document.getElementById('mobile-people-panel');
+    const tabPanels = document.querySelectorAll('[data-tab-panel]');
 
-    if (!tabButtons.length || !feedPanel || !mobilePeoplePanel) return;
+    if (!tabButtons.length || !feedPanel) return;
 
     function normalizeTab(name) {
         // accept synonyms (feed <-> bleep) to avoid mismatches
@@ -22,8 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (tabName === 'people') {
             feedPanel.classList.add('hidden');
-            mobilePeoplePanel.classList.remove('hidden');
-            mobilePeoplePanel.setAttribute('aria-hidden', 'false');
+            if (mobilePeoplePanel) {
+                mobilePeoplePanel.classList.remove('hidden');
+                mobilePeoplePanel.setAttribute('aria-hidden', 'false');
+            }
 
             // re-run lucide icon rendering if available
             if (window.lucide) {
@@ -34,12 +37,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            const input = mobilePeoplePanel.querySelector('#user-search-input');
+            const input = mobilePeoplePanel?.querySelector('#user-search-input');
             if (input) input.focus();
         } else {
-            mobilePeoplePanel.classList.add('hidden');
-            mobilePeoplePanel.setAttribute('aria-hidden', 'true');
+            if (mobilePeoplePanel) {
+                mobilePeoplePanel.classList.add('hidden');
+                mobilePeoplePanel.setAttribute('aria-hidden', 'true');
+            }
             feedPanel.classList.remove('hidden');
+
+            tabPanels.forEach(panel => {
+                const isActive = normalizeTab(panel.dataset.tabPanel) === tabName;
+                panel.classList.toggle('hidden', !isActive);
+                panel.setAttribute('aria-hidden', String(!isActive));
+            });
         }
     }
 
