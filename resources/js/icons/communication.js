@@ -3,4 +3,7 @@ export {
     MessageCircleMore,
     MessageCircleOff,
     MessageSquare,
+    MessageSquareMore,
+    MessageSquareOff,
+    Bell,
 } from 'lucide';

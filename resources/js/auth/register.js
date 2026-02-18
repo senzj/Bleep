@@ -53,6 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const displayName = document.getElementById("display_name");
     const displayFeedback = document.getElementById("display_name_feedback");
 
+    // Track if user has manually edited the username
+    let userManuallyEditedUsername = false;
+
     displayName?.addEventListener("input", () => {
         const val = displayName.value.trim();
 
@@ -75,6 +78,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         setFieldState(displayName, displayFeedback, "Looks good!", 'success');
+
+        // Auto-populate username from display name (if user hasn't manually edited it)
+        if (!userManuallyEditedUsername && username) {
+            const autoUsername = val
+                .toLowerCase()
+                .replace(/\s+/g, '_')           // Replace spaces with underscores
+                .replace(/[^a-z0-9_.]/g, '')    // Remove invalid characters
+                .substring(0, 20);               // Limit to 20 chars
+
+            if (autoUsername.length >= 3) {
+                username.value = autoUsername;
+                // Trigger username validation
+                username.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+
         updateSubmitButton();
     });
 
@@ -84,6 +103,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const username = document.getElementById("username");
     const usernameFeedback = document.getElementById("username_feedback");
     let usernameTimeout;
+
+    // Mark username as manually edited when user types in it directly
+    username?.addEventListener("keydown", () => {
+        userManuallyEditedUsername = true;
+    });
 
     username?.addEventListener("input", () => {
         const val = username.value.trim();
@@ -96,7 +120,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Format validation
+        // Remove spaces automatically
+        if (val.includes(' ')) {
+            username.value = val.replace(/\s+/g, '_');
+        }
+
+        // Format validation (no spaces allowed)
         if (!/^[a-zA-Z0-9_.]{3,20}$/.test(val)) {
             setFieldState(username, usernameFeedback, "3-20 characters: letters, numbers, underscore, or dot only", 'error');
             updateSubmitButton();
@@ -148,6 +177,88 @@ document.addEventListener('DOMContentLoaded', () => {
             setFieldState(usernameField, feedback, "Username format valid ✔", 'success');
         }
         updateSubmitButton();
+    }
+
+    // -------------------------------
+    // RANDOM USERNAME GENERATOR
+    // -------------------------------
+    const generateUsernameBtn = document.getElementById("generate_username_btn");
+
+    generateUsernameBtn?.addEventListener("click", async () => {
+        // Mark as manually edited since user clicked the button
+        userManuallyEditedUsername = true;
+
+        // Show loading state
+        generateUsernameBtn.classList.add('loading');
+        generateUsernameBtn.disabled = true;
+        setFieldState(username, usernameFeedback, "Generating...", 'checking');
+
+        try {
+            const response = await fetch('/generate-username', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.username) {
+                    username.value = data.username;
+                    // Also set display name (formatted nicely)
+                    if (displayName) {
+                        displayName.value = formatUsernameAsDisplayName(data.username);
+                        displayName.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    // Trigger validation
+                    username.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            } else {
+                // Fallback: generate client-side
+                const generatedUsername = generateRandomUsernameClient();
+                username.value = generatedUsername;
+                if (displayName) {
+                    displayName.value = formatUsernameAsDisplayName(generatedUsername);
+                    displayName.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                username.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        } catch (error) {
+            console.error('Error generating username:', error);
+            // Fallback: generate client-side
+            const generatedUsername = generateRandomUsernameClient();
+            username.value = generatedUsername;
+            if (displayName) {
+                displayName.value = formatUsernameAsDisplayName(generatedUsername);
+                displayName.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            username.dispatchEvent(new Event('input', { bubbles: true }));
+        } finally {
+            generateUsernameBtn.classList.remove('loading');
+            generateUsernameBtn.disabled = false;
+        }
+    });
+
+    /**
+     * Convert username to a nice display name
+     * e.g., "sneakyfox42" -> "Sneaky Fox"
+     */
+    function formatUsernameAsDisplayName(username) {
+        // Remove digits at the end or middle
+        let name = username.replace(/\d+/g, ' ').trim();
+
+        // Split camelCase or by underscores/dots
+        name = name
+            .replace(/([a-z])([A-Z])/g, '$1 $2')  // camelCase
+            .replace(/[_.]/g, ' ')                  // underscores and dots
+            .trim();
+
+        // Capitalize each word
+        return name
+            .split(/\s+/)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
     }
 
     // -------------------------------

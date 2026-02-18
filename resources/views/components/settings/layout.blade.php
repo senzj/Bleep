@@ -1,18 +1,18 @@
 <x-layout>
     <x-slot:title>Settings</x-slot:title>
 
-    <div class="mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
-        <aside class="md:col-span-4 lg:col-span-2 md:sticky md:top-20 self-start bg-base-100 rounded-lg shadow-sm p-3">
-            <p class="mb-3 text-lg text-base-content">
-                <span class="font-semibold">Profile Settings</span>
-            </p>
-            <x-settings.nav />
-        </aside>
+    <div class="mx-auto">
+        <div class="bg-base-100 rounded-lg shadow-sm">
+            {{-- Settings header with nav --}}
+            <div class="border-b border-base-200 p-4">
+                <h1 class="text-xl font-semibold text-base-content mb-4">Profile Settings</h1>
+                <x-settings.nav />
+            </div>
 
-        <main class="md:col-span-8 lg:col-span-10">
-            <div class="bg-base-100 rounded-lg p-6 shadow-sm">
+            {{-- Settings content --}}
+            <div class="p-6">
                 {{ $slot }}
             </div>
-        </main>
+        </div>
     </div>
 </x-layout>

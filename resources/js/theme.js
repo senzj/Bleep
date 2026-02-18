@@ -210,8 +210,38 @@ document.addEventListener('DOMContentLoaded', function() {
             updateThemeButton(theme);
             updateActiveToggle(theme);
             window.dispatchEvent(new CustomEvent('theme:change', { detail: { selected: theme, effective: resolveEffective(theme) } }));
+
+            // Save to database if user is logged in
+            saveThemeToServer(theme);
         });
     });
+
+    /**
+     * Save theme preference to server
+     */
+    async function saveThemeToServer(theme) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (!csrfToken) return; // Not on a page with CSRF token (probably not logged in)
+
+        try {
+            const response = await fetch('/api/preferences/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ key: 'theme', value: theme }),
+            });
+
+            if (!response.ok) {
+                console.warn('[Theme] Failed to save theme to server');
+            }
+        } catch (error) {
+            // Silently fail - localStorage still works as fallback
+            console.warn('[Theme] Could not save theme to server:', error.message);
+        }
+    }
 
     // OS changes while on system
     if (window.matchMedia) {

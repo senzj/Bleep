@@ -91,14 +91,14 @@
         </nav>
     </aside>
 
-    {{-- Desktop nav (hidden on mobile) --}}
+    {{-- Desktop nav (horizontal tabs) --}}
     <div class="hidden md:block">
-        <nav class="space-y-1" aria-label="Settings navigation">
+        <nav class="flex flex-wrap gap-2" aria-label="Settings navigation">
             {{-- Profile  --}}
             <a href="{{ route('settings.profile') }}"
                aria-current="{{ request()->routeIs('settings.profile') ? 'page' : 'false' }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors border-l-2
-               {{ request()->routeIs('settings.profile') ? 'bg-base-200 text-base-content border-primary' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content border-transparent' }}">
+               class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+               {{ request()->routeIs('settings.profile') ? 'bg-primary text-primary-content' : 'bg-base-200 text-base-content/70 hover:bg-base-300 hover:text-base-content' }}">
                 <i data-lucide="user-round-pen" class="w-4 h-4" aria-hidden="true"></i>
                 <span>Edit Profile</span>
             </a>
@@ -106,8 +106,8 @@
             {{-- Preferences --}}
             <a href="{{ route('settings.preferences') }}"
                aria-current="{{ request()->routeIs('settings.preferences') ? 'page' : 'false' }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors border-l-2
-               {{ request()->routeIs('settings.preferences') ? 'bg-base-200 text-base-content border-primary' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content border-transparent' }}">
+               class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+               {{ request()->routeIs('settings.preferences') ? 'bg-primary text-primary-content' : 'bg-base-200 text-base-content/70 hover:bg-base-300 hover:text-base-content' }}">
                 <i data-lucide="palette" class="w-4 h-4" aria-hidden="true"></i>
                 <span>Preferences</span>
             </a>
@@ -115,30 +115,28 @@
             {{-- Change Password --}}
             <a href="{{ route('settings.password') }}"
                aria-current="{{ request()->routeIs('settings.password') ? 'page' : 'false' }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors border-l-2
-               {{ request()->routeIs('settings.password') ? 'bg-base-200 text-base-content border-primary' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content border-transparent' }}">
+               class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+               {{ request()->routeIs('settings.password') ? 'bg-primary text-primary-content' : 'bg-base-200 text-base-content/70 hover:bg-base-300 hover:text-base-content' }}">
                 <i data-lucide="lock" class="w-4 h-4" aria-hidden="true"></i>
-                <span>Change Password</span>
+                <span>Password</span>
             </a>
 
             {{-- Device and Session --}}
             <a href="{{ route('settings.devices') }}"
                aria-current="{{ request()->routeIs('settings.devices') ? 'page' : 'false' }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors border-l-2
-               {{ request()->routeIs('settings.devices') ? 'bg-base-200 text-base-content border-primary' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content border-transparent' }}"
-               @click="open = false">
+               class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+               {{ request()->routeIs('settings.devices') ? 'bg-primary text-primary-content' : 'bg-base-200 text-base-content/70 hover:bg-base-300 hover:text-base-content' }}">
                 <i data-lucide="monitor-smartphone" class="w-4 h-4" aria-hidden="true"></i>
-                <span>Device and Session</span>
+                <span>Devices</span>
             </a>
 
             {{-- User Logs --}}
             <a href="{{ route('settings.logs') }}"
                aria-current="{{ request()->routeIs('settings.logs') ? 'page' : 'false' }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors border-l-2
-               {{ request()->routeIs('settings.logs') ? 'bg-base-200 text-base-content border-primary' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content border-transparent' }}"
-               @click="open = false">
+               class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+               {{ request()->routeIs('settings.logs') ? 'bg-primary text-primary-content' : 'bg-base-200 text-base-content/70 hover:bg-base-300 hover:text-base-content' }}">
                 <i data-lucide="file-text" class="w-4 h-4" aria-hidden="true"></i>
-                <span>Account Logs</span>
+                <span>Logs</span>
             </a>
         </nav>
     </div>

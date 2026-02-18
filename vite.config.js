@@ -42,6 +42,8 @@ export default defineConfig({
                 'resources/js/profile/profile-crop.js',
                 'resources/js/settings/password.js',
                 'resources/js/settings/device.js',
+                'resources/js/settings/preferences.js',
+                'resources/js/settings/logs.js',
                 'resources/js/social/people.js',
                 'resources/js/ui/mobile.js',
             ],

@@ -13,13 +13,12 @@
     </x-slot:title>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {{-- Left panel --}}
+        {{-- Left panel - left nav bar--}}
         <div class="hidden lg:block lg:col-span-2 mt-1" id="left-panel">
-                {{-- Server Announcement --}}
-                <x-announcement.system />
+
         </div>
 
-        {{-- Center panel --}}
+        {{-- Center panel - main content --}}
         <div class="lg:block lg:col-span-7">
             {{-- Mobile tabs: only visible on small screens --}}
             <div class="flex items-center justify-between mb-3 lg:hidden">
@@ -123,7 +122,7 @@
                                         <div class="flex w-full sm:w-auto justify-between gap-2">
 
                                             {{-- Add media button --}}
-                                            <button type="button" id="open-media-picker" class="btn btn-ghost btn-sm flex-1 sm:flex-none justify-center">
+                                            <button type="button" id="open-media-picker" class="btn btn-ghost btn-sm flex-1 sm:flex-none justify-center border border-base-300 shadow-lg">
                                                 <i data-lucide="image-plus" class="w-4 h-4 mr-1"></i>
                                                 Add media
 
@@ -131,7 +130,7 @@
                                             </button>
 
                                             {{-- Submit post --}}
-                                            <button type="submit" class="btn btn-primary btn-sm flex-1 sm:flex-none justify-center" id="post-submit-btn">
+                                            <button type="submit" class="btn btn-primary btn-sm flex-1 sm:flex-none justify-center shadow-lg" id="post-submit-btn">
                                                 <i data-lucide="send" class="w-4 h-4"></i>
                                                 Post
                                             </button>
@@ -179,9 +178,10 @@
             </div>
         </div>
 
-        {{-- Right panel --}}
+        {{-- Right panel - announcement --}}
         <div class="hidden lg:block lg:col-span-3 mt-1" id="right-panel">
-            <x-social.people />
+            {{-- Server Announcement --}}
+            <x-announcement.system />
         </div>
     </div>
 

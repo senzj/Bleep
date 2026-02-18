@@ -20,4 +20,7 @@ export {
     Cpu,
     Frame,
     Snowflake,
+    Dessert,
+    Gpu,
+
 } from 'lucide';

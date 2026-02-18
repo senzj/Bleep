@@ -162,6 +162,14 @@ Route::middleware('auth')->group((function () {
     Route::get('/settings/preferences', [SettingsController::class, 'showPreferences'])
         ->name('settings.preferences');
 
+    // User Preferences API routes
+    Route::get('/api/preferences', [\App\Http\Controllers\UserPreferencesController::class, 'index'])
+        ->name('api.preferences.index');
+    Route::post('/api/preferences/update', [\App\Http\Controllers\UserPreferencesController::class, 'update'])
+        ->name('api.preferences.update');
+    Route::post('/api/preferences/batch', [\App\Http\Controllers\UserPreferencesController::class, 'batchUpdate'])
+        ->name('api.preferences.batch');
+
     Route::get('/settings/password', [SettingsController::class, 'editPassword'])
         ->name('settings.password');
     Route::put('/settings/password', [SettingsController::class, 'updatePassword'])

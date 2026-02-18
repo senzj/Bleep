@@ -60,8 +60,8 @@
                     <div class="alert alert-error mb-4">
                         <i data-lucide="lock" class="w-5 h-5"></i>
                         <div>
-                            <p class="font-semibold">Permanent Ban</p>
-                            <p class="text-sm">This ban does not expire</p>
+                            <p class="font-semibold">Permanently Banned</p>
+                            <p class="text-sm">Please reflect on what you did, your actions may have violated community guidelines.</p>
                         </div>
                     </div>
                 @endif
@@ -97,7 +97,7 @@
 
                 {{-- Appeal Info --}}
                 <div class="mt-6 text-xs opacity-60">
-                    <p>If you believe this is a mistake, please contact support.</p>
+                    <p>If you believe this is a mistake, please contact Mod or Admin.</p>
                 </div>
             </div>
         </div>

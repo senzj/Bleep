@@ -228,6 +228,11 @@ class SettingsController extends Controller
     // Show preferences page
     public function showPreferences(Request $request)
     {
-        return view('settings.preferences');
+        $user = $request->user();
+        $preferences = $user->getPreferences();
+
+        return view('settings.preferences', [
+            'preferences' => $preferences,
+        ]);
     }
 }

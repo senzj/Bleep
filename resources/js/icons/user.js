@@ -9,4 +9,5 @@ export {
     UserRoundPen,
     UserRoundPlus,
     Users,
+    IdCard,
 } from 'lucide';

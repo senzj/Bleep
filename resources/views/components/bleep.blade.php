@@ -279,7 +279,7 @@
             <div class="bleep-nsfw-wrapper" data-bleep-id="{{ $bleep->id }}" data-is-nsfw="{{ $isNsfw ? '1' : '0' }}" data-is-anonymous="{{ $bleep->is_anonymous ? '1' : '0' }}">
 
                 {{-- NSFW Placeholder (shown only when NSFW) --}}
-                <div class="nsfw-placeholder p-6 bg-base-200 rounded-lg text-center border-2 border-red-500/20 {{ !$isNsfw ? 'hidden' : '' }}">
+                <div class="nsfw-placeholder p-6 bg-red-400/20 rounded-lg text-center border-2 border-red-500/20 {{ !$isNsfw ? 'hidden' : '' }}">
                     <div class="flex items-center justify-center mb-3">
                         <i data-lucide="eye-off" class="w-8 h-8 text-red-500"></i>
                     </div>

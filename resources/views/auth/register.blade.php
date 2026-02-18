@@ -13,7 +13,7 @@
             {{-- Header --}}
             <div class="text-center mb-8">
                 <h1 class="text-3xl sm:text-4xl font-bold mb-2">Create Your Account</h1>
-                <p class="text-base-content/60">Join us today and get started on your journey</p>
+                <p class="text-base-content/60">To get started with your account, please fill in the details below.</p>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -120,14 +120,22 @@
                                         <label class="label">
                                             <span class="label-text font-medium">Username</span>
                                         </label>
-                                        <input type="text"
-                                            id="username"
-                                            name="username"
-                                            value="{{ old('username') }}"
-                                            placeholder="Choose a unique username"
-                                            class="input input-bordered w-full transition-all"
-                                            autocomplete="username"
-                                            required>
+                                        <div class="flex gap-2">
+                                            <input type="text"
+                                                id="username"
+                                                name="username"
+                                                value="{{ old('username') }}"
+                                                placeholder="Choose a unique username"
+                                                class="input input-bordered w-full transition-all"
+                                                autocomplete="username"
+                                                required>
+                                            <button type="button"
+                                                    id="generate_username_btn"
+                                                    class="cursor-pointer btn btn-outline btn-secondary btn-sm shrink-0"
+                                                    title="Generate random username">
+                                                <i data-lucide="id-card" class="w-5 h-5"></i>
+                                            </button>
+                                        </div>
                                         <label class="label">
                                             <span id="username_feedback" class="label-text-alt min-h-4"></span>
                                         </label>

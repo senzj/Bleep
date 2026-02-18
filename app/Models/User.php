@@ -147,6 +147,30 @@ class User extends Authenticatable
     }
 
     /**
+     * User preferences relationship
+     */
+    public function preferences(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(UserPreferences::class);
+    }
+
+    /**
+     * Get user preferences or create with defaults
+     */
+    public function getPreferences(): UserPreferences
+    {
+        return $this->preferences ?? $this->preferences()->create(UserPreferences::defaults());
+    }
+
+    /**
+     * Get nav layout preference (horizontal or vertical)
+     */
+    public function getNavLayout(): string
+    {
+        return $this->preferences?->nav_layout ?? 'horizontal';
+    }
+
+    /**
      * Limit remembered devices to 5 per user.
      * Deletes oldest if limit exceeded.
      */
