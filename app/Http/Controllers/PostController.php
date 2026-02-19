@@ -25,6 +25,8 @@ class PostController extends Controller
         $perPage = 10;
         $comments = $bleep->comments()
             ->with('user')
+            ->withCount('replies')
+            ->whereNull('parent_id')
             ->latest()
             ->paginate($perPage);
 
@@ -43,6 +45,8 @@ class PostController extends Controller
 
         $comments = $bleep->comments()
             ->with('user')
+            ->withCount('replies')
+            ->whereNull('parent_id')
             ->latest()
             ->paginate($perPage, ['*'], 'page', $page);
 

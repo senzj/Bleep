@@ -1,4 +1,6 @@
 import { createIcons } from 'lucide';
+
+// Custom icon sets
 import * as navigation from './icons/navigation';
 import * as user from './icons/user';
 import * as actions from './icons/actions';
@@ -9,6 +11,7 @@ import * as security from './icons/security';
 import * as misc from './icons/misc';
 import * as devices from './icons/devices';
 import * as theme from './icons/theme';
+
 
 const allIcons = {
     ...navigation,

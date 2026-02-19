@@ -39,6 +39,7 @@ export default defineConfig({
                 'resources/js/bleep/users/profile-lazyload.js',
                 'resources/js/bleep/users/profile.js',
                 'resources/js/post/lazyload.js',
+                'resources/js/post/comment-reply-handler.js',
                 'resources/js/profile/profile-crop.js',
                 'resources/js/settings/password.js',
                 'resources/js/settings/device.js',

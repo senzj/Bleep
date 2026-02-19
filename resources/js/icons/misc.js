@@ -9,6 +9,9 @@ export {
     Glasses,
     MoreVertical,
     Palette,
-    'MapPin',
+    MapPin,
+    Leaf,
+    Sparkles,
+    Sparkle,
     X,
 } from 'lucide';

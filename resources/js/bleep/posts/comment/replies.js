@@ -6,7 +6,17 @@
 (function () {
     'use strict';
 
-    const isAuth = () => document.getElementById('floating-comment-form') !== null;
+    // Check if user is authenticated by looking for either form
+    const isAuth = () => {
+        return document.getElementById('floating-comment-form') !== null ||
+               document.getElementById('post-comment-form') !== null;
+    };
+
+    // Get the active comment form (post page or floating modal)
+    const getActiveForm = () => {
+        return document.getElementById('post-comment-form') ||
+               document.getElementById('floating-comment-form');
+    };
 
     document.addEventListener('click', async (evt) => {
         const replyBtn = evt.target.closest('.comment-reply-btn');
@@ -55,7 +65,8 @@
             container.dataset.depth = (parentDepth + 1).toString();
         }
 
-        if (!container.dataset.loaded) {
+        // Fetch replies if not fully loaded (includes 'partial' state where only new reply is shown)
+        if (container.dataset.loaded !== 'true') {
             await fetchReplies(btn.dataset.commentId, container.querySelector('.load-more-replies-btn'), true);
         }
     }
@@ -87,7 +98,7 @@
             list.insertAdjacentHTML('beforeend', html);
         }
 
-        container.dataset.loaded = '1';
+        container.dataset.loaded = 'true';
         container.dataset.nextPage = (next_page ?? page + 1).toString();
 
         if (loadMoreBtn) {
@@ -110,7 +121,9 @@
 
     window.commentReplyState = {
         start(commentId) {
-            const textarea = document.querySelector('#floating-comment-form textarea[name="message"]');
+            // Support both post page and floating modal
+            const textarea = document.querySelector('#post-comment-textarea') ||
+                           document.querySelector('#floating-comment-form textarea[name="message"]');
             if (!textarea) return;
 
             document.querySelectorAll('.comment-card.replying').forEach((el) => {
@@ -140,10 +153,19 @@
 
             banner.classList.remove('hidden');
             textarea.placeholder = `Replying to @${targetCard.dataset.replyToName ?? 'user'}'s comment...`;
-            textarea.focus({ preventScroll: false });
+
+            // Scroll to form on post page (smooth scroll)
+            if (document.getElementById('post-comment-form')) {
+                textarea.focus();
+                textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                textarea.focus({ preventScroll: false });
+            }
         },
         cancel() {
-            const textarea = document.querySelector('#floating-comment-form textarea[name="message"]');
+            // Support both post page and floating modal
+            const textarea = document.querySelector('#post-comment-textarea') ||
+                           document.querySelector('#floating-comment-form textarea[name="message"]');
             if (!textarea) return;
 
             textarea.placeholder = this.placeholder ?? 'Write a comment...';
@@ -168,14 +190,17 @@
     };
 
     function createBanner() {
-        const formWrap = document.querySelector('#floating-comment-form')?.parentElement;
+        // Support both post page and floating modal
+        const form = document.getElementById('post-comment-form') ||
+                    document.getElementById('floating-comment-form');
+        const formWrap = form?.parentElement;
         if (!formWrap) return null;
 
         const banner = document.createElement('button');
         banner.id = 'cancel-reply-banner';
         banner.type = 'button';
-        banner.className = 'hidden absolute right-0 -top-12 sm:-top-11 btn btn-sm btn-outline btn-primary rounded-full shadow gap-2';
-        banner.innerHTML = `<i data-lucide="reply" class="w-3 h-3"></i><span>Cancel reply</span>`;
+        banner.className = 'hidden absolute right-0 -top-12 sm:-top-11 btn btn-sm btn-error rounded-lg shadow gap-2';
+        banner.innerHTML = `<i data-lucide="reply" class="w-4 h-4"></i><span>Cancel reply</span>`;
         banner.addEventListener('click', () => window.commentReplyState.cancel());
 
         formWrap.style.position = 'relative';

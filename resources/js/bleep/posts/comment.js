@@ -205,16 +205,42 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (targetCommentId) {
             const container = document.querySelector(`.comment-replies-container[data-comment-id="${targetCommentId}"]`);
-            if (container) {
-                const parentDepth = parseInt(document.querySelector(`.comment-card[data-comment-id="${targetCommentId}"]`)?.dataset.commentDepth ?? '0', 10);
+            const commentCard = document.querySelector(`.comment-card[data-comment-id="${targetCommentId}"]`);
+
+            if (container && commentCard) {
+                const parentDepth = parseInt(commentCard?.dataset.commentDepth ?? '0', 10);
                 container.dataset.depth = container.dataset.depth ?? (parentDepth + 1).toString();
-                container.dataset.loaded = '1';
-                container?.classList.remove('hidden');
-                container?.querySelector('.replies-list')?.insertAdjacentHTML('afterbegin', data.html);
-                const toggle = document.querySelector(`.comment-toggle-replies[data-comment-id="${targetCommentId}"]`);
-                if (toggle) {
+
+                // Insert the new reply HTML and show it
+                const repliesList = container.querySelector('.replies-list');
+                if (repliesList && data.html) {
+                    repliesList.innerHTML = data.html;
+                }
+                container.classList.remove('hidden');
+
+                // Mark as partially loaded (only showing new reply, not all replies)
+                container.dataset.loaded = 'partial';
+
+                // Find or create the toggle button
+                let toggle = document.querySelector(`.comment-toggle-replies[data-comment-id="${targetCommentId}"]`);
+                const actionsBar = commentCard.querySelector('.comment-body > div:last-child > div:first-child');
+
+                if (!toggle && actionsBar) {
+                    // Create toggle button if it doesn't exist (first reply)
+                    toggle = document.createElement('button');
+                    toggle.type = 'button';
+                    toggle.className = 'comment-toggle-replies cursor-pointer inline-flex items-center gap-1.5 hover:text-primary transition-colors ml-auto';
+                    toggle.dataset.commentId = targetCommentId;
                     toggle.dataset.expanded = 'true';
+                    toggle.innerHTML = `
+                        <span class="replies-toggle-text">View ${data.replies_count} ${data.replies_count === 1 ? 'reply' : 'replies'}</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 replies-toggle-icon transition-transform rotate-180"></i>
+                    `;
+                    actionsBar.appendChild(toggle);
+                } else if (toggle) {
+                    // Update existing toggle button
                     toggle.querySelector('.replies-toggle-text').textContent = `View ${data.replies_count} ${data.replies_count === 1 ? 'reply' : 'replies'}`;
+                    toggle.dataset.expanded = 'true';
                     toggle.querySelector('.replies-toggle-icon')?.classList.add('rotate-180');
                 }
                 window.commentReplyState?.cancel();
@@ -945,251 +971,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Inline Edit Comment Handler (for both post page and floating modal)
-    document.addEventListener('click', (e) => {
-        const btn = e.target.closest('.edit-comment-btn');
-        if (!btn) return;
-
-        const commentId = btn.dataset.commentId;
-        const message = btn.dataset.commentMessage;
-        const isAnonymous = btn.dataset.isAnonymous === '1';
-        const userName = btn.dataset.userName;
-        const userUsername = btn.dataset.userUsername;
-        const userEmail = btn.dataset.userEmail;
-        const userAvatarFromBtn = btn.dataset.userAvatar ?? '';
-        const userAvatar = userAvatarFromBtn || (baseUrl ? `${baseUrl}/images/avatar/default.jpg` : '/images/avatar/default.jpg');
-
-        // Find the comment container - works for both inline and modal
-        const commentContainer = document.querySelector(`[data-comment-id="${commentId}"]`);
-        if (!commentContainer) return;
-
-        // Check if we're already editing this comment
-        if (commentContainer.querySelector('.edit-inline-edit-ui')) return;
-
-        // Convert to edit mode
-        enableInlineEdit(commentContainer, commentId, message, isAnonymous, userName, userUsername, userEmail, userAvatar);
-    });
-
-    function enableInlineEdit(commentContainer, commentId, originalMessage, isAnonymous, userName, userUsername, userEmail, userAvatar) {
-        // Find the message paragraph
-        const messagePara = commentContainer.querySelector('.comment-message');
-        if (!messagePara) return;
-
-        // Create edit UI
-        const editUI = document.createElement('div');
-        editUI.className = 'edit-inline-edit-ui space-y-3 mt-2';
-        editUI.innerHTML = `
-            <textarea
-                class="textarea textarea-bordered w-full resize-none text-sm"
-                maxlength="255"
-                rows="3"
-                placeholder="Edit your comment...">${originalMessage}</textarea>
-
-            <div class="flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2">
-                    <label class="relative inline-flex cursor-pointer">
-                        <input type="checkbox" class="edit-inline-anon-toggle peer sr-only" ${isAnonymous ? 'checked' : ''}>
-                        <div class="w-14 h-8 bg-base-300 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
-                        <div class="edit-inline-anon-indicator absolute top-1 left-1 size-6 rounded-full transition-all duration-300 peer-checked:left-6 bg-cover bg-center flex items-center justify-center"
-                            data-user-email="${userEmail}" data-user-avatar="${userAvatar}">
-                        </div>
-                    </label>
-                    <span class="text-xs text-base-content/60">Anonymous</span>
-                </div>
-
-                <div class="flex gap-2">
-                    <button type="button" class="btn btn-ghost btn-sm cancel-inline-edit">Cancel</button>
-                    <button type="button" class="btn btn-primary btn-sm save-inline-edit" data-comment-id="${commentId}">
-                        <i data-lucide="check" class="w-4 h-4"></i>
-                        Update
-                    </button>
-                </div>
-            </div>
-        `;
-
-        // Hide original message and show edit UI
-        messagePara.classList.add('hidden');
-        messagePara.insertAdjacentElement('afterend', editUI);
-
-        // Auto-grow textarea
-        const textarea = editUI.querySelector('textarea');
-        if (textarea && window.autoGrow) {
-            window.autoGrow(textarea);
-            textarea.addEventListener('input', () => window.autoGrow(textarea));
-        }
-
-        // Handle toggle UI
-        const toggle = editUI.querySelector('.edit-inline-anon-toggle');
-        const indicator = editUI.querySelector('.edit-inline-anon-indicator');
-
-        const updateToggleIndicator = () => {
-            if (toggle.checked) {
-                // Show anonymous icon
-                indicator.style.backgroundImage = 'none';
-                indicator.style.backgroundColor = '#1f2937';
-                indicator.innerHTML = '<i data-lucide="hat-glasses" class="w-4 h-4 text-white"></i>';
-                if (window.lucide) window.lucide.createIcons();
-            } else {
-                // Show user avatar
-                indicator.innerHTML = '';
-                indicator.style.backgroundColor = 'transparent';
-                const src = editUI.querySelector('.edit-inline-anon-indicator')?.dataset.userAvatar || userAvatar;
-                if (src) {
-                    indicator.style.backgroundImage = `url('${src}')`;
-                    indicator.style.backgroundSize = 'cover';
-                    indicator.style.backgroundPosition = 'center';
-                } else {
-                    indicator.style.backgroundImage = 'none';
-                }
-            }
-        };
-
-        if (toggle) {
-            toggle.addEventListener('change', updateToggleIndicator);
-            updateToggleIndicator(); // Initialize
-        }
-
-        // Cancel button
-        const cancelBtn = editUI.querySelector('.cancel-inline-edit');
-        cancelBtn?.addEventListener('click', () => {
-            editUI.remove();
-            messagePara.classList.remove('hidden');
-        });
-
-        // Save button
-        const saveBtn = editUI.querySelector('.save-inline-edit');
-        saveBtn?.addEventListener('click', async () => {
-            const newMessage = textarea.value.trim();
-            const newIsAnonymous = toggle?.checked ?? false;
-
-            if (!newMessage) {
-                showToast('Message cannot be empty', 'error');
-                return;
-            }
-
-            saveBtn.disabled = true;
-            const originalBtnHTML = saveBtn.innerHTML;
-            saveBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span>';
-
-            try {
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-
-                const response = await fetch(`/bleeps/comments/${commentId}/update`, {
-                    method: 'PUT',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        message: newMessage,
-                        is_anonymous: newIsAnonymous,
-                    }),
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-
-                    // Update the message paragraph
-                    messagePara.textContent = newMessage;
-                    messagePara.classList.remove('hidden');
-
-                    // Update avatar based on anonymity status
-                    const avatarContainer = commentContainer.querySelector('.avatar');
-                    if (avatarContainer) {
-                        if (newIsAnonymous) {
-                            // Show anonymous avatar
-                            avatarContainer.innerHTML = `
-                                <div class="size-10 rounded-full bg-base-300 flex items-center justify-center">
-                                    <i data-lucide="hat-glasses" class="w-5 h-5 text-base-content"></i>
-                                </div>
-                            `;
-                        } else {
-                            // Show user avatar (prefer server-provided URL)
-                            const src = userAvatar || (baseUrl ? `${baseUrl}/images/avatar/default.jpg` : '/images/avatar/default.jpg');
-                            avatarContainer.innerHTML = `
-                                <div class="size-10 rounded-full overflow-hidden">
-                                    <img src="${src}" alt="${userName}'s avatar" class="w-full h-full object-cover">
-                                </div>
-                            `;
-                        }
-                        if (window.lucide) window.lucide.createIcons();
-                    }
-
-                    // Update display name and username
-                    const displayNameEl = commentContainer.querySelector('.comment-display-name');
-                    const usernameEl = commentContainer.querySelector('.comment-username');
-
-                    if (displayNameEl && usernameEl) {
-                        if (newIsAnonymous) {
-                            // Use the anonymous name from server response if available
-                            displayNameEl.textContent = data.comment?.display_name || 'Anonymous User';
-                            usernameEl.textContent = '@anonymous';
-                        } else {
-                            displayNameEl.textContent = userName;
-                            usernameEl.textContent = '@' + userUsername;
-                        }
-                    }
-
-                    // Toggle identity link/non-link to match anonymity
-                    updateCommentIdentity(commentContainer, newIsAnonymous, userUsername, newIsAnonymous ? (data.comment?.display_name || 'Anonymous User') : userName);
-
-                    // Add/update compact "Edited" tag
-                    try {
-                        const dateWrap = commentContainer.querySelector('.comment-date-wrap');
-                        const updatedAt = data.comment?.updated_at || new Date().toISOString();
-                        if (dateWrap) {
-                            let tag = dateWrap.querySelector('.comment-edited-tag');
-                            if (!tag) {
-                                tag = document.createElement('span');
-                                tag.className = 'comment-edited-tag text-xs text-base-content/50';
-                                tag.textContent = '· Edited';
-                                // insert after the first span (created_at)
-                                const firstSpan = dateWrap.querySelector('span');
-                                firstSpan?.insertAdjacentElement('afterend', tag);
-                            }
-                            const dt = new Date(updatedAt);
-                            const title = `Edited: ${dt.toLocaleString(viewerTimezone || 'UTC')}`;
-                            tag.title = title;
-                        }
-                    } catch (err) {
-                        // non-fatal
-                        console.debug('Could not set edited tag', err);
-                    }
-
-                    // Remove edit UI
-                    editUI.remove();
-                    showToast('Comment updated successfully', 'success');
-
-                    // Reload comments in floating modal if open
-                    if (currentOpenBleepId) {
-                        await loadComments(currentOpenBleepId);
-                    }
-                } else {
-                    const error = await response.json();
-                    showToast(error.message || 'Failed to update comment', 'error');
-                    saveBtn.innerHTML = originalBtnHTML;
-                    saveBtn.disabled = false;
-                    if (window.lucide) window.lucide.createIcons();
-                }
-            } catch (error) {
-                console.error('Error updating comment:', error);
-                showToast('An error occurred', 'error');
-                saveBtn.innerHTML = originalBtnHTML;
-                saveBtn.disabled = false;
-                if (window.lucide) window.lucide.createIcons();
-            }
-        });
-
-        // Focus textarea
-        textarea.focus();
-        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-
-        // Reinitialize lucide icons
-        if (window.lucide) window.lucide.createIcons();
-    }
+    // Note: Inline edit functionality has been moved to a modal-based editor
+    // See resources/js/bleep/posts/comment/edit.js for the new edit implementation
 
     // Check if bleep is visible in viewport
     function isBleepVisible() {

@@ -13,11 +13,12 @@
 
 {{-- Comments displayin for Bleep Post page --}}
 
-<div id="floating-comments-modal" class="hidden fixed z-50 bg-base-100 rounded-2xl shadow-2xl border border-base-200 flex flex-col overflow-hidden transition-all duration-300 ease-out">
+<div id="floating-comments-modal" class="hidden fixed z-50 bg-base-300 rounded-2xl shadow-2xl border border-base-300/50 flex flex-col overflow-hidden transition-all duration-300 ease-out">
     {{-- Sticky Header --}}
     <div id="floating-comments-header" class="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-base-200 bg-base-100/95 backdrop-blur-sm shrink-0">
         <h2 class="text-lg font-semibold flex items-center gap-2">
             <i data-lucide="message-circle-more" class="w-5 h-5"></i>
+            {{ $bleep->user->username ?? 'User' }}'s Bleep
             Comments
         </h2>
         <button id="close-comments-btn" class="btn btn-ghost btn-sm btn-circle hover:bg-base-300 dark:hover:bg-base-200">
@@ -44,7 +45,7 @@
                     </button>
                 </div>
             </div>
-            <form id="floating-comment-form" class="flex items-end gap-3" data-bleep-id="" enctype="multipart/form-data">
+            <form id="floating-comment-form" class="flex items-end gap-1" data-bleep-id="" enctype="multipart/form-data">
                 @csrf
                 {{-- Text Area --}}
                 <div class="flex-1">
@@ -56,20 +57,6 @@
                         placeholder="Write a comment..."
                         required
                     ></textarea>
-                </div>
-
-                {{-- Media Upload --}}
-                <div class="relative flex items-center gap-2 rounded-full shadow-md border-base-100">
-                    <button type="button" id="comment-media-trigger" class="btn btn-ghost btn-circle shrink-0" aria-label="Attach media">
-                        <i data-lucide="paperclip" class="w-5 h-5"></i>
-                    </button>
-                    <input
-                        type="file"
-                        id="comment-media-input"
-                        name="media"
-                        class="hidden"
-                        accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/mp3,audio/wav"
-                    >
                 </div>
 
                 {{-- Toggle anonymous --}}
@@ -88,8 +75,19 @@
                     </div>
                 @endif
 
-                <button type="submit" class="btn btn-primary btn-base btn-circle self-end shrink-0">
-                    <i data-lucide="send" class="w-5 h-5"></i>
+                {{-- Media Upload --}}
+                <div class="relative flex items-center gap-2 rounded-full shadow-md border-base-100">
+                    <button type="button" id="comment-media-trigger" class="btn btn-secondary btn-sm" aria-label="Attach media">
+                        <i data-lucide="image" class="w-4 h-4"></i>
+                        Media
+                    </button>
+                    <input type="file" id="comment-media-input" name="media" class="hidden" accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/mp3,audio/wav">
+                </div>
+
+                {{-- Submit Button --}}
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                    Send
                 </button>
             </form>
         </div>

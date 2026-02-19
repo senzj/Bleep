@@ -40,7 +40,7 @@ class SettingsController extends Controller
         if ($request->hasFile('profile_picture') && $request->file('profile_picture')->isValid()) {
             $validated['profile_picture'] = MediaUploadService::saveProfileImage(
                 $request->file('profile_picture'),
-                $user->username,
+                $user->id,
                 $user->profile_picture // Old path to delete
             );
         }

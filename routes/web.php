@@ -59,7 +59,8 @@ Route::post('/logout', Logout::class)
 // PUBLIC ROUTES
 
 // Bleep Home page
-Route::get('/', [BleepController::class, 'index']);
+Route::get('/', [BleepController::class, 'index'])
+    ->name('home');
 
 // Bleep views
 Route::post('/bleeps/{bleep}/view', [BleepController::class, 'recordView'])
@@ -128,7 +129,7 @@ Route::middleware('auth')->group((function () {
 
     // Comments Routes
     Route::post('/bleeps/comments/{bleep}/post', [CommentsController::class, 'store']);
-    Route::put('/bleeps/comments/{comment}/update', [CommentsController::class, 'update']);
+    Route::post('/bleeps/comments/{comment}/update', [CommentsController::class, 'update']);
     Route::delete('/bleeps/comments/{comment}/delete', [CommentsController::class, 'destroy']);
     Route::post('/bleeps/comments/{comment}/report', [CommentsController::class, 'report']);
 

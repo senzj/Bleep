@@ -1,12 +1,12 @@
 <?php
 
-namespace App\View\Components\Subcomponents\Comments;
+namespace App\View\Components\Modals\Comments;
 
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
-class replies extends Component
+class Edit extends Component
 {
     /**
      * Create a new component instance.
@@ -21,6 +21,6 @@ class replies extends Component
      */
     public function render(): View|Closure|string
     {
-        return view('components.subcomponents.comments.replies');
+        return view('components.modals.comments.edit');
     }
 }

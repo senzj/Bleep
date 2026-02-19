@@ -1,5 +1,6 @@
 export {
     Camera,
+    Image,
     ImagePlus,
     Music,
     Paperclip,

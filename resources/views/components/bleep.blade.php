@@ -145,26 +145,32 @@
                             </div>
 
                             <div class="min-w-0">
-                                <div class="font-semibold text-base-content flex items-center gap-1.5">
+                                <div class="font-semibold text-base-content flex items-center gap-2">
                                     <span class="text-sm truncate bleep-display-name group-hover:underline" data-bleep-id="{{ $bleep->id }}">
                                         {{ $displayName }}
                                     </span>
 
-                                    {{-- Role Tag beside name --}}
-                                    @if ($bleep->user->role === 'admin')
-                                        <span class="px-1 py-0.5 text-[10px] font-extrabold rounded bg-blue-500/20 text-blue-500 border border-blue-600/20">
-                                            ADMIN
-                                        </span>
-                                    @elseif ($bleep->user->role === 'moderator')
-                                        <span class="px-1 py-0.5 text-[10px] font-extrabold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-600/20">
-                                            MOD
-                                        </span>
-                                    @endif
+                                    {{-- badges and tags --}}
+                                    <div class="flex gap-1 items-center">
+                                        {{-- Role Tag beside name --}}
+                                        @if ($bleep->user->role === 'admin')
+                                            <i data-lucide="sparkles" class="w-4 h-4 text-teal-500" aria-label="Admin"></i>
+                                        @elseif ($bleep->user->role === 'moderator')
+                                            <i data-lucide="sparkles" class="w-4 h-4 text-amber-500" aria-label="Moderator"></i>
+                                        @endif
 
-                                    {{-- Verified --}}
-                                    @if ($bleep->user->is_verified)
-                                        <i data-lucide="badge-check" class="w-4 h-4 text-blue-500"></i>
-                                    @endif
+                                        {{-- You Tag --}}
+                                        @if ($bleep->user->id === Auth::id())
+                                            <span class="px-1.5 py-0.5 text-[8px] font-extrabold rounded bg-green-500/20 text-green-500 border border-green-600/20">
+                                                YOU
+                                            </span>
+                                        @endif
+
+                                        {{-- Verified --}}
+                                        @if ($bleep->user->is_verified)
+                                            <i data-lucide="badge-check" class="w-4 h-4 text-blue-500" aria-label="This user is verified, and legit. Trust me frfr."></i>
+                                        @endif
+                                    </div>
                                 </div>
 
                                 <div class="text-base-content/60 text-xs mt-0.5">
@@ -197,13 +203,6 @@
                             <span class="unfollow-text hidden">Unfollow</span>
 
                         </button>
-                    @endif
-
-                    {{-- You Tag --}}
-                    @if ($bleep->user->id === Auth::id())
-                        <span class="ml-2 px-1.5 py-0.5 text-[10px] font-extrabold rounded bg-green-500/20 text-green-500 border border-green-600/20">
-                            YOU
-                        </span>
                     @endif
 
                 </div>

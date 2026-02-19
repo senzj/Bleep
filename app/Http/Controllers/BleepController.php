@@ -94,21 +94,19 @@ class BleepController extends Controller
 
         $user = Auth::user();
 
-
-
-        // Create the bleep
+        // Create the bleep first to get ID for media storage path
         $bleep = $user->bleeps()->create([
             'message'      => $request->input('message'),
             'is_anonymous' => $request->boolean('is_anonymous'),
             'is_nsfw'      => $request->boolean('is_nsfw'),
         ]);
 
-        // Handle media uploads - SIMPLIFIED!
+        // Handle media uploads with bleep ID
         if ($request->hasFile('media')) {
             foreach ($request->file('media') as $file) {
                 if (!$file->isValid()) continue;
 
-                $mediaData = MediaUploadService::saveBleepMedia($file, $user->username);
+                $mediaData = MediaUploadService::saveBleepMedia($file, $bleep->id);
 
                 $bleep->media()->create($mediaData);
             }

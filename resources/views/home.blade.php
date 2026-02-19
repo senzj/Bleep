@@ -1,8 +1,13 @@
 @push('scripts')
+    <script>
+        // Pass backend config to frontend (keep anonymity feature hidden if disabled)
+        window.isAnonymousEnabled = {{ env('ANONYMITY', true) ? 'true' : 'false' }};
+    </script>
     @vite([
         'resources/js/bleep/posts/post.js',
         'resources/js/bleep/modals/posts/edit.js',
         'resources/js/bleep/posts/infinitescroll.js',
+        'resources/js/bleep/posts/comment/edit.js',
         'resources/js/ui/mobile.js',
     ])
 @endpush
@@ -272,6 +277,9 @@
 
 {{-- Edit Bleep post Modal --}}
 <x-modals.posts.edit />
+
+{{-- Edit Comment Modal --}}
+<x-modals.comments.edit />
 
 {{-- Comments Modal --}}
 <x-modals.posts.comments />

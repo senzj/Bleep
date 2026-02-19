@@ -8,9 +8,10 @@ use App\Models\Bleep;
 use App\Models\Comments;
 use App\Services\MediaUploadService;
 
-use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class CommentsController extends Controller
 {
@@ -41,7 +42,9 @@ class CommentsController extends Controller
         $validated = $request->validate([
             'message'      => ['nullable', 'string', 'max:500'],
             'is_anonymous' => ['boolean'],
-            'media'        => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,webp,mp4,quicktime,mp3,wav', 'max:20480'],
+            'media'        => ['nullable', 'file', 'image', 'max:20480'],
+        ], [
+            'media.image' => 'Only image files are allowed for comments.',
         ]);
 
         if (!$request->filled('message') && !$request->hasFile('media')) {
@@ -51,23 +54,37 @@ class CommentsController extends Controller
             ], 422);
         }
 
-        $mediaMeta = null;
-        if ($request->hasFile('media')) {
-            $mediaMeta = MediaUploadService::saveCommentMedia(
-                $request->file('media'),
-                Auth::user()->username
-            );
-        }
-
+        // Create comment first to get ID for media storage path
         $comment = $bleep->comments()->create([
             'user_id'      => Auth::id(),
             'message'      => $validated['message'],
-            'media_path'   => $mediaMeta['path'] ?? null,
-            'media_type'   => $mediaMeta['type'] ?? null,
-            'media_mime'   => $mediaMeta['mime'] ?? null,
             'is_anonymous' => $request->boolean('is_anonymous'),
-        ])->load(['user', 'likes']);
+        ]);
 
+        // Handle media upload with comment ID
+        if ($request->hasFile('media')) {
+            try {
+                $mediaMeta = MediaUploadService::saveCommentMedia(
+                    $request->file('media'),
+                    $comment->id
+                );
+
+                $comment->update([
+                    'media_path'   => $mediaMeta['path'],
+                    'media_type'   => $mediaMeta['type'],
+                    'media_mime'   => $mediaMeta['mime'],
+                ]);
+            } catch (\Exception $e) {
+                // If media upload fails, delete the comment
+                $comment->delete();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to upload media: ' . $e->getMessage(),
+                ], 422);
+            }
+        }
+
+        $comment->load(['user', 'likes']);
         $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
         $transformed = $this->transformComment($comment, $bleep, $viewerSeed);
 
@@ -89,28 +106,87 @@ class CommentsController extends Controller
      */
     public function update(Request $request, Comments $comment)
     {
+        Log::info('Request Data: ', $request->all());
+
         $this->authorize('update', $comment);
 
         $request->validate([
-            'message' => 'required|string|max:255',
+            'message'      => 'required|string|max:500',
             'is_anonymous' => 'boolean',
+            'media'        => ['nullable', 'file', 'image', 'max:20480'],
+            'remove_media' => 'boolean',
+        ], [
+            'media.image' => 'Only image files are allowed for comments.',
         ]);
 
+        // Handle media removal
+        if ($request->boolean('remove_media') && $comment->media_path) {
+            MediaUploadService::deleteCommentMedia($comment->media_path);
+            $comment->update([
+                'media_path'   => null,
+                'media_type'   => null,
+                'media_mime'   => null,
+            ]);
+        }
+
+        // Handle new media upload (replaces existing)
+        if ($request->hasFile('media')) {
+            // Delete old media if exists
+            if ($comment->media_path) {
+                MediaUploadService::deleteCommentMedia($comment->media_path);
+            }
+
+            try {
+                $mediaMeta = MediaUploadService::saveCommentMedia(
+                    $request->file('media'),
+                    $comment->id
+                );
+
+                $comment->update([
+                    'media_path'   => $mediaMeta['path'],
+                    'media_type'   => $mediaMeta['type'],
+                    'media_mime'   => $mediaMeta['mime'],
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to upload media: ' . $e->getMessage(),
+                ], 422);
+            }
+        }
+
+        // Update message and anonymity
         $comment->update([
-            'message' => $request->message,
+            'message'      => $request->message,
             'is_anonymous' => $request->boolean('is_anonymous'),
         ]);
 
         $comment->load('user');
         $bleep = $comment->bleep;
         $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
-        $transformed = $this->transformComment($comment, $bleep, $viewerSeed);
+
+        // Get updated comment data
+        $commentData = $this->transformComment($comment, $bleep, $viewerSeed);
+
+        // Build media HTML for frontend
+        $mediaHtml = null;
+        if ($comment->media_path) {
+            $mediaHtml = view('components.subcomponents.comments.commentmedia', [
+                'path' => $comment->media_path,
+                'type' => $comment->media_type,
+                'commentId' => $comment->id,
+            ])->render();
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'comment' => $transformed,
-                'message' => 'Comment updated successfully.'
+                'message' => 'Comment updated successfully.',
+                'display_name' => $commentData['display_name'],
+                'media_html' => $mediaHtml,
+                'media_path' => $comment->media_path,
+                'media_type' => $comment->media_type,
+                'updated_at' => $comment->updated_at->toIso8601String(),
             ]);
         }
 

@@ -1,7 +1,7 @@
 {{-- Mobile Slide-over Menu --}}
 <div id="hor-mobile-overlay" class="fixed inset-0 bg-black/50 z-50 hidden lg:hidden transition-opacity duration-300" aria-hidden="true"></div>
 
-<aside id="hor-mobile-drawer" class="lg:hidden fixed left-0 top-0 h-full w-72 bg-base-100 shadow-xl z-50 transform transition-transform duration-300 ease-in-out -translate-x-full flex flex-col">
+<aside id="hor-mobile-drawer" class="lg:hidden fixed left-0 top-0 h-full w-64 bg-base-200/95 shadow-xl z-50 transform transition-transform duration-300 ease-in-out -translate-x-full flex flex-col">
     {{-- Header --}}
     <div class="flex items-center justify-between p-4 border-b border-base-200">
         <a href="/" class="flex items-center gap-2 text-xl font-bold">
@@ -16,25 +16,7 @@
     {{-- Navigation Links --}}
     <nav class="flex flex-col p-4 space-y-1 flex-1 overflow-y-auto">
         @auth
-            <a href="/" class="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-base-200 transition-colors {{ request()->is('/') ? 'bg-primary text-primary-content' : '' }}">
-                <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
-                <span>Home</span>
-            </a>
-
-            <a href="{{ route('messages') }}" class="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-base-200 transition-colors {{ request()->routeIs('messages') ? 'bg-primary text-primary-content' : '' }}">
-                <i data-lucide="message-square" class="w-5 h-5 shrink-0"></i>
-                <span>Messages</span>
-            </a>
-
-            <a href="/people" class="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-base-200 transition-colors {{ request()->is('people') ? 'bg-primary text-primary-content' : '' }}">
-                <i data-lucide="users" class="w-5 h-5 shrink-0"></i>
-                <span>People</span>
-            </a>
-
-            <a href="/announcements" class="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-base-200 transition-colors {{ request()->is('announcements') ? 'bg-primary text-primary-content' : '' }}">
-                <i data-lucide="bell" class="w-5 h-5 shrink-0"></i>
-                <span>Notifications</span>
-            </a>
+            <x-include.navlinks />
         @endauth
     </nav>
 

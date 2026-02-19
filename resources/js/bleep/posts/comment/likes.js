@@ -3,7 +3,9 @@ document.addEventListener('click', async (evt) => {
     if (!btn) return;
 
     evt.preventDefault();
-    const isAuth = document.getElementById('floating-comment-form') !== null;
+    // Check if user is authenticated (either post page or floating modal)
+    const isAuth = document.getElementById('post-comment-form') !== null ||
+                   document.getElementById('floating-comment-form') !== null;
     if (!isAuth) {
         window.location.href = '/login';
         return;

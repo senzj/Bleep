@@ -109,6 +109,15 @@
     }
 }
 
+/* Reply mode styling */
+#cancel-reply-banner {
+    z-index: 10;
+}
+
+.comment-card.replying .comment-body {
+    transition: all 0.3s ease;
+}
+
 /* Admin */
 /* keeps cloak hidden */
 [x-cloak] {

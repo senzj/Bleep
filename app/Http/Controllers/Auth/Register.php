@@ -31,25 +31,25 @@ class Register extends Controller
             // Display Name
             'display_name.required' => 'Please enter your display name.',
             'display_name.max' => 'Display name is too long (max 255 characters).',
-            
+
             // Username
             'username.required' => 'Please choose a username.',
             'username.unique' => 'This username is already taken.',
             'username.alpha_dash' => 'Username can only contain letters, numbers, dashes and underscores.',
             'username.max' => 'Username is too long (max 255 characters).',
-            
+
             // Email
             'email.required' => 'Please enter your email address.',
             'email.email' => 'Please enter a valid email address.',
             'email.unique' => 'This email is already registered.',
             'email.max' => 'Email is too long (max 255 characters).',
-            
+
             // Password
             'password.required' => 'Please create a password.',
             'password.min' => 'Password must be at least 8 characters.',
             'password.regex' => 'Password must meet all requirements above.',
             'password.confirmed' => 'Passwords do not match.',
-            
+
             // Profile Picture
             'profile_picture.image' => 'File must be an image.',
             'profile_picture.mimes' => 'Image must be PNG, JPG, JPEG, GIF, or WEBP.',
@@ -70,7 +70,7 @@ class Register extends Controller
             $user->update([
                 'profile_picture' => MediaUploadService::saveProfileImage(
                     $request->file('profile_picture'),
-                    $user->username
+                    $user->id
                 )
             ]);
         }

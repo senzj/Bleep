@@ -1,8 +1,13 @@
 @push('scripts')
+    <script>
+        // Pass backend config to frontend (keep anonymity feature hidden if disabled)
+        window.isAnonymousEnabled = {{ env('ANONYMITY', true) ? 'true' : 'false' }};
+    </script>
     @vite([
         'resources/js/bleep/users/profile-lazyload.js',
         'resources/js/bleep/users/profile.js',
         'resources/js/bleep/modals/mediamodal.js',
+        'resources/js/bleep/posts/comment/edit.js'
         ])
 @endpush
 
@@ -232,6 +237,7 @@
     <x-subcomponents.bleeps.mediamodal />
     <x-modals.posts.comments />
     <x-modals.posts.edit />
+    <x-modals.comments.edit />
     <x-modals.posts.share />
 
 </x-layout>
