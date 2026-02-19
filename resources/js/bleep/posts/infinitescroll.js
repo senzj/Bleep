@@ -76,6 +76,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.initVideoPlayers(tempDiv);
                 }
 
+                // Initialize NSFW handlers for new content
+                if (window.initializeNsfwWrappers) {
+                    window.initializeNsfwWrappers(tempDiv);
+                }
+
                 // Lock current scroll position before DOM change
                 const scrollBefore = window.scrollY;
 

@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const tabButtons = document.querySelectorAll('[data-tab]');
     const feedPanel = document.getElementById('feed-panel'); // entire feed (form + bleeps)
-    const mobilePeoplePanel = document.getElementById('mobile-people-panel');
+    const mobilePanel = document.getElementById('mobile-panel');
     const tabPanels = document.querySelectorAll('[data-tab-panel]');
 
     if (!tabButtons.length || !feedPanel) return;
@@ -18,14 +18,17 @@ document.addEventListener('DOMContentLoaded', () => {
         tabButtons.forEach(btn => {
             const isActive = normalizeTab(btn.dataset.tab) === tabName;
             btn.classList.toggle('data-tab-active', isActive);
+            btn.classList.toggle('btn-active', isActive);
+            btn.classList.toggle('bg-primary', isActive);
+            btn.classList.toggle('text-primary-content', isActive);
             btn.setAttribute('aria-selected', String(isActive));
         });
 
         if (tabName === 'people') {
             feedPanel.classList.add('hidden');
-            if (mobilePeoplePanel) {
-                mobilePeoplePanel.classList.remove('hidden');
-                mobilePeoplePanel.setAttribute('aria-hidden', 'false');
+            if (mobilePanel) {
+                mobilePanel.classList.remove('hidden');
+                mobilePanel.setAttribute('aria-hidden', 'false');
             }
 
             // re-run lucide icon rendering if available
@@ -37,12 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            const input = mobilePeoplePanel?.querySelector('#user-search-input');
+            const input = mobilePanel?.querySelector('#user-search-input');
             if (input) input.focus();
         } else {
-            if (mobilePeoplePanel) {
-                mobilePeoplePanel.classList.add('hidden');
-                mobilePeoplePanel.setAttribute('aria-hidden', 'true');
+            if (mobilePanel) {
+                mobilePanel.classList.add('hidden');
+                mobilePanel.setAttribute('aria-hidden', 'true');
             }
             feedPanel.classList.remove('hidden');
 
@@ -51,6 +54,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 panel.classList.toggle('hidden', !isActive);
                 panel.setAttribute('aria-hidden', String(!isActive));
             });
+
+            // Re-initialize NSFW handlers when switching tabs
+            if (window.initializeNsfwWrappers) {
+                // Find the currently active panel and initialize its NSFW content
+                document.querySelectorAll('[data-tab-panel]:not(.hidden)').forEach(panel => {
+                    window.initializeNsfwWrappers(panel);
+                });
+            }
         }
     }
 

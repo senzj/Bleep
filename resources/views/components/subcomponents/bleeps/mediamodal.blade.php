@@ -23,11 +23,11 @@
     </div>
 
     {{-- Navigation buttons --}}
-    <button id="media-modal-prev" class="hidden absolute left-4 top-1/2 -translate-y-1/2 z-50 btn btn-circle btn-ghost text-white hover:bg-white/10">
+    <button id="media-modal-prev" class="hidden absolute left-3 top-1/2 -translate-y-1/2 z-50 btn btn-circle btn-ghost text-white bg-base-300/50 hover:bg-white/10">
         <i data-lucide="chevron-left" class="w-6 h-6"></i>
     </button>
 
-    <button id="media-modal-next" class="hidden absolute right-4 top-1/2 -translate-y-1/2 z-50 btn btn-circle btn-ghost text-white hover:bg-white/10">
+    <button id="media-modal-next" class="hidden absolute right-3 top-1/2 -translate-y-1/2 z-50 btn btn-circle btn-ghost text-white bg-base-300/50 hover:bg-white/10">
         <i data-lucide="chevron-right" class="w-6 h-6"></i>
     </button>
 

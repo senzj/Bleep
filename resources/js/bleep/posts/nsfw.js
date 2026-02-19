@@ -80,10 +80,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function revealNsfw(bleepId) {
+    function revealNsfw(bleepId, sourceElement = null, wrapperElement = null) {
         if (!bleepId) return;
         if (!prefs.showNsfw) return;
-        const wrapper = document.querySelector(`.nsfw-wrapper[data-bleep-id="${bleepId}"], .bleep-nsfw-wrapper[data-bleep-id="${bleepId}"]`);
+
+        // Priority: direct wrapper > find from source element > document-wide search
+        let wrapper = wrapperElement;
+
+        if (!wrapper && sourceElement) {
+            wrapper = sourceElement.closest('.nsfw-wrapper, .bleep-nsfw-wrapper');
+        }
+
+        // Fallback to document-wide search if wrapper not found
+        if (!wrapper) {
+            wrapper = document.querySelector(`.nsfw-wrapper[data-bleep-id="${bleepId}"], .bleep-nsfw-wrapper[data-bleep-id="${bleepId}"]`);
+        }
+
         if (!wrapper) {
             console.error('NSFW wrapper not found for bleepId:', bleepId);
             return;
@@ -127,9 +139,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.createLucideIcons) window.createLucideIcons(content);
     }
 
-    function hideNsfw(bleepId) {
+    function hideNsfw(bleepId, sourceElement = null, wrapperElement = null) {
         if (!bleepId) return;
-        const wrapper = document.querySelector(`.nsfw-wrapper[data-bleep-id="${bleepId}"], .bleep-nsfw-wrapper[data-bleep-id="${bleepId}"]`);
+
+        // Priority: direct wrapper > find from source element > document-wide search
+        let wrapper = wrapperElement;
+
+        if (!wrapper && sourceElement) {
+            wrapper = sourceElement.closest('.nsfw-wrapper, .bleep-nsfw-wrapper');
+        }
+
+        // Fallback to document-wide search if wrapper not found
+        if (!wrapper) {
+            wrapper = document.querySelector(`.nsfw-wrapper[data-bleep-id="${bleepId}"], .bleep-nsfw-wrapper[data-bleep-id="${bleepId}"]`);
+        }
+
         if (!wrapper) return;
 
         try { sessionStorage.removeItem(`nsfw_viewed_${bleepId}`); } catch (e) {}
@@ -199,47 +223,54 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // click handlers
+    // click handlers
     document.addEventListener('click', (e) => {
         const reveal = e.target.closest('.nsfw-reveal-btn');
         if (reveal) {
             if (!prefs.showNsfw) return;
-            revealNsfw(reveal.getAttribute('data-bleep-id'));
+            revealNsfw(reveal.getAttribute('data-bleep-id'), reveal);
             return;
         }
         const hideBtn = e.target.closest('.hide-nsfw-btn');
-        if (hideBtn) { hideNsfw(hideBtn.getAttribute('data-bleep-id')); return; }
+        if (hideBtn) { hideNsfw(hideBtn.getAttribute('data-bleep-id'), hideBtn); return; }
     });
+
+    // Expose helper to initialize NSFW state for dynamically loaded content
+    window.initializeNsfwWrappers = function(container) {
+        const target = container || document;
+        target.querySelectorAll('.nsfw-wrapper[data-bleep-id], .bleep-nsfw-wrapper[data-bleep-id]').forEach(w => {
+            const id = w.getAttribute('data-bleep-id');
+            const isNsfw = w.getAttribute('data-is-nsfw') === '1';
+            if (!isNsfw) return;
+
+            if (!prefs.showNsfw) {
+                hideNsfw(id, null, w);
+                const revealBtn = w.querySelector('.nsfw-reveal-btn');
+                if (revealBtn) {
+                    revealBtn.setAttribute('disabled', 'true');
+                    revealBtn.classList.add('opacity-60', 'cursor-not-allowed');
+                }
+                return;
+            }
+
+            if (!prefs.blurNsfw) {
+                revealNsfw(id, null, w);
+                return;
+            }
+
+            // When blur is enabled, hide by default unless revealed in this session
+            try {
+                if (id && sessionStorage.getItem(`nsfw_viewed_${id}`) === '1') {
+                    revealNsfw(id, null, w);
+                } else {
+                    hideNsfw(id, null, w);
+                }
+            } catch (e) {
+                hideNsfw(id, null, w);
+            }
+        });
+    };
 
     // apply initial preference state
-    document.querySelectorAll('.nsfw-wrapper[data-bleep-id], .bleep-nsfw-wrapper[data-bleep-id]').forEach(w => {
-        const id = w.getAttribute('data-bleep-id');
-        const isNsfw = w.getAttribute('data-is-nsfw') === '1';
-        if (!isNsfw) return;
-
-        if (!prefs.showNsfw) {
-            hideNsfw(id);
-            const revealBtn = w.querySelector('.nsfw-reveal-btn');
-            if (revealBtn) {
-                revealBtn.setAttribute('disabled', 'true');
-                revealBtn.classList.add('opacity-60', 'cursor-not-allowed');
-            }
-            return;
-        }
-
-        if (!prefs.blurNsfw) {
-            revealNsfw(id);
-            return;
-        }
-
-        // When blur is enabled, hide by default unless revealed in this session
-        try {
-            if (id && sessionStorage.getItem(`nsfw_viewed_${id}`) === '1') {
-                revealNsfw(id);
-            } else {
-                hideNsfw(id);
-            }
-        } catch (e) {
-            hideNsfw(id);
-        }
-    });
+    window.initializeNsfwWrappers();
 });

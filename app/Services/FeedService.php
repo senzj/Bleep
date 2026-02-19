@@ -217,7 +217,6 @@ class FeedService
             ->toArray();
 
         $friends = array_values(array_intersect($followedIds, $followerIds));
-        $friends[] = $user->id;
 
         return array_values(array_unique($friends));
     }

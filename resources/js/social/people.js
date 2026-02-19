@@ -47,6 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (noResultsMessage) noResultsMessage.classList.add('hidden');
 
+            const degreeLabel = (type) => {
+                if (type === 'two-way') return 'Mutual';
+                if (type === 'friend-of-friend') return '2nd degree';
+                if (type === 'friend-of-friend-of-friend') return '3rd degree';
+                return '';
+            };
+
             suggestionsContainer.innerHTML = users.map(user => `
                 <div class="user-item flex items-center gap-4 w-full min-w-0 flex-wrap"
                      data-user-id="${user.id}"
@@ -63,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <a href="/bleeper/${user.username}" class="block hover:text-primary transition-colors">
                             <p class="font-semibold truncate flex items-center gap-2">
                                 <span class="truncate">${user.dname}</span>
-                                ${user.is_mutual ? '<span class="ml-2 badge badge-sm badge-outline shrink-0">Mutual</span>' : ''}
+                                ${user.mutual_type ? `<span class="ml-2 badge badge-sm badge-outline shrink-0">${degreeLabel(user.mutual_type)}</span>` : ''}
                             </p>
                             <p class="text-sm text-base-content/60 truncate">@${user.username}</p>
                         </a>

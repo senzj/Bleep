@@ -6,7 +6,7 @@ const canHover = window.matchMedia && window.matchMedia('(hover: hover)').matche
 
 // Handle hover effect for liked buttons (pointer devices only)
 if (canHover) {
-    document.addEventListener('pointerenter', (e) => {
+    document.addEventListener('pointerover', (e) => {
         const button = e.target.closest('.like-btn');
         if (!button) return;
 
@@ -23,7 +23,7 @@ if (canHover) {
     }, true);
 
     // Handle pointer leave to restore heart icon
-    document.addEventListener('pointerleave', (e) => {
+    document.addEventListener('pointerout', (e) => {
         const button = e.target.closest('.like-btn');
         if (!button) return;
 

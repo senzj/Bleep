@@ -42,7 +42,7 @@
     $userProfileLink = $isAnonymous ? "#" : route('user.profile', ['username' => $bleep->user->username]);
 @endphp
 
-<article class="bg-base-100 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow duration-200">
+<article class="bg-base-100 rounded-lg p-4 shadow-lg border border-base-200 hover:shadow-xl transition-shadow duration-200">
 
     {{-- Repost Tag (if reposted by followed users) --}}
     @if($followedRepostCount > 0)
@@ -199,6 +199,13 @@
                         </button>
                     @endif
 
+                    {{-- You Tag --}}
+                    @if ($bleep->user->id === Auth::id())
+                        <span class="ml-2 px-1.5 py-0.5 text-[10px] font-extrabold rounded bg-green-500/20 text-green-500 border border-green-600/20">
+                            YOU
+                        </span>
+                    @endif
+
                 </div>
 
                 {{-- Left --}}
@@ -300,7 +307,7 @@
                     <div class="mt-3 text-center">
                         <button type="button" class="text-white! btn btn-sm btn-outline hide-nsfw-btn shadow-sm bg-gray-500" data-bleep-id="{{ $bleep->id }}">
                             <i data-lucide="eye-off" class="w-4 h-4"></i>
-                            <p class="font-semibold">Hide Content</p>
+                            <p class="font-semibold">Hide</p>
                         </button>
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\View\Components\Social;
+namespace App\View\Pages\Social;
 
 use Closure;
 use App\Models\User;
@@ -59,7 +59,7 @@ class People extends Component
      */
     public function render(): View|Closure|string
     {
-        return view('components.social.people', [
+        return view('pages.social.people', [
             'suggestedUsers' => $this->suggestedUsers,
         ]);
     }

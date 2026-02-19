@@ -28,7 +28,7 @@
         @endif
 
         {{-- Center panel - main content --}}
-        <div class="lg:block {{ $navLayout === 'vertical' ? 'lg:col-span-8 lg:ml-20' : 'lg:col-span-6' }}" id="center-panel">
+        <div class="lg:block {{ $navLayout === 'vertical' ? 'lg:col-span-8 lg:ml-50' : 'lg:col-span-6' }}" id="center-panel">
 
             {{-- Feed panel: post form + bleeps (toggled as a single unit on mobile) --}}
             <div id="feed-panel">
@@ -36,13 +36,16 @@
                 @auth
                     <div class="card bg-base-100 shadow mt-1">
                         <div class="card-body">
+
+                            <h3 class="card-title text-md font-semibold font-">Welcome to Bleep!</h3>
+
                             <form method="POST" action="/bleeps" enctype="multipart/form-data" id="bleep-form">
                                 @csrf
                                 <div class="form-control w-full">
                                     <textarea
                                         name="message"
                                         placeholder="What's on your mind? Share them with a bleep!"
-                                        class="textarea textarea-bordered w-full resize-none @error('message') textarea-error @enderror"
+                                        class="textarea textarea-bordered w-full resize-none placeholder:text-lg @error('message') textarea-error @enderror"
                                         rows="2"
                                         maxlength="255"
                                     ></textarea>
@@ -146,7 +149,7 @@
                 <div class="">
                     {{-- Sticky top Bleep Sort --}}
                     @auth
-                        <div class="sticky top-0 z-20 mt-5 border border-base-200 px-3 py-2 bg-base-100/95 backdrop-blur rounded-lg shadow-sm">
+                        <div class="sticky top-0 z-20 mt-5 border border-base-200 px-1 py-1 bg-base-100/95 backdrop-blur rounded-lg shadow-sm">
                             <div class="flex gap-2 w-full" role="tablist" aria-label="Main tabs">
                                 {{-- Shows For You Page --}}
                                 <button type="button" class="flex-1 btn btn-sm btn-ghost data-tab-active" data-tab="bleep" aria-controls="bleeps-container" aria-selected="true">For You</button>

@@ -55,7 +55,7 @@
         $autoplayAudio = $preferences?->autoplay_audio ?? false;
     @endphp
 
-    <body class="min-h-screen font-sans bg-base-300/90"
+    <body class="min-h-screen font-sans bg-base-300/95 text-base-content"
           data-nav-layout="{{ $navLayout }}"
           data-show-nsfw="{{ $showNsfw ? '1' : '0' }}"
           data-blur-nsfw="{{ $blurNsfw ? '1' : '0' }}"
