@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('media-modal');
+    if (!modal) return;
     const closeBtn = document.getElementById('media-modal-close');
     const prevBtn = document.getElementById('media-modal-prev');
     const nextBtn = document.getElementById('media-modal-next');
@@ -55,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         document.body.style.overflow = 'hidden';
-    });
+    }, true);
 
     // Close modal
     const closeModal = () => {

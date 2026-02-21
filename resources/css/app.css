@@ -1,3 +1,8 @@
+.bleep-selected {
+    border: 2px solid #3b82f6 !important; /* Tailwind blue-500 */
+    box-shadow: 0 0 0 2px #3b82f6 !important;
+    z-index: 10;
+}
 /* import fonts */
 @font-face {
     font-family: JB_Mono;
@@ -63,6 +68,11 @@
 /* Apply the animation */
 .like-animate .heart-icon {
     animation: like-heart 1.0s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bleep-selected {
+    border-color: hsl(var(--p)) !important;
+    box-shadow: 0 0 0 2px hsl(var(--p) / 0.25), 0 12px 30px rgba(0, 0, 0, 0.15);
 }
 
 /* Toast-only success color */

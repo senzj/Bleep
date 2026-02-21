@@ -123,4 +123,18 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Anonymity
+    |--------------------------------------------------------------------------
+    |
+    | This option determines whether users can post anonymously. When enabled,
+    | users will have the option to hide their identity when posting content.
+    | This can encourage more open and honest discussions, but may also lead to
+    | increased moderation needs. Set this to true to allow anonymous posting, or false to require user identification.
+    |
+    */
+
+    'anonymity' => env('ANONYMITY', true),
+
 ];

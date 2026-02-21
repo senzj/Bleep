@@ -25,9 +25,11 @@ class CommentsController extends Controller
         $viewerSeed = Auth::check() ? Auth::id() : request()->session()->getId();
 
         $comments = $bleep->comments()
+            ->whereNull('parent_id')  // Only fetch top-level comments
             ->with('user')
+            ->withCount('replies')    // Include reply count
             ->latest()
-            ->take(50)
+            ->take(20)
             ->get()
             ->map(fn ($comment) => $this->transformComment($comment, $bleep, $viewerSeed));
 
@@ -42,9 +44,14 @@ class CommentsController extends Controller
         $validated = $request->validate([
             'message'      => ['nullable', 'string', 'max:500'],
             'is_anonymous' => ['boolean'],
-            'media'        => ['nullable', 'file', 'image', 'max:20480'],
+            'media'        => [
+                'nullable',
+                'file',
+                'mimetypes:image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,audio/mpeg,audio/wav,audio/mp3',
+                'max:50480',
+            ],
         ], [
-            'media.image' => 'Only image files are allowed for comments.',
+            'media.mimetypes' => 'Only image, video, or audio files are allowed for comments.',
         ]);
 
         if (!$request->filled('message') && !$request->hasFile('media')) {
@@ -106,17 +113,21 @@ class CommentsController extends Controller
      */
     public function update(Request $request, Comments $comment)
     {
-        Log::info('Request Data: ', $request->all());
 
         $this->authorize('update', $comment);
 
         $request->validate([
             'message'      => 'required|string|max:500',
             'is_anonymous' => 'boolean',
-            'media'        => ['nullable', 'file', 'image', 'max:20480'],
+            'media'        => [
+                'nullable',
+                'file',
+                'mimetypes:image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/wav,audio/mp3,audio/ogg,audio/x-m4a',
+                'max:50480',
+            ],
             'remove_media' => 'boolean',
         ], [
-            'media.image' => 'Only image files are allowed for comments.',
+            'media.mimetypes' => 'Only image, video, or audio files are allowed for comments.',
         ]);
 
         // Handle media removal
@@ -168,22 +179,11 @@ class CommentsController extends Controller
         // Get updated comment data
         $commentData = $this->transformComment($comment, $bleep, $viewerSeed);
 
-        // Build media HTML for frontend
-        $mediaHtml = null;
-        if ($comment->media_path) {
-            $mediaHtml = view('components.subcomponents.comments.commentmedia', [
-                'path' => $comment->media_path,
-                'type' => $comment->media_type,
-                'commentId' => $comment->id,
-            ])->render();
-        }
-
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Comment updated successfully.',
                 'display_name' => $commentData['display_name'],
-                'media_html' => $mediaHtml,
                 'media_path' => $comment->media_path,
                 'media_type' => $comment->media_type,
                 'updated_at' => $comment->updated_at->toIso8601String(),
@@ -252,36 +252,6 @@ class CommentsController extends Controller
         return redirect()->back()->with('success', 'Comment reported successfully.');
     }
 
-    /**
-     * Get comments as rendered HTML with pagination
-     */
-    public function commentsHtml(Request $request, Bleep $bleep)
-    {
-        $perPage = (int) $request->integer('per_page', 10);
-
-        $comments = Comments::with(['user', 'likes'])
-            ->withCount('replies')
-            ->where('bleep_id', $bleep->id)
-            ->whereNull('parent_id')
-            ->orderByDesc('created_at')
-            ->paginate($perPage);
-
-        $html = $comments->isEmpty()
-            ? '<p class="text-center text-sm text-base-content/60 py-6">Be the first to comment.</p>'
-            : $comments->map(fn ($comment) => view(
-                    'components.subcomponents.comments.commentcard',
-                    ['comment' => $comment, 'bleep' => $bleep, 'depth' => 0]
-                )->render()
-            )->implode('');
-
-        return response()->json([
-            'html'         => $html,
-            'current_page' => $comments->currentPage(),
-            'has_more'     => $comments->hasMorePages(),
-            'total'        => $comments->total(),
-        ]);
-    }
-
     protected function transformComment(Comments $comment, ?Bleep $bleep = null, $viewerSeed = null): array
     {
         $user = $comment->user;
@@ -294,6 +264,7 @@ class CommentsController extends Controller
 
         return [
             'id' => $comment->id,
+            'parent_id' => $comment->parent_id,
             'message' => $comment->message,
             'created_at' => optional($comment->created_at)->toDateTimeString(),
             'created_at_iso' => optional($comment->created_at)->toIso8601String(),
@@ -302,11 +273,19 @@ class CommentsController extends Controller
             'display_name' => $displayName,
             'canEdit' => Auth::check() && Auth::id() === $comment->user_id,
             'canDelete' => Auth::check() && Auth::id() === $comment->user_id,
+            'media' => $comment->media_path,
+            'likes_count' => $comment->likes()->count(),
+            'liked' => Auth::check() ? $comment->likes()->where('user_id', Auth::id())->exists() : false,
+            'replies_count' => $comment->replies()->count(),
             'user' => [
+                'id' => $comment->is_anonymous ? null : optional($user)->id,
                 'username' => $comment->is_anonymous ? null : optional($user)->username,
+                'profile_picture' => $comment->is_anonymous ? null : optional($user)->profile_picture_url,
                 'dname' => $comment->is_anonymous ? null : optional($user)->dname,
                 'email' => $comment->is_anonymous ? null : optional($user)->email,
                 'timezone' => $comment->is_anonymous ? null : optional($user)->timezone,
+                'role' => $comment->is_anonymous ? null : optional($user)->role,
+                'is_verified' => $comment->is_anonymous ? null : (bool) optional($user)->is_verified,
             ],
         ];
     }

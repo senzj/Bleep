@@ -15,7 +15,7 @@
     </nav>
 
     {{-- User profile --}}
-    <div class="p-4 border-t border-base-200">
+    <div class="p-1 border-t border-base-200">
         <x-include.userprofile />
     </div>
 

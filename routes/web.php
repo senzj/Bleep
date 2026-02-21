@@ -70,10 +70,14 @@ Route::post('/bleeps/{bleep}/view', [BleepController::class, 'recordView'])
 Route::get('/bleeps/lazy-load', [BleepController::class, 'lazyLoad'])
     ->name('bleeps.lazyload');
 
+// Get single bleep data (for modal)
+Route::get('/bleeps/{bleep}/data', [BleepController::class, 'show'])
+    ->name('bleeps.show');
+
 // Comments
 Route::get('/bleeps/comments/{bleep}/comments', [CommentsController::class, 'index']);
 Route::get('/bleeps/comments/{bleep}/count', [CommentsController::class, 'count']);
-Route::get('/bleeps/comments/{bleep}/html', [CommentsController::class, 'commentsHtml'])->name('comments.html');
+
 
 Route::get('/bleeps/comments/{comment}/replies', [CommentsRepliesController::class, 'index'])
     ->name('comments.replies.index');

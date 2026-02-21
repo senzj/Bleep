@@ -5,6 +5,7 @@ import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
     plugins: [
+        tailwindcss(),
         vue(),
         laravel({
             input: [
@@ -22,12 +23,9 @@ export default defineConfig({
                 'resources/js/bleep/modals/mediamodal.js',
                 'resources/js/bleep/modals/posts/edit.js',
                 'resources/js/bleep/modals/posts/reports.js',
-                'resources/js/bleep/posts/comment/replies.js',
-                'resources/js/bleep/posts/comment/likes.js',
                 'resources/js/bleep/posts/media/audio.js',
                 'resources/js/bleep/posts/media/video.js',
                 'resources/js/bleep/posts/media/visibility.js',
-                'resources/js/bleep/posts/comment.js',
                 'resources/js/bleep/posts/infinitescroll.js',
                 'resources/js/bleep/posts/like.js',
                 'resources/js/bleep/posts/media.js',
@@ -50,7 +48,6 @@ export default defineConfig({
             ],
             refresh: true,
         }),
-        tailwindcss(),
     ],
 
     build: {

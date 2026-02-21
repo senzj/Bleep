@@ -248,6 +248,20 @@ class BleepController extends Controller
     }
 
     /**
+     * Show a single bleep's data (for JSON response in modals)
+     */
+    public function show(Bleep $bleep)
+    {
+        return response()->json([
+            'id' => $bleep->id,
+            'user' => [
+                'id' => $bleep->user?->id,
+                'username' => $bleep->user?->username,
+            ]
+        ]);
+    }
+
+    /**
      * Record views for a collection of bleeps
      */
     protected function recordBleepsViews($bleeps)

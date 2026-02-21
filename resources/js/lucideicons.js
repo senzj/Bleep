@@ -1,38 +1,13 @@
 import { createIcons } from 'lucide';
-
-// Custom icon sets
-import * as navigation from './icons/navigation';
-import * as user from './icons/user';
-import * as actions from './icons/actions';
-import * as media from './icons/media';
-import * as status from './icons/status';
-import * as communication from './icons/communication';
-import * as security from './icons/security';
-import * as misc from './icons/misc';
-import * as devices from './icons/devices';
-import * as theme from './icons/theme';
-
-
-const allIcons = {
-    ...navigation,
-    ...user,
-    ...actions,
-    ...media,
-    ...status,
-    ...communication,
-    ...security,
-    ...misc,
-    ...devices,
-    ...theme,
-};
+import { VanillaIcons } from './icons/vanilla/index.js';
 
 window.lucide = {
     createIcons: (opts = {}) =>
         createIcons({
-            icons: allIcons,
+            icons: VanillaIcons,
             ...opts,
         }),
-    icons: allIcons,
+    icons: VanillaIcons,
 };
 
 // Helper to render icons only within a specific container element

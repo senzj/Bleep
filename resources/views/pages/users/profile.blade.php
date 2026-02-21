@@ -145,14 +145,15 @@
         </div>
 
         {{-- Tabs --}}
-        <div class="bg-transparent">
-            <div role="tablist"
-                 class="tabs tabs-boxed w-full bg-base-100 p-1 gap-2 rounded-t-lg border border-base-300">
+        <div class="bg-base-100 rounded-lg shadow-lg border border-base-300">
+            <div role="tablist" class="tabs tabs-boxed w-full bg-base-100 p-1 gap-2 rounded-t-lg border border-base-300">
+
                 {{-- Bleeps Tab --}}
                 <input type="radio" name="profile_tabs" role="tab"
-                    class="tab flex-1 text-base font-semibold
+                    class="tab flex-1 text-base font-semibold border-b border-gray-300
                            data-[state=checked]:bg-base-300 data-[state=checked]:text-base-content"
                     aria-label="Bleeps" checked />
+
                 <div role="tabpanel"
                      class="tab-content p-6 bg-base-100 border border-base-300 border-t-0 rounded-b-lg">
                     @if($bleeps->count() > 0)
@@ -183,9 +184,10 @@
 
                 {{-- Reposts Tab --}}
                 <input type="radio" name="profile_tabs" role="tab"
-                    class="tab flex-1 text-base font-semibold
+                    class="tab flex-1 text-base font-semibold border-b border-gray-300
                            data-[state=checked]:bg-base-300 data-[state=checked]:text-base-content"
                     aria-label="Reposts" />
+
                 <div role="tabpanel"
                      class="tab-content p-6 bg-base-100 border border-base-300 border-t-0 rounded-b-lg">
                     @if($reposts->count() > 0)
@@ -237,7 +239,6 @@
     <x-subcomponents.bleeps.mediamodal />
     <x-modals.posts.comments />
     <x-modals.posts.edit />
-    <x-modals.comments.edit />
     <x-modals.posts.share />
 
 </x-layout>

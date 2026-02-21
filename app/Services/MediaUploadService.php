@@ -115,7 +115,7 @@ class MediaUploadService
     }
 
     /**
-     * Save a comment media file (image only, 1 per comment)
+     * Save a comment media file (image, video, or audio)
      *
      * @param UploadedFile $file
      * @param int $commentId
@@ -124,20 +124,30 @@ class MediaUploadService
     public static function saveCommentMedia(UploadedFile $file, int $commentId): array
     {
         $mime = $file->getMimeType();
+        $type = str_starts_with($mime, 'image/')
+            ? 'image'
+            : (str_starts_with($mime, 'video/')
+                ? 'video'
+                : (str_starts_with($mime, 'audio/') ? 'audio' : 'file'));
 
-        // Only allow images for comments
-        if (!str_starts_with($mime, 'image/')) {
-            throw new \InvalidArgumentException('Only image files are allowed for comment media.');
+        if ($type === 'file') {
+            throw new \InvalidArgumentException('Only image, video, or audio files are allowed for comment media.');
         }
 
-        $filename = time() . '_' . Str::random(6) . '.' . $file->extension();
+        // For audio files, preserve original name
+        if ($type === 'audio') {
+            $originalName = $file->getClientOriginalName();
+            $filename = $originalName;
+        } else {
+            $filename = time() . '_' . Str::random(6) . '.' . $file->extension();
+        }
 
         // Store in: comments/{comment_id}/{filename}
         $path = $file->storeAs("comments/{$commentId}", $filename, 'public');
 
         return [
             'path' => $path,
-            'type' => 'image',
+            'type' => $type,
             'mime' => $mime,
         ];
     }

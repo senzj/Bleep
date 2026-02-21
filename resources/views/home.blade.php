@@ -1,15 +1,31 @@
 @push('scripts')
     <script>
         // Pass backend config to frontend (keep anonymity feature hidden if disabled)
-        window.isAnonymousEnabled = {{ env('ANONYMITY', true) ? 'true' : 'false' }};
+        window.isAnonymousEnabled = {{ config('app.anonymity', true) ? 'true' : 'false' }};
     </script>
     @vite([
         'resources/js/bleep/posts/post.js',
         'resources/js/bleep/modals/posts/edit.js',
         'resources/js/bleep/posts/infinitescroll.js',
-        'resources/js/bleep/posts/comment/edit.js',
         'resources/js/ui/mobile.js',
+        'resources/js/app.js'
     ])
+@endpush
+
+@push('meta')
+    <meta name="auth" content="{{ Auth::check() ? 'true' : 'false' }}" />
+    <meta name="anonymity-enabled" content="{{ config('app.anonymity', true) ? 'true' : 'false' }}" />
+    @if (Auth::check())
+        @php
+            $userAvatar = '/images/avatar/default.jpg';
+            $usr = Auth::user();
+            $avatarPath = $usr->profile_picture ?? null;
+            if ($avatarPath) {
+                $userAvatar = asset('storage/' . $avatarPath);
+            }
+        @endphp
+        <meta name="user-avatar" content="{{ $userAvatar }}" />
+    @endif
 @endpush
 
 <x-layout>
@@ -33,7 +49,7 @@
         @endif
 
         {{-- Center panel - main content --}}
-        <div class="lg:block {{ $navLayout === 'vertical' ? 'lg:col-span-8 lg:ml-50' : 'lg:col-span-6' }}" id="center-panel">
+        <div class="lg:block {{ $navLayout === 'vertical' ? 'lg:col-span-8 lg:ml-45' : 'lg:col-span-6' }}" id="center-panel">
 
             {{-- Feed panel: post form + bleeps (toggled as a single unit on mobile) --}}
             <div id="feed-panel">
@@ -89,7 +105,7 @@
                                     <div class="flex w-full sm:w-auto items-center justify-end sm:space-y-5 gap-3">
                                         <div class="flex items-center gap-8">
                                             {{-- Anonymous: icon/label + toggle --}}
-                                            @if (env('ANONYMITY', true))
+                                            @if (config('app.anonymity', true))
                                                 <div class="flex items-center gap-1">
                                                     <label for="post-anonymous-toggle" class="flex items-center gap-2 cursor-pointer select-none">
                                                         <span id="post-anonymous-icon" class="p-2 rounded-full bg-base-400 transition-colors duration-150" title="Post anonymously" aria-hidden="true">
@@ -272,17 +288,14 @@
 
 </x-layout>
 
-{{-- Media View Modal --}}
+{{-- Media Bleep Modal --}}
 <x-subcomponents.bleeps.mediamodal />
 
-{{-- Edit Bleep post Modal --}}
+{{-- Edit Bleep Modal --}}
 <x-modals.posts.edit />
 
-{{-- Edit Comment Modal --}}
-<x-modals.comments.edit />
-
-{{-- Comments Modal --}}
+{{-- Comments Bleep Modal --}}
 <x-modals.posts.comments />
 
-{{-- Share Modal (from bleep component, but ensuring it's available) --}}
+{{-- Share Bleep Modal --}}
 <x-modals.posts.share />

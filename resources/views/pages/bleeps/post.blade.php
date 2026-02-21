@@ -1,15 +1,23 @@
 @push('scripts')
-    <script>
-        // Pass backend config to frontend (keep anonymity feature hidden if disabled)
-        window.isAnonymousEnabled = {{ env('ANONYMITY', true) ? 'true' : 'false' }};
-    </script>
     @vite([
-        'resources/js/post/lazyload.js',
-        'resources/js/post/comment-reply-handler.js',
-        'resources/js/bleep/posts/comment/replies.js',
-        'resources/js/bleep/posts/comment/likes.js',
-        'resources/js/bleep/posts/comment/edit.js'
+        'resources/js/app.js'
     ])
+@endpush
+
+@push('meta')
+    <meta name="auth" content="{{ Auth::check() ? 'true' : 'false' }}" />
+    <meta name="anonymity-enabled" content="{{ env('ANONYMITY', true) ? 'true' : 'false' }}" />
+    @if (Auth::check())
+        @php
+            $userAvatar = '/images/avatar/default.jpg';
+            $usr = Auth::user();
+            $avatarPath = $usr->profile_picture ?? null;
+            if ($avatarPath) {
+                $userAvatar = asset('storage/' . $avatarPath);
+            }
+        @endphp
+        <meta name="user-avatar" content="{{ $userAvatar }}" />
+    @endif
 @endpush
 
 <x-layout>
@@ -34,126 +42,31 @@
 
     <x-slot:title>{{ $usr->username }}'s Bleep | {{ $bleep->message ?? '' }}</x-slot:title>
 
+    {{-- Bleep Posts Page Content --}}
     <div class="max-w-4xl mx-auto">
         <a href="/" class="text-md link link-ghost mb-4 inline-block">
             <i data-lucide="arrow-left" class="w-5 h-5 inline-block"></i>
             Back
         </a>
 
-        {{-- Bleep Post (showCommentsButton is false by default on post route) --}}
+        {{-- Bleep Post --}}
         <div class="space-y-4">
             <x-bleep :bleep="$bleep" />
         </div>
 
         {{-- Comments Section --}}
-        <div class="bg-base-300 border border-base-300/50 rounded-lg shadow-md p-4 mt-3">
-            {{-- Comments input (textarea) + anonymity toggle + send button --}}
-            @auth
-                <div class="mt-1" style="position: relative;">
-                    <form id="post-comment-form" action="/bleeps/comments/{{ $bleep->id }}/post" method="POST" enctype="multipart/form-data" class="flex flex-col gap-3" data-bleep-id="{{ $bleep->id }}">
-                        @csrf
-
-                        <div class="flex gap-3">
-                            <textarea id="post-comment-textarea" name="message"
-                                    required
-                                    maxlength="255"
-                                    rows="3"
-                                    class="textarea textarea-bordered w-full resize-none"
-                                    placeholder="Write a comment..."></textarea>
-
-                            <div class="flex flex-col items-center gap-4">
-                                {{-- check if system allows anonymous --}}
-                                @if (env('ANONYMITY', true))
-                                    <div class="flex items-end gap-2 shrink-0 w-full">
-                                        <label class="relative inline-flex cursor-pointer">
-                                            <input type="checkbox" id="comment-anonymous-toggle" name="is_anonymous" value="1" class="peer sr-only">
-                                            <div class="w-18 h-9 bg-base-100 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
-                                            <div id="toggle-indicator"
-                                                class="absolute top-1 left-1 size-7 rounded-full transition-all duration-300 peer-checked:left-10 bg-cover bg-center flex items-center justify-center"
-                                                data-profile-url="{{ $UserAvatarUrl ?? '' }}"
-                                                data-user-avatar="{{ $UserAvatarUrl ?? '' }}"
-                                                style="background-image: url('{{ $UserAvatarUrl ?? asset('images/avatar/default.jpg') }}');">
-                                            </div>
-                                        </label>
-                                    </div>
-                                @endif
-
-                                {{-- Media --}}
-                                <button type="button" id="comment-media-trigger" class="btn btn-secondary btn-sm w-full" aria-label="Attach media">
-                                    <i data-lucide="image" class="w-4 h-4"></i>
-                                    Media
-                                </button>
-                                <input type="file" id="comment-media-input" name="media" class="hidden" accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/mp3,audio/wav">
-
-                                {{-- Submit button --}}
-                                <button type="submit" class="btn btn-primary btn-sm w-full">
-                                    <i data-lucide="send" class="w-4 h-4 inline-block"></i>
-                                    Send
-                                </button>
-                            </div>
-
-                        </div>
-                    </form>
-                </div>
-            @else
-                <div class="mt-1 text-center text-sm text-gray-500 rounded-lg p-4 shadow-md bg-base-100">
-                    <i data-lucide="message-circle-more" class="w-4 h-4 inline-block mr-1"></i>
-                    <a href="/login" class="link link-primary">Log in</a> to post a comment.
-                </div>
-            @endauth
-
-            {{-- Comments display --}}
-            <div class="mt-6 space-y-4" id="comments-container"
-                 data-load-more-url="{{ route('bleeps.comments.loadmore', $bleep->id) }}"
-                 data-next-page="{{ $comments->currentPage() + 1 }}"
-                 data-has-more="{{ $comments->hasMorePages() ? '1' : '0' }}">
-                @php
-                    $groups = $comments->getCollection()->groupBy(function($c) {
-                        $tz = $c->user?->timezone ?? config('app.timezone', 'UTC');
-                        return $c->created_at->copy()->setTimezone($tz)->format('Y-m-d') . '|' . $tz;
-                    });
-                @endphp
-
-                @forelse($groups as $key => $group)
-                    @php
-                        [$date, $tz] = explode('|', $key);
-                        $dt = \Carbon\Carbon::createFromFormat('Y-m-d', $date, $tz);
-                        $showYear = $dt->year !== now()->year;
-                        $label = $dt->format('F j') . ($showYear ? ', ' . $dt->year : '');
-                    @endphp
-                    <div class="text-sm text-base-content/60 font-medium mt-4 mb-2 comment-date-header" data-date="{{ $date }}">
-                        {{ $label }}
-                    </div>
-                    @foreach($group as $comment)
-                        <x-subcomponents.comments.commentcard :comment="$comment" :bleep="$bleep" />
-                    @endforeach
-                @empty
-                    <div class="flex flex-col items-center justify-center py-10 text-base-content/60">
-                        <i data-lucide="message-circle-off" class="w-8 h-8 mb-3"></i>
-                        <p class="text-sm font-semibold">No comments yet</p>
-                        <p class="text-xs">Be the first to share your thoughts.</p>
-                    </div>
-                @endforelse
-            </div>
-
-            @if($comments->hasMorePages())
-                <div id="comments-sentinel" class="h-8"></div>
-            @endif
-        </div>
+        <x-subcomponents.comments.layout :bleepid="$bleep->id" :layoutmode="'post'" />
     </div>
 
-    {{-- Report Comment Modal --}}
+    {{-- Report Bleep Modal --}}
     <x-modals.posts.report />
-
-    {{-- Edit Comment Modal --}}
-    <x-modals.comments.edit />
 
     {{-- Edit Bleep Modal --}}
     <x-modals.posts.edit />
 
-    {{-- share modal --}}
+    {{-- Share Bleep Modal --}}
     <x-modals.posts.share />
 
-    {{-- Media Modal --}}
+    {{-- Media Bleep Modal --}}
     <x-subcomponents.bleeps.mediamodal />
 </x-layout>

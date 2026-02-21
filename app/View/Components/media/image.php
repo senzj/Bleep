@@ -1,12 +1,12 @@
 <?php
 
-namespace App\View\Components\Modals\Comments;
+namespace App\View\Components\media;
 
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
-class Edit extends Component
+class image extends Component
 {
     /**
      * Create a new component instance.
@@ -21,6 +21,6 @@ class Edit extends Component
      */
     public function render(): View|Closure|string
     {
-        return view('components.modals.comments.edit');
+        return view('components.media.image');
     }
 }

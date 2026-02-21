@@ -1,12 +1,12 @@
 <?php
 
-namespace App\View\Components\Subcomponents\Comments;
+namespace App\View\Components\media;
 
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
-class CommentCard extends Component
+class audio extends Component
 {
     /**
      * Create a new component instance.
@@ -21,6 +21,6 @@ class CommentCard extends Component
      */
     public function render(): View|Closure|string
     {
-        return view('components.subcomponents.comments.commentcard');
+        return view('components.media.audio');
     }
 }
