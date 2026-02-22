@@ -10,4 +10,5 @@ export {
     Volume2,
     Volume1,
     VolumeX,
+    Download,
 } from 'lucide-vue-next';

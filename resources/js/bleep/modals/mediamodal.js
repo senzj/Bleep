@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTranslateY = 0;
 
     const MIN_ZOOM = 0.5;
-    const MAX_ZOOM = 4;
+    const MAX_ZOOM = 8;
     const ZOOM_STEP = 0.25;
 
     // Open modal when clicking on media

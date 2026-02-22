@@ -35,6 +35,9 @@ const props = defineProps({
     },
 });
 
+// config variables
+const depthMax = 5; // Max depth for nested replies
+
 const emit = defineEmits(['reply', 'edit', 'delete', 'like']);
 
 const isAnonEnabled = computed(() => {
@@ -172,7 +175,7 @@ const toggleReplies = async () => {
     showReplies.value = !showReplies.value;
 
     // Only fetch if showing replies, haven't loaded yet, and within depth limit
-    if (showReplies.value && replies.value.length === 0 && props.depth < 3) {
+    if (showReplies.value && replies.value.length === 0 && depthMax) {
         await loadReplies();
     }
 };
@@ -507,8 +510,7 @@ const handleLoadMoreReplies = () => {
 </script>
 
 <template>
-    <div
-        class="comment-card rounded-lg shadow-sm transition-all"
+    <div class="comment-card rounded-lg shadow-sm transition-all"
         :class="[
             showReplyForm ? 'border-2 border-primary' : `border ${borderClass}`,
             componentClass,
@@ -803,7 +805,7 @@ const handleLoadMoreReplies = () => {
 
                 <!-- Reply -->
                 <button
-                    v-if="props.depth < 3"
+                    v-if="props.depth < depthMax"
                     class="comment-reply-btn cursor-pointer flex items-center justify-center gap-1 px-2 py-1 text-xs rounded-md text-base-content/50 hover:text-primary hover:bg-primary/15 transition-colors"
                     @click="handleReply"
                 >
@@ -816,7 +818,7 @@ const handleLoadMoreReplies = () => {
 
                 <!-- Toggle Replies -->
                 <button
-                    v-if="comment.replies_count > 0 && props.depth < 3 || viewMoreReplies"
+                    v-if="comment.replies_count > 0 && props.depth < depthMax || viewMoreReplies"
                     class="comment-toggle-replies cursor-pointer flex items-center justify-center gap-1 px-2 py-1 text-xs rounded-md text-primary hover:bg-primary/15 transition-colors"
                     @click="toggleReplies"
                 >
@@ -835,7 +837,7 @@ const handleLoadMoreReplies = () => {
             </div>
 
             <!-- Replies Section — outside the actions grid -->
-            <div v-if="comment.replies_count > 0 && props.depth < 3 && showReplies" class="mt-2 ml-4 border-l-2 border-base-300 pl-3 space-y-3">
+            <div v-if="comment.replies_count > 0 && props.depth < depthMax && showReplies" class="mt-2 border-l-2 border-gray-300 space-y-3">
 
                 <div v-if="isLoadingReplies" class="flex justify-center py-3">
                     <span class="loading loading-spinner loading-sm"></span>
@@ -858,7 +860,7 @@ const handleLoadMoreReplies = () => {
 
                 <button
                     v-if="hasMoreReplies && !isLoadingReplies"
-                    class="text-xs text-primary hover:underline w-full text-center py-2"
+                    class="cursor-pointer text-xs text-primary hover:underline w-full text-center py-2"
                     @click="handleLoadMoreReplies"
                 >
                     Load more replies
@@ -868,7 +870,7 @@ const handleLoadMoreReplies = () => {
         </div>
 
         <!-- Inline Reply Form -->
-        <div v-if="showReplyForm && props.depth < 3" :class="isReply ? 'mt-3 pt-3 space-y-2 border-t border-base-300/50' : 'mt-4 pt-4 space-y-3 border-t border-base-300'">
+        <div v-if="showReplyForm && props.depth < depthMax" :class="isReply ? 'mt-3 pt-3 space-y-2 border-t border-base-300/50' : 'mt-4 pt-4 space-y-3 border-t border-base-300'">
             <!-- Reply Media Preview -->
             <div v-if="replyMediaPreview?.url" class="relative inline-flex max-w-xs rounded-lg overflow-hidden bg-base-300 shadow">
                 <img

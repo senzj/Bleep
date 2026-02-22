@@ -40,8 +40,6 @@ const props = defineProps({
 
 });
 
-console.log('ModalLayout props:', props);
-
 const emit = defineEmits(['close']);
 
 const isAnonEnabled = computed(() => {
@@ -135,7 +133,8 @@ const handleViewEdit = (comment) => {
 };
 
 const closeModal = () => {
-    window.dispatchEvent(new CustomEvent('close-comments'));
+    // Tell Alpine to close (it will animate then dispatch close-comments itself)
+    window.dispatchEvent(new CustomEvent('request-close-comments'));
     emit('close');
 };
 

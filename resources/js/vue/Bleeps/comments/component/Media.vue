@@ -76,12 +76,13 @@ watch(() => props.path, () => {
             <!-- No controls, just a thumbnail with play icon overlay -->
             <div v-else class="relative">
                 <video
+                    data-no-autoplay
                     :class="isReply ? 'max-h-40' : ''"
                     class="max-w-full h-50 object-cover pointer-events-none"
+                    preload="metadata"
                 >
                     <source :src="mediaUrl" />
                 </video>
-
                 <div class="absolute inset-0 flex items-center justify-center bg-black/10">
                     <div class="w-8 h-8 rounded-full bg-base-100/70 flex items-center justify-center">
                         <LucideIcons name="play" size="18" class="text-gray-800" />

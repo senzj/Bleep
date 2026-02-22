@@ -21,97 +21,134 @@ function getStoredVolume() {
 function setStoredVolume(vol) {
     try {
         localStorage.setItem(VOLUME_STORAGE_KEY, String(vol));
-    } catch {
-        /* no-op */
-    }
+    } catch { /* no-op */ }
 }
 
 function initAudioPlayers(container = document) {
-    // If container is an event object (from addEventListener), use document instead
-    if (container instanceof Event) {
-        container = document;
-    }
-
-    // Ensure container has querySelectorAll method
+    if (container instanceof Event) container = document;
     if (!container || typeof container.querySelectorAll !== 'function') {
-        console.warn('Invalid container passed to initAudioPlayers, using document');
         container = document;
     }
 
-    // console.log('initAudioPlayers called, container:', container);
-
-    // Find all audio player wrappers in the specified container
     const wrappers = container.querySelectorAll('[data-bleep-media][data-audio-player]');
 
-    // console.log('Found audio wrappers:', wrappers.length);
-
-    wrappers.forEach((wrapper, index) => {
-        // console.log(`Processing wrapper ${index + 1}/${wrappers.length}`);
-
-        // Skip if already initialized
-        if (wrapper.dataset.playerReady === 'true') {
-            // console.log(`Wrapper ${index + 1} already initialized, skipping`);
-            return;
-        }
+    wrappers.forEach((wrapper) => {
+        if (wrapper.dataset.playerReady === 'true') return;
         wrapper.dataset.playerReady = 'true';
 
         const audioEl = wrapper.querySelector('audio.audio-element');
-        if (!audioEl) {
-            console.warn(`No audio element found in wrapper ${index + 1}`);
-            return;
-        }
+        if (!audioEl) return;
 
         const audioId = audioEl.id;
-        // console.log(`Initializing audio player: ${audioId}`);
 
-        const btnPlay = wrapper.querySelector(`.audio-play-btn[data-audio-id="${audioId}"]`);
-        const progressTrack = wrapper.querySelector('[data-audio-progress-track]') ?? wrapper.querySelector('.relative.cursor-pointer');
-        const progressBar = wrapper.querySelector('.audio-progress');
-        const bufferedBar = wrapper.querySelector('.audio-buffered');
-        const hoverBar = wrapper.querySelector('.audio-hover-progress');
-        const timeCurrent = wrapper.querySelector(`.audio-current-time[data-audio-id="${audioId}"]`);
-        const timeTotal = wrapper.querySelector(`.audio-total-time[data-audio-id="${audioId}"]`);
-        const volumeSlider = wrapper.querySelector(`.audio-volume-slider[data-audio-id="${audioId}"]`);
-        const volumeBtn = wrapper.querySelector(`.audio-volume-btn[data-audio-id="${audioId}"]`);
-        const speedBtn = wrapper.querySelector(`.audio-speed-btn[data-audio-id="${audioId}"]`);
-        const speedOptions = wrapper.querySelectorAll('.audio-speed-option');
-        const speedLabel = wrapper.querySelector('.audio-speed-label');
+        const btnPlay       = wrapper.querySelector(`.audio-play-btn[data-audio-id="${audioId}"]`);
+        const progressTrack = wrapper.querySelector('[data-audio-progress-track]');
+        const progressBar   = wrapper.querySelector('.audio-progress');
+        const bufferedBar   = wrapper.querySelector('.audio-buffered');
+        const timeCurrent   = wrapper.querySelector(`.audio-current-time[data-audio-id="${audioId}"]`);
+        const timeTotal     = wrapper.querySelector(`.audio-total-time[data-audio-id="${audioId}"]`);
+        const speedLabel    = wrapper.querySelector('.audio-speed-label');
+        const speedOptions  = wrapper.querySelectorAll('.audio-speed-option');
+        const speedBtn      = wrapper.querySelector(`.audio-speed-btn[data-audio-id="${audioId}"]`);
 
-        // Check for required elements
-        if (!btnPlay || !progressTrack || !progressBar) {
-            console.warn('Missing required audio controls for:', audioId, {
-                btnPlay: !!btnPlay,
-                progressTrack: !!progressTrack,
-                progressBar: !!progressBar
-            });
-            return;
-        }
+        // Volume elements — may be a range input or a button (Blade uses Alpine popup, Vue uses its own)
+        const volumeSlider  = wrapper.querySelector(`.audio-volume-slider[data-audio-id="${audioId}"]`);
 
-        const playIcon = btnPlay.querySelector('.play-icon');
-        const pauseIcon = btnPlay.querySelector('.pause-icon');
+        if (!btnPlay || !progressTrack || !progressBar) return;
+
+        const playIcon    = btnPlay.querySelector('.play-icon');
+        const pauseIcon   = btnPlay.querySelector('.pause-icon');
         const loadingIcon = btnPlay.querySelector('.loading-icon');
+        if (!playIcon || !pauseIcon || !loadingIcon) return;
 
-        if (!playIcon || !pauseIcon || !loadingIcon) {
-            console.warn('Missing play/pause icons for:', audioId);
-            return;
-        }
-
+        // ── Volume ─────────────────────────────────────────────────────────────
         const storedVolume = getStoredVolume();
         audioEl.volume = storedVolume;
         let lastVolume = storedVolume || 1;
 
+        /** Sync any range slider inside this wrapper to the given 0-1 value */
+        function syncSliderUI(vol) {
+            wrapper.querySelectorAll('.audio-volume-slider').forEach(slider => {
+                slider.value = Math.round(vol * 100);
+            });
+        }
+
+        /**
+         * Derive the correct Lucide icon name from a 0–1 volume value.
+         * Rules: 0 → volume-x | 0.01–0.5 → volume-1 | >0.5 → volume-2
+         */
+        function volumeIconName(vol01) {
+            if (vol01 === 0)   return 'volume-x';
+            if (vol01 <= 0.5)  return 'volume-1';
+            return 'volume-2';
+        }
+
+        /**
+         * Sync all volume icons in this wrapper.
+         * - For Blade/Alpine: dispatches 'bleep:volume-icon' on the wrapper so Alpine x-on can react.
+         * - For Vue: Vue listens to the same event and updates its reactive ref.
+         * - Also directly sets data-lucide on any static <i data-lucide> elements and re-renders.
+         */
+        function syncVolumeIcon(vol01) {
+            const iconName = volumeIconName(vol01);
+
+            // Dispatch a custom event so Alpine (Blade) and Vue can react declaratively
+            wrapper.dispatchEvent(new CustomEvent('bleep:volume-icon', {
+                detail: { icon: iconName, volume: vol01, volumePct: Math.round(vol01 * 100) },
+                bubbles: false,
+            }));
+
+            // Also imperatively update any static data-lucide <i> elements
+            // (covers Blade when Alpine hasn't re-rendered yet)
+            wrapper.querySelectorAll('[data-audio-volume-icon]').forEach(el => {
+                el.setAttribute('data-lucide', iconName);
+            });
+            // Re-render via lucide if available
+            if (window.lucide?.createIcons) {
+                wrapper.querySelectorAll('[data-audio-volume-icon]').forEach(el => {
+                    window.lucide.createIcons({ el });
+                });
+            }
+        }
+
+        function applyVolume(vol01) {
+            audioEl.volume = vol01;
+            if (vol01 > 0) lastVolume = vol01;
+            setStoredVolume(vol01);
+            syncSliderUI(vol01);
+            syncVolumeIcon(vol01);
+        }
+
+        // Listen to native range slider input (works for both Blade and Vue)
+        wrapper.addEventListener('input', (e) => {
+            if (!e.target.matches('.audio-volume-slider')) return;
+            applyVolume(Number(e.target.value) / 100);
+        });
+
+        // Listen to the custom event dispatched by Alpine (Blade component).
+        // Alpine's $dispatch bubbles, so listening on wrapper catches it.
+        wrapper.addEventListener('audio-volume-change', (e) => {
+            applyVolume(Number(e.detail) / 100);
+        });
+
+        // Initialise slider values + icon
+        syncSliderUI(storedVolume);
+        syncVolumeIcon(storedVolume);
+
+        // ── Play state helpers ─────────────────────────────────────────────────
         function setPlayState(isPlaying) {
-            playIcon.style.display = isPlaying ? 'none' : '';
-            pauseIcon.style.display = isPlaying ? '' : 'none';
+            playIcon.style.display    = isPlaying ? 'none' : '';
+            pauseIcon.style.display   = isPlaying ? '' : 'none';
             loadingIcon.style.display = 'none';
         }
 
         function setLoadingState() {
-            playIcon.style.display = 'none';
-            pauseIcon.style.display = 'none';
+            playIcon.style.display    = 'none';
+            pauseIcon.style.display   = 'none';
             loadingIcon.style.display = '';
         }
 
+        // ── Progress ───────────────────────────────────────────────────────────
         function updateProgressUI() {
             if (!progressBar || !timeCurrent) return;
             const pct = (audioEl.currentTime / audioEl.duration) * 100;
@@ -122,24 +159,7 @@ function initAudioPlayers(container = document) {
         function updateBufferedUI() {
             if (!bufferedBar || !audioEl.duration || audioEl.buffered.length === 0) return;
             const bufferedEnd = audioEl.buffered.end(audioEl.buffered.length - 1);
-            const pct = (bufferedEnd / audioEl.duration) * 100;
-            bufferedBar.style.width = `${Math.min(pct, 100)}%`;
-        }
-
-        function updateVolumeUI(vol) {
-            if (!volumeBtn) return;
-
-            const volumeHigh = volumeBtn.querySelector('.volume-high-icon');
-            const volumeLow = volumeBtn.querySelector('.volume-low-icon');
-            const volumeMute = volumeBtn.querySelector('.volume-mute-icon');
-
-            if (volumeHigh) volumeHigh.style.display = vol > 0.5 ? '' : 'none';
-            if (volumeLow) volumeLow.style.display = vol > 0 && vol <= 0.5 ? '' : 'none';
-            if (volumeMute) volumeMute.style.display = vol === 0 ? '' : 'none';
-
-            if (volumeSlider) {
-                volumeSlider.value = Math.round(vol * 100);
-            }
+            bufferedBar.style.width = `${Math.min((bufferedEnd / audioEl.duration) * 100, 100)}%`;
         }
 
         function canSeek() {
@@ -149,8 +169,7 @@ function initAudioPlayers(container = document) {
         function seekToClientX(clientX) {
             if (!canSeek()) return;
             const rect = progressTrack.getBoundingClientRect();
-            const width = rect.width || 1;
-            const pct = Math.min(Math.max((clientX - rect.left) / width, 0), 1);
+            const pct  = Math.min(Math.max((clientX - rect.left) / (rect.width || 1), 0), 1);
             audioEl.currentTime = pct * audioEl.duration;
             updateProgressUI();
         }
@@ -177,12 +196,8 @@ function initAudioPlayers(container = document) {
             progressTrack.addEventListener(evt, (e) => {
                 if (!isScrubbing) return;
                 isScrubbing = false;
-                try {
-                    progressTrack.releasePointerCapture(e.pointerId);
-                } catch {}
-                if (wasPlayingBeforeScrub) {
-                    audioEl.play().catch(() => setPlayState(false));
-                }
+                try { progressTrack.releasePointerCapture(e.pointerId); } catch {}
+                if (wasPlayingBeforeScrub) audioEl.play().catch(() => setPlayState(false));
             });
         });
 
@@ -193,8 +208,8 @@ function initAudioPlayers(container = document) {
 
         audioEl.addEventListener('seeked', updateProgressUI);
 
+        // ── Play / Pause ───────────────────────────────────────────────────────
         btnPlay.addEventListener('click', () => {
-            // Lazy load audio src if not yet loaded
             if (!audioEl.src && audioEl.dataset.src) {
                 setLoadingState();
                 audioEl.src = audioEl.dataset.src;
@@ -203,14 +218,8 @@ function initAudioPlayers(container = document) {
             }
 
             if (audioEl.paused) {
-                // Pause other audio players
-                if (activeAudio && activeAudio !== audioEl) {
-                    activeAudio.pause();
-                }
-                // Pause all videos when audio plays
-                if (window.pauseAllVideos) {
-                    window.pauseAllVideos();
-                }
+                if (activeAudio && activeAudio !== audioEl) activeAudio.pause();
+                if (window.pauseAllVideos) window.pauseAllVideos();
                 audioEl.play().catch(() => setPlayState(false));
                 activeAudio = audioEl;
             } else {
@@ -218,26 +227,22 @@ function initAudioPlayers(container = document) {
             }
         });
 
-        audioEl.addEventListener('play', () => setPlayState(true));
-        audioEl.addEventListener('pause', () => {
+        audioEl.addEventListener('play',    () => setPlayState(true));
+        audioEl.addEventListener('pause',   () => {
             if (activeAudio === audioEl && audioEl.paused) activeAudio = null;
             setPlayState(false);
         });
         audioEl.addEventListener('waiting', setLoadingState);
         audioEl.addEventListener('canplay', () => {
-            if (timeTotal) {
-                timeTotal.textContent = formatTime(audioEl.duration);
-            }
+            if (timeTotal) timeTotal.textContent = formatTime(audioEl.duration);
             if (!audioEl.paused) setPlayState(true);
         });
         audioEl.addEventListener('loadedmetadata', () => {
-            if (timeTotal) {
-                timeTotal.textContent = formatTime(audioEl.duration);
-            }
+            if (timeTotal) timeTotal.textContent = formatTime(audioEl.duration);
             updateProgressUI();
         });
         audioEl.addEventListener('timeupdate', updateProgressUI);
-        audioEl.addEventListener('progress', updateBufferedUI);
+        audioEl.addEventListener('progress',   updateBufferedUI);
         audioEl.addEventListener('ended', () => {
             audioEl.currentTime = 0;
             updateProgressUI();
@@ -245,93 +250,40 @@ function initAudioPlayers(container = document) {
             if (activeAudio === audioEl) activeAudio = null;
         });
 
-        if (volumeSlider) {
-            volumeSlider.addEventListener('input', (e) => {
-                const vol = e.target.value / 100;
-                audioEl.volume = vol;
-                if (vol > 0) lastVolume = vol;
-                updateVolumeUI(vol);
-                setStoredVolume(audioEl.volume);
+        // ── Speed ──────────────────────────────────────────────────────────────
+        speedOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const rate = parseFloat(option.dataset.speed ?? '1');
+                audioEl.playbackRate = rate;
+                if (speedLabel) speedLabel.textContent = `${rate}x`;
+                speedOptions.forEach(btn => btn.classList.remove('active', 'bg-primary/20', 'font-semibold'));
+                option.classList.add('active', 'bg-primary/20', 'font-semibold');
             });
-        }
-
-        if (volumeBtn) {
-            volumeBtn.addEventListener('click', () => {
-                if (audioEl.volume === 0) {
-                    audioEl.volume = lastVolume || 1;
-                } else {
-                    lastVolume = audioEl.volume;
-                    audioEl.volume = 0;
-                }
-                updateVolumeUI(audioEl.volume);
-                setStoredVolume(audioEl.volume);
-            });
-        }
-
-        if (speedOptions.length > 0) {
-            speedOptions.forEach(option => {
-                option.addEventListener('click', () => {
-                    const rate = parseFloat(option.dataset.speed ?? '1');
-                    audioEl.playbackRate = rate;
-                    if (speedLabel) speedLabel.textContent = `${rate}x`;
-                    speedOptions.forEach(btn => {
-                        btn.classList.remove('active', 'bg-primary/20');
-                    });
-                    option.classList.add('active', 'bg-primary/20');
-                });
-            });
-        }
+        });
 
         if (speedBtn) {
             speedBtn.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && speedOptions.length) {
-                    const next = [...speedOptions].find(btn => btn.classList.contains('active')) || speedOptions[0];
-                    if (next) next.click();
+                    const active = [...speedOptions].find(b => b.classList.contains('active')) || speedOptions[0];
+                    if (active) active.click();
                 }
             });
         }
 
-        // Initialize UI
-        updateVolumeUI(audioEl.volume);
+        // ── Init UI ────────────────────────────────────────────────────────────
         if (timeCurrent) timeCurrent.textContent = '0:00';
-        if (timeTotal) timeTotal.textContent = audioEl.duration ? formatTime(audioEl.duration) : '0:00';
-
-        // Force load metadata if not ready
-        if (audioEl.readyState < 1) {
-            audioEl.load();
-        }
-
-        // console.log('Audio player initialized successfully:', audioId);
+        if (timeTotal)   timeTotal.textContent   = audioEl.duration ? formatTime(audioEl.duration) : '0:00';
+        if (audioEl.readyState < 1) audioEl.load();
     });
 }
 
-/**
- * Pause all audio players
- */
 function pauseAllAudio() {
-    if (activeAudio && !activeAudio.paused) {
-        activeAudio.pause();
-    }
-    // Also pause any audio that might not be tracked
-    document.querySelectorAll('audio').forEach((audio) => {
-        if (!audio.paused) {
-            audio.pause();
-        }
-    });
+    if (activeAudio && !activeAudio.paused) activeAudio.pause();
+    document.querySelectorAll('audio').forEach(a => { if (!a.paused) a.pause(); });
 }
 
-// Make globally accessible
 window.initAudioPlayers = initAudioPlayers;
-window.pauseAllAudio = pauseAllAudio;
+window.pauseAllAudio    = pauseAllAudio;
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
-    // console.log('DOMContentLoaded - initializing audio players');
-    initAudioPlayers();
-});
-
-// Reinitialize when new content is loaded
-document.addEventListener('bleeps:media:hydrated', () => {
-    // console.log('bleeps:media:hydrated - reinitializing audio players');
-    setTimeout(() => initAudioPlayers(), 100);
-});
+document.addEventListener('DOMContentLoaded', () => initAudioPlayers());
+document.addEventListener('bleeps:media:hydrated', () => setTimeout(() => initAudioPlayers(), 100));

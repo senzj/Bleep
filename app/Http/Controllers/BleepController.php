@@ -76,7 +76,6 @@ class BleepController extends Controller
      */
     public function store(Request $request)
     {
-        Log::info("Request", $request->all());
 
         $validated = $request->validate([
             'message' => 'string|max:255|required_without:media',

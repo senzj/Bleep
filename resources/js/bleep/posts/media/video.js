@@ -65,22 +65,26 @@ function createVideoObserver() {
         entries.forEach(entry => {
             const video = entry.target;
 
+            // Skip comment videos entirely
+            if (video.hasAttribute('data-no-autoplay')) {
+                return;
+            }
+
             if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-                // Video is at least 50% visible - try to autoplay
                 if (!isVideoSourceLoaded(video)) {
                     loadVideoSource(video);
                 }
 
-                // Wait for metadata to be ready before playing
                 if (video.readyState >= 1) {
                     tryAutoplay(video);
                 } else {
-                    video.addEventListener('loadedmetadata', () => {
-                        tryAutoplay(video);
-                    }, { once: true });
+                    video.addEventListener(
+                        'loadedmetadata',
+                        () => tryAutoplay(video),
+                        { once: true }
+                    );
                 }
             } else if (!entry.isIntersecting) {
-                // Video is not visible - pause it
                 if (!video.paused) {
                     video.pause();
                 }
@@ -99,15 +103,19 @@ function createVideoObserver() {
  */
 function tryAutoplay(video) {
     if (!AUTOPLAY_ENABLED) return;
+
+    // Double safety
+    if (video.hasAttribute('data-no-autoplay')) return;
+
     if (video.paused) {
-        // Ensure video is muted for autoplay (browser policy)
         video.muted = true;
         pauseAllVideosExcept(video);
         if (window.pauseAllAudio) {
             window.pauseAllAudio();
         }
+
         video.play().catch(() => {
-            // Autoplay failed - user will need to click play
+            // Autoplay blocked — expected
         });
     }
 }
@@ -185,7 +193,14 @@ function initVideoPlayers(container = document) {
 function pauseAllVideosExcept(currentVideo) {
     document.querySelectorAll('video').forEach((video) => {
         if (video !== currentVideo && !video.paused) {
+            // Double safety to prevent autoplay logic from affecting comment videos
             video.pause();
+        } else if (!video.hasAttribute('data-no-autoplay')) {
+            // Observe non-comment videos for autoplay
+            videoObserver.observe(video);
+        } else {
+            // Unobserve comment videos to prevent autoplay logic from affecting them
+            videoObserver.unobserve(video);
         }
     });
 }
@@ -204,9 +219,18 @@ function pauseAllVideos(container = document) {
 
     container.querySelectorAll('video').forEach((video) => {
         if (!video.paused) {
+            // Double safety to prevent autoplay logic from affecting comment videos
             video.pause();
+        } else if (!video.hasAttribute('data-no-autoplay')) {
+            // Observe non-comment videos for autoplay
+            videoObserver.observe(video);
+        } else {
+            // Unobserve comment videos to prevent autoplay logic from affecting them
+            videoObserver.unobserve(video);
         }
     });
+
+
 }
 
 // Make globally accessible
