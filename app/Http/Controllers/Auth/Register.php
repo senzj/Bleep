@@ -65,6 +65,9 @@ class Register extends Controller
             'timezone' => $validated['timezone'] ?? 'UTC',
         ]);
 
+        // create user preferences with defaults
+        $user->preferences()->create([]);
+
         // Handle profile picture upload
         if ($request->hasFile('profile_picture') && $request->file('profile_picture')->isValid()) {
             $user->update([

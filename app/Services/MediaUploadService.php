@@ -27,7 +27,7 @@ class MediaUploadService
         $filename = time() . '_' . Str::random(8) . '.' . $file->extension();
 
         // Store in: profile/{user_id}/{filename}
-        return $file->storeAs("profile/{$userId}", $filename, 'public');
+        return $file->storeAs("user/{$userId}", $filename, 'public');
     }
 
     /**

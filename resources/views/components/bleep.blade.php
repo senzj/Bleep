@@ -129,6 +129,13 @@
                                             <i data-lucide="badge-check" class="w-4 h-4 text-blue-500"></i>
                                         @endif
 
+                                        {{-- Gray "YOU" tag — only visible to the actual author of the anonymous bleep --}}
+                                        @if (Auth::check() && $bleep->user_id === Auth::id() && !Route::is('post'))
+                                            <span class="px-1.5 py-0.5 text-[8px] font-extrabold rounded bg-base-content/10 text-base-content/40 border border-base-content/20">
+                                                YOU
+                                            </span>
+                                        @endif
+
                                         {{-- Role Tag moved beside name using only spacing --}}
                                         @if (! $isAnonymous && $bleep->user && $bleep->user->role === 'moderator')
                                             <span class="px-1 py-0.5 text-xs font-extrabold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-600/20">

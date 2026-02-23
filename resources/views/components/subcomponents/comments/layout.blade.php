@@ -45,11 +45,12 @@
 
     // Build bleep data for Vue
     $bleepData = $blp ? [
-        'id' => $blp->id,
-        'user' => [
-            'id' => $blp->user?->id,
+        'id'   => $blp->id,
+        'is_anonymous' => (bool) $blp->is_anonymous,
+        'user' => $blp->is_anonymous ? null : [
+            'id'       => $blp->user?->id,
             'username' => $blp->user?->username,
-        ]
+        ],
     ] : [];
 
 @endphp

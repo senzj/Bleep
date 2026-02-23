@@ -60,7 +60,7 @@ const mountCommentLayout = (containerId) => {
         console.warn('Failed to parse auth user data:', error);
     }
 
-    // If no bleep data but we have bleepId, create minimal bleep object
+    // If no bleep data but we have a bleep ID or anonymous mode is enabled, create a fallback bleep object
     if ((!bleep || !bleep.id) && bleepIdAttr) {
         bleep = { id: bleepIdAttr, user: { id: null, username: null } };
     }

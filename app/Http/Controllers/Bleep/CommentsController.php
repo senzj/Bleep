@@ -277,6 +277,7 @@ class CommentsController extends Controller
             'likes_count' => $comment->likes()->count(),
             'liked' => Auth::check() ? $comment->likes()->where('user_id', Auth::id())->exists() : false,
             'replies_count' => $comment->replies()->count(),
+            'isOP' => Auth::check() && $comment->user_id === $bleep->user_id,
             'user' => [
                 'id' => $comment->is_anonymous ? null : optional($user)->id,
                 'username' => $comment->is_anonymous ? null : optional($user)->username,

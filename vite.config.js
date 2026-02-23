@@ -35,6 +35,7 @@ export default defineConfig({
                 'resources/js/bleep/posts/nsfw.js',
                 'resources/js/bleep/posts/post.js',
                 'resources/js/bleep/posts/repost.js',
+                'resources/js/bleep/posts/send_notif.js',
                 'resources/js/bleep/posts/share.js',
                 'resources/js/bleep/users/follow.js',
                 'resources/js/bleep/users/profile-lazyload.js',

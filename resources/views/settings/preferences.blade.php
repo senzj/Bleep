@@ -15,6 +15,7 @@
                 <h3 class="text-xl font-semibold text-base-content mb-4">Appearance</h3>
                 <p class="text-base-content/70 mb-4">Customize the look and feel of the app to your liking.</p>
 
+                {{-- Theme Selection --}}
                 <div class="bg-base-200 rounded-lg inline-flex items-center gap-3 p-4">
                     <div class="text-md font-medium text-base-content">Select Theme:</div>
                     <div class="dropdown dropdown-start border border-base-200 shadow-lg rounded-md">
@@ -25,6 +26,22 @@
                         </button>
                         <ul tabindex="0" class="theme-menu dropdown-content z-1 shadow-lg bg-base-100 rounded-md w-52 border border-base-200 p-2 space-y-1 mt-2 max-h-72 overflow-y-auto" data-theme-menu="auto"></ul>
                     </div>
+                </div>
+
+                {{-- Layout Selection --}}
+                <div class="form-control flex flex-col justify-center border border-base-200 p-3 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="label-text">Navigation Layout</span>
+                        <select id="nav-layout-select" class="select select-bordered select-sm" data-pref="nav_layout">
+                            <option value="horizontal" {{ $preferences->nav_layout === 'horizontal' ? 'selected' : '' }}>
+                                Horizontal (Top bar)
+                            </option>
+                            <option value="vertical" {{ $preferences->nav_layout === 'vertical' ? 'selected' : '' }}>
+                                Vertical (Sidebar)
+                            </option>
+                        </select>
+                    </div>
+                    <p class="text-sm text-base-content/70">Choose between a horizontal top navbar or vertical sidebar navigation. Changes take effect after page reload.</p>
                 </div>
             </div>
 
@@ -122,34 +139,43 @@
 
             {{-- System Preferences --}}
             <div class="">
-                <h3 class="text-xl font-semibold text-base-content mt-6">System Preferences</h3>
-                <p class="text-base-content/70 mb-4">Configure system-related preferences.</p>
+                <h3 class="text-xl font-semibold text-base-content mt-6">Notifications</h3>
+                <p class="text-base-content/70 mb-4">Configure notification settings for your account.</p>
 
                 <div class="bg-base-200 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {{-- Navigation Layout Selection --}}
+                    {{-- Notification Recieve Sound --}}
                     <div class="form-control flex flex-col justify-center border border-base-200 p-3 rounded-lg">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="label-text">Navigation Layout</span>
-                            <select id="nav-layout-select" class="select select-bordered select-sm" data-pref="nav_layout">
-                                <option value="horizontal" {{ $preferences->nav_layout === 'horizontal' ? 'selected' : '' }}>
-                                    Horizontal (Top bar)
-                                </option>
-                                <option value="vertical" {{ $preferences->nav_layout === 'vertical' ? 'selected' : '' }}>
-                                    Vertical (Sidebar)
-                                </option>
+                            <span class="label-text">Recieve Notification Sound</span>
+                            <select class="select select-bordered select-sm pref-select" data-pref="recieve_notification_sound">
+                                <option value="off" {{ $preferences->recieve_notification_sound === 'off' ? 'selected' : '' }}>Off</option>
+                                <option value="default" {{ $preferences->recieve_notification_sound === 'default' ? 'selected' : '' }}>Default</option>
                             </select>
                         </div>
-                        <p class="text-sm text-base-content/70">Choose between a horizontal top navbar or vertical sidebar navigation. Changes take effect after page reload.</p>
+                        <p class="text-sm text-base-content/70">Choose the sound played for notifications.</p>
                     </div>
 
-                    {{-- Notifications --}}
+                    {{-- Notification Send Sound --}}
                     <div class="form-control flex flex-col justify-center border border-base-200 p-3 rounded-lg">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="label-text">Enable desktop notifications</span>
-                            <input type="checkbox" class="toggle toggle-primary pref-toggle" data-pref="desktop_notifications" {{ $preferences->desktop_notifications ? 'checked' : '' }}>
+                            <span class="label-text">Send Notification Sound</span>
+                            <select class="select select-bordered select-sm pref-select" data-pref="send_notification_sound">
+                                <option value="off" {{ $preferences->send_notification_sound === 'off' ? 'selected' : '' }}>Off</option>
+                                <option value="default" {{ $preferences->send_notification_sound === 'default' ? 'selected' : '' }}>Default</option>
+                            </select>
                         </div>
-                        <p class="text-sm text-base-content/70">Receive desktop notifications for new posts, messages, and interactions.</p>
+                        <p class="text-sm text-base-content/70">Choose the sound played when you post new content, comments, or send messages.</p>
                     </div>
+
+                    {{-- Upload Notification sound --}}
+                    <div class="form-control flex flex-col-2 justify-center border border-base-200 p-3 rounded-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="label-text">Upload Notification Sound</span>
+                            {{-- file upload --}}
+                        </div>
+                        <p class="text-sm text-base-content/70">Choose the sound played when you recieve or send.</p>
+                    </div>
+
                 </div>
             </div>
         </div>

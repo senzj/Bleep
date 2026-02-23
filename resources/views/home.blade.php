@@ -7,15 +7,16 @@
         'resources/js/bleep/posts/post.js',
         'resources/js/bleep/modals/posts/edit.js',
         'resources/js/bleep/posts/infinitescroll.js',
+        'resources/js/bleep/posts/send_notif.js',
         'resources/js/ui/mobile.js',
-        'resources/js/app.js'
+        'resources/js/app.js',
     ])
 @endpush
 
 @push('meta')
     <meta name="auth" content="{{ Auth::check() ? 'true' : 'false' }}" />
     <meta name="anonymity-enabled" content="{{ config('app.anonymity', true) ? 'true' : 'false' }}" />
-    @if (Auth::check())
+    @auth
         @php
             $userAvatar = '/images/avatar/default.jpg';
             $usr = Auth::user();
@@ -25,7 +26,18 @@
             }
         @endphp
         <meta name="user-avatar" content="{{ $userAvatar }}" />
-    @endif
+
+        {{-- Notifications --}}
+        @php $prefs = Auth::user()->preferences; @endphp
+        <meta name="enable-send" content="{{ ($prefs?->enable_send ?? true) ? 'true' : 'false' }}" />
+        <meta name="send-sound"  content="{{ $prefs?->send_sound ?? 'default' }}" />
+    @else
+
+        {{-- Notifications --}}
+        <meta name="enable-send"  content="true" />
+        <meta name="send-sound"   content="default" />
+    @endauth
+
 @endpush
 
 <x-layout>

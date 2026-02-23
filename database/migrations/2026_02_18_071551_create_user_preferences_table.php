@@ -28,8 +28,11 @@ return new class extends Migration
             $table->enum('default_feed_sort', ['newest', 'popular', 'following'])->default('newest');
             $table->integer('bleeps_per_page')->default(15);
 
+            // Notification and sound preferences
+            $table->string('recieve_notification_sound')->default('/sounds/effects/marimba-bloop-1.mp3');
+            $table->string('send_notification_sound')->default('/sounds/effects/bloop-1.mp3');
+
             // System preferences
-            $table->boolean('desktop_notifications')->default(false);
             $table->string('theme', 50)->default('system');
 
             // Privacy settings

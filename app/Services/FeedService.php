@@ -20,11 +20,10 @@ class FeedService
         $perPage = $perPage ?? ($preferences?->bleeps_per_page ?? 15);
         $page = $page ?? (int) $request->get('page', 1);
 
-        $baseQuery = $this->buildBaseQuery($preferences);
-        $tab = $this->normalizeTab($tab);
-
         $followedIds = $this->getFollowedIds($user);
-        $friendIds = $this->getFriendIds($user, $followedIds);
+        $friendIds   = $this->getFriendIds($user, $followedIds);
+
+        $tab = $this->normalizeTab($tab);
 
         $scopeIds = [];
         if ($tab === 'following') {
@@ -32,6 +31,10 @@ class FeedService
         } elseif ($tab === 'friends') {
             $scopeIds = $friendIds;
         }
+
+        // Pass followedIds so buildBaseQuery can whitelist them from the
+        // private-profile filter (only applied on the "for you" tab).
+        $baseQuery = $this->buildBaseQuery($preferences, $user, $followedIds, $tab);
 
         $this->applyScope($baseQuery, $scopeIds, $preferences);
 
@@ -42,9 +45,9 @@ class FeedService
 
         $sorted = $this->applyOrdering($bleeps, $preferences, $user, $followedIds, $page, $tab);
 
-        $total = $sorted->count();
+        $total  = $sorted->count();
         $offset = max(0, ($page - 1) * $perPage);
-        $items = $sorted->slice($offset, $perPage)->values();
+        $items  = $sorted->slice($offset, $perPage)->values();
 
         $this->attachFollowedReposts($items, $user?->id);
 
@@ -54,13 +57,25 @@ class FeedService
             $perPage,
             $page,
             [
-                'path' => $request->url(),
+                'path'  => $request->url(),
                 'query' => $request->query(),
             ]
         );
     }
 
-    protected function buildBaseQuery(?object $preferences)
+    /**
+     * Build the base Eloquent query shared by all tabs.
+     *
+     * Private-profile filtering is applied here at the DB level for the
+     * "for you" tab only — following/friends tabs already scope to people
+     * the user chose to follow, so the filter is not needed there.
+     *
+     * Rule: on "for you", hide bleeps from users whose preferences have
+     * private_profile = true, UNLESS:
+     *   (a) they are the authenticated user themselves, OR
+     *   (b) the authenticated user already follows them.
+     */
+    protected function buildBaseQuery(?object $preferences, ?User $user, array $followedIds, string $tab)
     {
         $query = Bleep::with(['user', 'media'])
             ->withCount(['likes']);
@@ -71,6 +86,42 @@ class FeedService
 
         if ($preferences && $preferences->show_anonymous_bleeps === false) {
             $query->where('is_anonymous', false);
+        }
+
+        // ── Private profile filter (for-you tab only) ─────────────────────────
+        // On following/friends tabs the scope already limits to followed/mutual
+        // users, so private accounts are implicitly handled there.
+        if ($tab === 'for-you') {
+            $query->where(function ($q) use ($user, $followedIds) {
+                // Always show the authenticated user's own bleeps
+                if ($user) {
+                    $q->where('user_id', $user->id);
+                }
+
+                // Show bleeps from users with public profiles
+                $q->orWhereDoesntHave('user.preferences', function ($pref) {
+                    $pref->where('private_profile', true);
+                });
+
+                // Show bleeps from private-profile users the auth user follows
+                if ($user && !empty($followedIds)) {
+                    // followedIds already includes $user->id, so slice it out
+                    // to avoid redundancy (not harmful but cleaner)
+                    $othersFollowed = array_filter(
+                        $followedIds,
+                        fn ($id) => $id !== $user->id
+                    );
+
+                    if (!empty($othersFollowed)) {
+                        $q->orWhere(function ($inner) use ($othersFollowed) {
+                            $inner->whereIn('user_id', $othersFollowed)
+                                  ->whereHas('user.preferences', function ($pref) {
+                                      $pref->where('private_profile', true);
+                                  });
+                        });
+                    }
+                }
+            });
         }
 
         return $query;
@@ -106,9 +157,9 @@ class FeedService
         }
 
         $timezone = $user?->timezone ?? 'UTC';
-        $today = now($timezone)->toDateString();
+        $today    = now($timezone)->toDateString();
 
-        $sortMode = $preferences?->default_feed_sort ?? 'newest';
+        $sortMode       = $preferences?->default_feed_sort ?? 'newest';
         $followedLookup = array_flip($followedIds);
 
         $buckets = $bleeps->groupBy(function ($bleep) use ($timezone) {
@@ -145,7 +196,7 @@ class FeedService
                 $sortedBucket = $bucket->sortByDesc('created_at')->values();
             }
 
-            $seed = ($user?->id ?? 'guest') . ':' . $day . ':' . $page . ':' . $tab;
+            $seed     = ($user?->id ?? 'guest') . ':' . $day . ':' . $page . ':' . $tab;
             $shuffled = $this->shuffleLightly($sortedBucket, $seed, 5);
 
             $ordered = $ordered->concat($shuffled);
@@ -183,7 +234,7 @@ class FeedService
     protected function normalizeTab(string $tab): string
     {
         $tab = strtolower(trim($tab));
-        if ($tab === 'bleep' || $tab === 'for-you' || $tab === 'foryou') {
+        if (in_array($tab, ['bleep', 'for-you', 'foryou'], true)) {
             return 'for-you';
         }
         if (in_array($tab, ['following', 'friends'], true)) {
@@ -216,8 +267,6 @@ class FeedService
             ->pluck('follower_id')
             ->toArray();
 
-        $friends = array_values(array_intersect($followedIds, $followerIds));
-
-        return array_values(array_unique($friends));
+        return array_values(array_unique(array_intersect($followedIds, $followerIds)));
     }
 }

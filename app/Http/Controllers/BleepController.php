@@ -252,11 +252,12 @@ class BleepController extends Controller
     public function show(Bleep $bleep)
     {
         return response()->json([
-            'id' => $bleep->id,
-            'user' => [
-                'id' => $bleep->user?->id,
+            'id'   => $bleep->id,
+            'is_anonymous' => (bool) $bleep->is_anonymous,
+            'user' => $bleep->is_anonymous ? null : [
+                'id'       => $bleep->user?->id,
                 'username' => $bleep->user?->username,
-            ]
+            ],
         ]);
     }
 
