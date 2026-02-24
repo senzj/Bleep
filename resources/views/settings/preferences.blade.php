@@ -338,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 <div class="bg-base-200 rounded-lg p-4 space-y-4">
 
-                    {{-- ── Receive Sound ──────────────────────────────────────────────── --}}
+                    {{-- Receive Sound --}}
                     <div class="form-control flex flex-col border border-base-200 p-3 rounded-lg bg-base-100">
                         <div class="flex items-center justify-between mb-2">
                             <span class="label-text font-medium">Receive Notification Sound</span>
@@ -380,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="text-sm text-base-content/70">Sound played when you receive a notification.</p>
                     </div>
 
-                    {{-- ── Send Sound ─────────────────────────────────────────────────── --}}
+                    {{-- Send Sound --}}
                     <div class="form-control flex flex-col border border-base-200 p-3 rounded-lg bg-base-100">
                         <div class="flex items-center justify-between mb-2">
                             <span class="label-text font-medium">Send Notification Sound</span>
@@ -421,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="text-sm text-base-content/70">Sound played when you post, comment, or reply.</p>
                     </div>
 
-                    {{-- ── Upload Custom Sound ─────────────────────────────────────────── --}}
+                    {{-- Upload Custom Sound --}}
                     <div class="form-control flex flex-col border border-base-200 p-3 rounded-lg bg-base-100">
 
                         <div class="flex items-center justify-between mb-3">

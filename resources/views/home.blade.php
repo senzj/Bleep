@@ -9,7 +9,6 @@
         'resources/js/bleep/posts/infinitescroll.js',
         'resources/js/bleep/posts/send_notif.js',
         'resources/js/ui/mobile.js',
-        'resources/js/app.js',
     ])
 @endpush
 
@@ -79,7 +78,6 @@
                                     id="bleep-media-input"
                                     type="file"
                                     name="media[]"
-                                    class="hidden"
                                     class="hidden"
                                     multiple
                                     accept="image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/mp3"

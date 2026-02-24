@@ -1,4 +1,4 @@
-// ── Toggle UI helpers (defined once, used below) ──────────────────────────────
+// Toggle UI helpers (defined once, used below)
 
 /**
  * Apply on/off classes + aria state to an icon button.
@@ -19,7 +19,7 @@ function setIconState(btn, checked, onClasses = ['bg-primary', 'text-white', 'sh
     }
 }
 
-// ── Anonymous toggle (legacy indicator + icon button) ─────────────────────────
+// Anonymous toggle (legacy indicator + icon button)
 const postToggle    = document.getElementById('post-anonymous-toggle');
 const postIndicator = document.getElementById('post-toggle-indicator');
 
@@ -44,7 +44,7 @@ if (postToggle && postIndicator) {
     updatePostToggleUI();
 }
 
-// ── NSFW toggle (legacy indicator + icon button) ──────────────────────────────
+// NSFW toggle (legacy indicator + icon button)
 const postNsfwToggle    = document.getElementById('post-nsfw-toggle');
 const postNsfwIndicator = document.getElementById('post-nsfw-toggle-indicator');
 const postNsfwIcon      = document.getElementById('post-nsfw-icon');
@@ -68,19 +68,19 @@ if (postNsfwToggle && postNsfwIndicator) {
     updateNsfwToggleUI();
 }
 
-// ── Main DOMContentLoaded block ───────────────────────────────────────────────
+// Main DOMContentLoaded block
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('bleep-form');
     if (!form) return;
 
     const submitBtn     = document.getElementById('post-submit-btn');
-    const mediaBtn      = document.getElementById('open-media-picker');
+    const openMediaBtn      = document.getElementById('open-media-picker');
     const progressWrap  = document.getElementById('upload-progress');
     const progressBar   = document.getElementById('upload-progress-bar');
     const progressPercent = document.getElementById('upload-progress-percent');
     const statusText    = document.getElementById('upload-status');
 
-    // ── Form submit ───────────────────────────────────────────────────────────
+    // Form submit
     form.addEventListener('submit', (e) => {
         const fileInputs = Array.from(form.querySelectorAll('input[type="file"]'));
         const hasFiles   = fileInputs.some(input => input.files && input.files.length > 0);
@@ -134,15 +134,15 @@ document.addEventListener('DOMContentLoaded', () => {
         xhr.send(formData);
     });
 
-    // ── Upload UI helpers ─────────────────────────────────────────────────────
+    // Upload UI helpers
     function startUploadUI() {
         form.dataset.uploading = '1';
         progressWrap.classList.remove('hidden');
         updateProgress(0, 'Starting upload...');
         submitBtn?.setAttribute('disabled', 'true');
-        mediaBtn?.setAttribute('disabled', 'true');
+        openMediaBtn?.setAttribute('disabled', 'true');
         form.querySelectorAll('input, textarea, select, button').forEach((el) => {
-            if (el !== submitBtn && el !== mediaBtn) el.setAttribute('disabled', 'true');
+            if (el !== submitBtn && el !== openMediaBtn) el.setAttribute('disabled', 'true');
         });
     }
 
@@ -156,13 +156,13 @@ document.addEventListener('DOMContentLoaded', () => {
         statusText.textContent  = 'Upload failed. Please try again.';
         form.dataset.uploading  = '0';
         submitBtn?.removeAttribute('disabled');
-        mediaBtn?.removeAttribute('disabled');
+        openMediaBtn?.removeAttribute('disabled');
         form.querySelectorAll('input, textarea, select, button').forEach((el) => {
             el.removeAttribute('disabled');
         });
     }
 
-    // ── Icon button toggle state (anonymous + NSFW) ───────────────────────────
+    // Icon button toggle state (anonymous + NSFW)
     const anonIconBtn  = document.getElementById('post-anonymous-icon');
     const anonCheckbox = document.getElementById('post-anonymous-toggle');
     const nsfwIconBtn  = document.getElementById('post-nsfw-icon');
@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ── Media picker ──────────────────────────────────────────────────────────
+    // Media picker
     const mediaPicker      = document.getElementById('bleep-media-input');
     const mediaPreviewGrid = document.getElementById('bleep-media-preview');
     const messageTextarea  = document.querySelector('#bleep-form textarea[name="message"]');
@@ -330,7 +330,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => updateMediaCount(selectedFiles.length, isAudio), 50);
     });
 
-    // Open media picker when the "Add media" button is clicked
-    const openMediaBtn = document.getElementById('open-media-picker');
-    openMediaBtn?.addEventListener('click', () => mediaPicker?.click());
+    // openMediaBtn?.addEventListener('click', () => {
+    //     if (mediaPicker?._opening) return;
+    //     mediaPicker._opening = true;
+    //     mediaPicker?.click();
+    //     setTimeout(() => { if (mediaPicker) mediaPicker._opening = false; }, 500);
+    // });
 });
