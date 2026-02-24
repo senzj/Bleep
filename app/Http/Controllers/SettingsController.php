@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\UserPreferencesController;
 use App\Models\Logs;
 use App\Models\RememberedDevice;
-
 use App\Services\MediaUploadService;
-
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class SettingsController extends Controller
 {
@@ -231,8 +230,10 @@ class SettingsController extends Controller
         $user = $request->user();
         $preferences = $user->getPreferences();
 
+
         return view('settings.preferences', [
             'preferences' => $preferences,
+            'systemSounds' => UserPreferencesController::scanSystemSounds(),
         ]);
     }
 }

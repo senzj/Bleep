@@ -1,31 +1,26 @@
 <?php
 
-use App\Http\Controllers\Auth\Login;
-use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\Auth\Logout;
-use Illuminate\Support\Facades\Route;
-
-use App\Http\Controllers\Auth\Register;
-
-use App\Http\Controllers\PostController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\BleepController;
-use App\Http\Controllers\SocialController;
-use App\Http\Controllers\ReportsController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\FollowingController;
-
-use App\Http\Controllers\Bleep\LikesController;
-use App\Http\Controllers\Bleep\ShareController;
-use App\Http\Controllers\Bleep\RepostController;
+use App\Http\Controllers\Api\Auth\ValidationController;
+use App\Http\Controllers\Auth\Login;
+use App\Http\Controllers\Auth\Logout;
+use App\Http\Controllers\Auth\Register;
 use App\Http\Controllers\Bleep\CommentsController;
 use App\Http\Controllers\Bleep\CommentsLikesController;
 use App\Http\Controllers\Bleep\CommentsRepliesController;
-
+use App\Http\Controllers\Bleep\LikesController;
+use App\Http\Controllers\Bleep\RepostController;
+use App\Http\Controllers\Bleep\ShareController;
+use App\Http\Controllers\BleepController;
+use App\Http\Controllers\FollowingController;
+use App\Http\Controllers\PostController;
+use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SocialController;
+use App\Http\Controllers\UserPreferencesController;
 use App\Http\Controllers\Users\ProfileController;
-
-// API
-use App\Http\Controllers\Api\Auth\ValidationController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 // php info test
 // Route::get('/phpinfo', function() {
@@ -171,12 +166,14 @@ Route::middleware('auth')->group((function () {
         ->name('settings.preferences');
 
     // User Preferences API routes
-    Route::get('/api/preferences', [\App\Http\Controllers\UserPreferencesController::class, 'index'])
+    Route::get('/api/preferences', [UserPreferencesController::class, 'index'])
         ->name('api.preferences.index');
-    Route::post('/api/preferences/update', [\App\Http\Controllers\UserPreferencesController::class, 'update'])
+    Route::post('/api/preferences/update', [UserPreferencesController::class, 'update'])
         ->name('api.preferences.update');
-    Route::post('/api/preferences/batch', [\App\Http\Controllers\UserPreferencesController::class, 'batchUpdate'])
+    Route::post('/api/preferences/batch', [UserPreferencesController::class, 'batchUpdate'])
         ->name('api.preferences.batch');
+    Route::post('/api/preferences/sounds/upload', [UserPreferencesController::class, 'uploadSound'])
+        ->name('api.preferences.sounds.upload');
 
     Route::get('/settings/password', [SettingsController::class, 'editPassword'])
         ->name('settings.password');

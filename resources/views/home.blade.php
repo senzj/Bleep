@@ -26,16 +26,6 @@
             }
         @endphp
         <meta name="user-avatar" content="{{ $userAvatar }}" />
-
-        {{-- Notifications --}}
-        @php $prefs = Auth::user()->preferences; @endphp
-        <meta name="enable-send" content="{{ ($prefs?->enable_send ?? true) ? 'true' : 'false' }}" />
-        <meta name="send-sound"  content="{{ $prefs?->send_sound ?? 'default' }}" />
-    @else
-
-        {{-- Notifications --}}
-        <meta name="enable-send"  content="true" />
-        <meta name="send-sound"   content="default" />
     @endauth
 
 @endpush

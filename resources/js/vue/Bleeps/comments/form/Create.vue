@@ -181,6 +181,7 @@ const handleSubmit = async () => {
     // CommentsController returns { success: true, comment: {...} }
     // CommentsRepliesController returns {...} directly
     const comment = data.comment || data;
+    window.playSendSound?.();
     emit('submitted', comment);
   } catch (error) {
     console.error('Error submitting comment:', error);

@@ -1,36 +1,22 @@
-/**
- * send-sound.js
- * Plays a "sent" sound when a post, comment, or reply is submitted.
- *
- * The DB column (send_sound / recieve_sound) stores either:
- *   - A public-relative path: '/sounds/effects/bleep.mp3'  ← new default
- *   - A legacy named shortcut: 'default' | 'messenger' | 'ping' | 'none'
- *
- * Meta tags read:
- *   <meta name="enable-send"  content="true|false" />
- *   <meta name="send-sound"   content="/sounds/effects/bleep.mp3" />
- */
-
-// ── Read user preferences from meta tags ──────────────────────────────────────
+// ── Read user preferences from meta tags
 function getSendSoundPrefs() {
     const enabled  = document.querySelector('meta[name="enable-send"]')?.content;
-    const rawValue = document.querySelector('meta[name="send-sound"]')?.content
-                     || '/sounds/effects/bleep.mp3';
+    const rawValue = document.querySelector('meta[name="send-sound"]')?.content || '/sounds/effects/bloop-1.mp3';
     return {
         enabled:  enabled !== 'false' && enabled !== '0',
         rawValue: rawValue.trim(),
     };
 }
 
-// ── Named shortcuts (backwards-compat for old 'default' DB rows) ──────────────
+// ── Named shortcuts (backwards-compat for old 'default' DB rows)
 const NAMED_SHORTCUTS = {
-    'default':   '/sounds/effects/bleep.mp3',
-    'messenger': '/sounds/effects/messenger.mp3',
-    'ping':      '/sounds/effects/ping.mp3',
-    'none':      null, // explicit silence
+    'default':   '/sounds/effects/bloop-1.mp3',
+    'messenger': '/sounds/effects/marimba-bloop-1.mp3',
+    'ping':      '/sounds/effects/bloop-1.mp3',
+    'none':      null,
 };
 
-// ── Shared AudioContext (lazy) ─────────────────────────────────────────────────
+// ── Shared AudioContext (lazy)
 let _ctx = null;
 function getAudioContext() {
     if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -38,7 +24,7 @@ function getAudioContext() {
     return _ctx;
 }
 
-// ── Pre-load cache — keyed by path, so repeated calls are instant ─────────────
+// ── Pre-load cache — keyed by path, so repeated calls are instant
 const _audioCache = {};
 
 /**
@@ -59,7 +45,7 @@ function playFile(path, synthFallback) {
     }
 }
 
-// ── Synthesised fallback (fires only when the MP3 is missing or blocked) ──────
+// ── Synthesised fallback (fires only when the MP3 is missing or blocked)
 function synthDefault() {
     const ctx  = getAudioContext();
     const now  = ctx.currentTime;
@@ -77,7 +63,7 @@ function synthDefault() {
     osc.stop(now + 0.25);
 }
 
-// ── Public API ─────────────────────────────────────────────────────────────────
+// ── Public API
 /**
  * Call after any successful post/comment/reply submission.
  * Safe to call even on very old browsers — never throws.
@@ -100,7 +86,7 @@ function playSendSound() {
 
 window.playSendSound = playSendSound;
 
-// ── Auto-hook the Blade post form ─────────────────────────────────────────────
+// ── Auto-hook the Blade post form
 function hookBleepForm() {
     document.addEventListener('bleep:posted', () => playSendSound());
 
