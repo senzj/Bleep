@@ -74,7 +74,7 @@ Route::get('/bleeps/{bleep}/data', [BleepController::class, 'show'])
 Route::get('/bleeps/comments/{bleep}/comments', [CommentsController::class, 'index']);
 Route::get('/bleeps/comments/{bleep}/count', [CommentsController::class, 'count']);
 
-
+// Comment Replies
 Route::get('/bleeps/comments/{comment}/replies', [CommentsRepliesController::class, 'index'])
     ->name('comments.replies.index');
 
@@ -120,7 +120,7 @@ Route::middleware('auth')->group((function () {
 
     // Bleep Resource Routes
     Route::post('/bleeps', [BleepController::class, 'store']);
-    Route::put('/bleeps/{bleep}/update', [BleepController::class, 'update']);
+    Route::match(['put', 'post'], '/bleeps/{bleep}/update', [BleepController::class, 'update']);
     Route::delete('/bleeps/{bleep}/delete', [BleepController::class, 'destroy']);
 
     // Likes Routes (require auth)

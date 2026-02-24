@@ -1,7 +1,7 @@
 {{-- Mobile Slide-over Menu --}}
 <div id="hor-mobile-overlay" class="fixed inset-0 bg-black/50 z-50 hidden lg:hidden transition-opacity duration-300" aria-hidden="true"></div>
 
-<aside id="hor-mobile-drawer" class="lg:hidden fixed left-0 top-0 h-full w-64 bg-base-200/95 shadow-xl z-50 transform transition-transform duration-300 ease-in-out -translate-x-full flex flex-col">
+<aside id="hor-mobile-drawer" class="lg:hidden fixed left-0 top-0 h-full w-64 bg-base-300/95 shadow-xl z-50 transform transition-transform duration-300 ease-in-out -translate-x-full flex flex-col">
     {{-- Header --}}
     <div class="flex items-center justify-between p-4 border-b border-base-200">
         <a href="/" class="flex items-center gap-2 text-xl font-bold">

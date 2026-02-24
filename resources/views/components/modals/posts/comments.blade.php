@@ -1,5 +1,6 @@
 <div
     x-data="commentSheet"
+    x-cloak
     @open-comments.window="openSheet($event.detail.bleepId)"
     @keydown.escape.window="close()"
 >

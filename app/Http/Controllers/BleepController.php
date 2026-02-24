@@ -18,9 +18,6 @@ use App\Services\FeedService;
 
 class BleepController extends Controller
 {
-    /**
-     * Use authorizeResource to apply policies.
-     */
     use AuthorizesRequests;
 
     protected FeedService $feedService;
@@ -35,7 +32,6 @@ class BleepController extends Controller
      */
     public function index(Request $request)
     {
-        // fetch first page via reusable fetchBleeps
         $bleeps = $this->fetchBleeps($request);
 
         $followingBleeps = Auth::check()
@@ -46,20 +42,17 @@ class BleepController extends Controller
             ? $this->fetchBleeps($request, null, null, 'friends')
             : null;
 
-        // Record views for the fetched bleeps (active tab only)
         $this->recordBleepsViews($bleeps);
 
-        // Remove the AJAX check since lazyLoad handles it
         return view('home', [
-            'bleeps' => $bleeps,
+            'bleeps'         => $bleeps,
             'followingBleeps' => $followingBleeps,
-            'friendsBleeps' => $friendsBleeps,
+            'friendsBleeps'  => $friendsBleeps,
         ]);
     }
 
-
     /**
-     * Record a view for a bleep (called via AJAX - keep for single post page)
+     * Record a view for a bleep (called via AJAX — keep for single post page)
      */
     public function recordView(Bleep $bleep)
     {
@@ -67,7 +60,7 @@ class BleepController extends Controller
 
         return response()->json([
             'success' => true,
-            'views' => $bleep->views,
+            'views'   => $bleep->views,
         ]);
     }
 
@@ -76,38 +69,33 @@ class BleepController extends Controller
      */
     public function store(Request $request)
     {
-
         $validated = $request->validate([
-            'message' => 'string|max:255|required_without:media',
+            'message'    => 'string|max:255|required_without:media',
             'is_anonymous' => 'nullable|boolean',
-            'is_nsfw' => 'nullable|boolean',
-            'media' => 'nullable|array|max:4|required_without:message',
-            'media.*' => 'file|max:102400000|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mp3,audio/mpeg,audio/wav',
+            'is_nsfw'    => 'nullable|boolean',
+            'media'      => 'nullable|array|max:4|required_without:message',
+            'media.*'    => 'file|max:102400000|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mp3,audio/mpeg,audio/wav',
         ], [
             'message.required_without' => 'Write something or attach media.',
-            'media.required_without' => 'Attach media or write a message.',
-            'media.max' => 'You can upload up to 4 files.',
-            'media.*.mimetypes' => 'Only images (jpg, png, webp, gif), videos (mp4, webm), or audio (mp3, wav) are allowed.',
-            'media.*.max' => 'Each file must be at most 100MB.',
+            'media.required_without'   => 'Attach media or write a message.',
+            'media.max'                => 'You can upload up to 4 files.',
+            'media.*.mimetypes'        => 'Only images (jpg, png, webp, gif), videos (mp4, webm), or audio (mp3, wav) are allowed.',
+            'media.*.max'              => 'Each file must be at most 100MB.',
         ]);
 
-        $user = Auth::user();
-
-        // Create the bleep first to get ID for media storage path
+        $user  = Auth::user();
         $bleep = $user->bleeps()->create([
             'message'      => $request->input('message'),
             'is_anonymous' => $request->boolean('is_anonymous'),
             'is_nsfw'      => $request->boolean('is_nsfw'),
         ]);
 
-        // Handle media uploads with bleep ID
         if ($request->hasFile('media')) {
             foreach ($request->file('media') as $file) {
                 if (!$file->isValid()) continue;
-
-                $mediaData = MediaUploadService::saveBleepMedia($file, $bleep->id);
-
-                $bleep->media()->create($mediaData);
+                $bleep->media()->create(
+                    MediaUploadService::saveBleepMedia($file, $bleep->id)
+                );
             }
         }
 
@@ -119,64 +107,149 @@ class BleepController extends Controller
     }
 
     /**
+     * Show a single bleep's data (for JSON response in modals).
+     *
+     * Used by:
+     *   - Comments modal → needs is_anonymous + user identity
+     *   - Edit modal     → needs is_anonymous + user identity + media (with real DB IDs)
+     *
+     * Route: GET /bleeps/{bleep}/data
+     */
+    public function show(Bleep $bleep)
+    {
+        $bleep->load(['user', 'media']);
+
+        // Build media with real integer IDs — edit modal needs these for remove_media_ids[]
+        $mediaPayload = $bleep->media->map(fn ($m) => [
+            'id'       => $m->id,                                    // integer PK
+            'type'     => $m->type,                                  // 'image'|'video'|'audio'
+            'mime'     => $m->mime_type,                             // e.g. 'image/jpeg'
+            'url'      => asset('storage/' . $m->path),
+            'filename' => $m->original_name ?? basename($m->path),
+        ])->values()->all();
+
+        return response()->json([
+            'id'           => $bleep->id,
+            'is_anonymous' => (bool) $bleep->is_anonymous,
+            'user'         => $bleep->is_anonymous ? null : [
+                'id'       => $bleep->user?->id,
+                'username' => $bleep->user?->username,
+            ],
+            'media'        => $mediaPayload,
+        ]);
+    }
+
+    /**
      * Update the specified resource in storage.
+     * Accepts multipart/form-data so media files can be attached.
      */
     public function update(Request $request, Bleep $bleep)
     {
         $this->authorize('update', $bleep);
 
         $validated = $request->validate([
-            'message' => 'required|string|max:255',
-            'is_anonymous' => 'nullable|boolean',
-            'is_nsfw' => 'nullable|boolean',
+            'message'            => 'nullable|string|max:255',
+            'is_anonymous'       => 'nullable|boolean',
+            'is_nsfw'            => 'nullable|boolean',
+            'media'              => 'nullable|array|max:4',
+            'media.*'            => 'file|max:102400000|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mp3,audio/mpeg,audio/wav',
+            'remove_media_ids'   => 'nullable|array',
+            'remove_media_ids.*' => 'nullable|integer',  // integers only, nulls filtered in JS
         ], [
-            'message.required' => 'Thoughts cannot be empty! Write something to bleep about.',
-            'message.max' => 'Your bleep is too long! Keep it under 255 characters.',
+            'message.max'        => 'Your bleep is too long! Keep it under 255 characters.',
+            'media.max'          => 'You can upload up to 4 files.',
+            'media.*.mimetypes'  => 'Only images (jpg, png, webp, gif), videos (mp4, webm), or audio (mp3, wav) are allowed.',
+            'media.*.max'        => 'Each file must be at most 100MB.',
         ]);
+
+        // Must have at least a message OR existing/new media
+        $hasNewMedia      = $request->hasFile('media');
+        $removeIds        = array_filter(
+            array_map('intval', $validated['remove_media_ids'] ?? []),
+            fn ($id) => $id > 0
+        );
+        $removingAll      = !empty($removeIds)
+                            && $bleep->media->pluck('id')->diff($removeIds)->isEmpty()
+                            && !$hasNewMedia;
+        $hasExistingMedia = $bleep->media->isNotEmpty();
+
+        if (empty($validated['message']) && !$hasNewMedia && (!$hasExistingMedia || $removingAll)) {
+            return response()->json([
+                'errors' => ['message' => ['Write something or attach media.']],
+            ], 422);
+        }
+
+        // Remove requested media
+        if (!empty($removeIds)) {
+            $toRemove = $bleep->media()->whereIn('id', $removeIds)->get();
+            foreach ($toRemove as $media) {
+                MediaUploadService::deleteBleepMedia($media->path);
+                $media->delete();
+            }
+        }
+
+        // Add new media
+        if ($hasNewMedia) {
+            $existingCount = $bleep->media()->count();
+            $files         = $request->file('media');
+            $audioFiles    = array_filter($files, fn ($f) => str_starts_with($f->getMimeType(), 'audio/'));
+            $otherFiles    = array_filter($files, fn ($f) => !str_starts_with($f->getMimeType(), 'audio/'));
+
+            if (count($audioFiles) > 0 && (count($otherFiles) > 0 || $existingCount > 0)) {
+                return response()->json([
+                    'errors' => ['media' => ['Audio cannot be combined with other media.']],
+                ], 422);
+            }
+
+            if (count($audioFiles) > 1) {
+                return response()->json([
+                    'errors' => ['media' => ['Only one audio file is allowed.']],
+                ], 422);
+            }
+
+            $cap = count($audioFiles) > 0 ? 1 : 4;
+            if (($existingCount + count($files)) > $cap) {
+                return response()->json([
+                    'errors' => ['media' => ["You can upload up to {$cap} file(s)."]],
+                ], 422);
+            }
+
+            foreach ($files as $file) {
+                if (!$file->isValid()) continue;
+                $bleep->media()->create(
+                    MediaUploadService::saveBleepMedia($file, $bleep->id)
+                );
+            }
+        }
 
         $bleep->update([
-            'message' => $validated['message'],
+            'message'      => $validated['message'] ?? $bleep->message,
             'is_anonymous' => $request->boolean('is_anonymous'),
-            'is_nsfw' => $request->boolean('is_nsfw'),
+            'is_nsfw'      => $request->boolean('is_nsfw'),
         ]);
 
-        // reload relations
-        $bleep->load('user');
-
-        // viewer seed for deterministic display name
-        $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
-
-        $displayName = $bleep->is_anonymous
-            ? $bleep->anonymousDisplayNameFor($viewerSeed)
-            : ($bleep->user->dname ?? 'Unknown');
-
-        $username = $bleep->is_anonymous
-            ? '@anonymous'
-            : ('@' . ($bleep->user->username ?? 'Unknown'));
-
-        $avatarUrl = $bleep->is_anonymous
-            ? null
-            : ($bleep->user->profile_picture
-                ? asset('storage/' . $bleep->user->profile_picture)
-                : asset('images/avatar/default.jpg'));
+        $bleep->load(['user', 'media']);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'bleep' => [
-                    'id' => $bleep->id,
-                    'message' => $bleep->message,
-                    'is_anonymous' => (bool) $bleep->is_anonymous,
-                    'is_nsfw' => (bool) $bleep->is_nsfw,
-                    'display_name' => $displayName,
-                    'username' => $username,
-                    'avatar_url' => $avatarUrl,
-                    'updated_at_iso' => optional($bleep->updated_at)->toIso8601String(),
-
-                    // NEW: expose minimal user metadata so client can render badges/icons
-                    'user_role' => $bleep->is_anonymous ? null : ($bleep->user->role ?? null),
-                    'user_is_verified' => $bleep->is_anonymous ? false : (bool) ($bleep->user->is_verified ?? false),
-                ],
+                'bleep'   => array_merge(
+                    [
+                        'id'             => $bleep->id,
+                        'message'        => $bleep->message,
+                        'is_anonymous'   => (bool) $bleep->is_anonymous,
+                        'is_nsfw'        => (bool) $bleep->is_nsfw,
+                        'updated_at_iso' => optional($bleep->updated_at)->toIso8601String(),
+                        'media'          => $bleep->media->map(fn ($m) => [
+                            'id'       => $m->id,
+                            'type'     => $m->type,
+                            'mime'     => $m->mime_type,
+                            'url'      => asset('storage/' . $m->path),
+                            'filename' => $m->original_name ?? basename($m->path),
+                        ])->values()->all(),
+                    ],
+                    $this->identityPayload($bleep)
+                ),
             ]);
         }
 
@@ -184,7 +257,7 @@ class BleepController extends Controller
     }
 
     /**
-     * Soft delete the specified resource (marks as deleted by author)
+     * Soft delete the specified resource.
      */
     public function destroy(Bleep $bleep)
     {
@@ -192,7 +265,6 @@ class BleepController extends Controller
 
         $bleep->update(['deleted_by_author' => true]);
 
-        // Delete media files - SIMPLIFIED!
         $mediaPaths = $bleep->media->pluck('path')->toArray();
         MediaUploadService::deleteBleepMediaBatch($mediaPaths);
 
@@ -201,131 +273,103 @@ class BleepController extends Controller
         Logs::record($bleep->user_id, 'bleep_deleted', ['bleep_id' => $bleep->id, 'by_user' => Auth::id()], request());
 
         if (request()->ajax() || request()->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Your bleep has been deleted!'
-            ]);
+            return response()->json(['success' => true, 'message' => 'Your bleep has been deleted!']);
         }
 
         return redirect('/')->with('success', 'Your bleep has been deleted!');
     }
 
     /**
-     * Lazy load more bleeps (for infinite scroll)
+     * Lazy load more bleeps (for infinite scroll).
      */
     public function lazyLoad(Request $request)
     {
-        $page = (int) $request->get('page', 2);
-        $tab = $request->get('tab', 'for-you');
-
-        // fetch requested page via reusable fetchBleeps
+        $page   = (int) $request->get('page', 2);
+        $tab    = $request->get('tab', 'for-you');
         $bleeps = $this->fetchBleeps($request, $page, null, $tab);
 
-        // Record views for the fetched bleeps
         $this->recordBleepsViews($bleeps);
 
         return response()->json([
-            'success' => true,
-            'html' => view('components.bleepslist', ['bleeps' => $bleeps])->render(),
-            'has_more' => $bleeps->hasMorePages(),
-            'next_page' => $bleeps->currentPage() + 1,
+            'success'      => true,
+            'html'         => view('components.bleepslist', ['bleeps' => $bleeps])->render(),
+            'has_more'     => $bleeps->hasMorePages(),
+            'next_page'    => $bleeps->currentPage() + 1,
             'current_page' => $bleeps->currentPage(),
         ]);
     }
 
+    // Private helpers
+
     /**
-     * Fetch bleeps with relations, pagination and attach reposts for auth users.
-     *
-     * @param Request $request
-     * @param int|null $page
-     * @param int $perPage
-     * @return \Illuminate\Pagination\LengthAwarePaginator
+     * Build display name / username / avatar / role / verified payload.
+     * Shared by update() to avoid duplication.
      */
+    private function identityPayload(Bleep $bleep): array
+    {
+        $viewerSeed = Auth::id() ?? request()->session()->getId();
+
+        return [
+            'display_name'     => $bleep->is_anonymous
+                ? $bleep->anonymousDisplayNameFor($viewerSeed)
+                : ($bleep->user->dname ?? 'Unknown'),
+            'username'         => $bleep->is_anonymous
+                ? '@anonymous'
+                : ('@' . ($bleep->user->username ?? 'Unknown')),
+            'avatar_url'       => $bleep->is_anonymous
+                ? null
+                : ($bleep->user->profile_picture
+                    ? asset('storage/' . $bleep->user->profile_picture)
+                    : asset('images/avatar/default.jpg')),
+            'user_role'        => $bleep->is_anonymous ? null : ($bleep->user->role ?? null),
+            'user_is_verified' => $bleep->is_anonymous ? false : (bool) ($bleep->user->is_verified ?? false),
+        ];
+    }
+
     protected function fetchBleeps(Request $request, ?int $page = null, ?int $perPage = null, string $tab = 'for-you')
     {
         return $this->feedService->getFeed($request, $tab, $page, $perPage);
     }
 
-    /**
-     * Show a single bleep's data (for JSON response in modals)
-     */
-    public function show(Bleep $bleep)
-    {
-        return response()->json([
-            'id'   => $bleep->id,
-            'is_anonymous' => (bool) $bleep->is_anonymous,
-            'user' => $bleep->is_anonymous ? null : [
-                'id'       => $bleep->user?->id,
-                'username' => $bleep->user?->username,
-            ],
-        ]);
-    }
-
-    /**
-     * Record views for a collection of bleeps
-     */
     protected function recordBleepsViews($bleeps)
     {
-        $user = Auth::user(); // null for guests
-        $sessionId = session()->getId(); // Always available for guests
-        $bleepIds = $bleeps->pluck('id')->toArray();
+        $user      = Auth::user();
+        $sessionId = session()->getId();
+        $bleepIds  = $bleeps->pluck('id')->toArray();
 
-        if (empty($bleepIds)) {
-            return;
-        }
+        if (empty($bleepIds)) return;
 
-        // Get existing views for this user/session
         $existingViews = \App\Models\BleepViews::whereIn('bleep_id', $bleepIds)
-            ->where(function($q) use ($user, $sessionId) {
-                if ($user) {
-                    $q->where('user_id', $user->id); // Authenticated user
-                } else {
-                    $q->where('session_id', $sessionId); // Guest user
-                }
+            ->where(function ($q) use ($user, $sessionId) {
+                $user
+                    ? $q->where('user_id', $user->id)
+                    : $q->where('session_id', $sessionId);
             })
             ->pluck('bleep_id')
             ->toArray();
 
-        // Only record views for bleeps not yet viewed
         $newViewBleepIds = array_diff($bleepIds, $existingViews);
 
         if (!empty($newViewBleepIds)) {
-            $viewsData = [];
-            foreach ($newViewBleepIds as $bleepId) {
-                $viewsData[] = [
-                    'bleep_id' => $bleepId,
-                    'user_id' => $user?->id, // null for guests
-                    'session_id' => $user ? null : $sessionId, // only for guests
-                    'viewed_at' => now(),
-                ];
-            }
+            $viewsData = array_map(fn ($id) => [
+                'bleep_id'   => $id,
+                'user_id'    => $user?->id,
+                'session_id' => $user ? null : $sessionId,
+                'viewed_at'  => now(),
+            ], $newViewBleepIds);
 
-            // Bulk insert new views
             BleepViews::insert($viewsData);
 
-            // Increment view counters WITHOUT updating updated_at
             DB::table((new Bleep())->getTable())
                 ->whereIn('id', $newViewBleepIds)
                 ->update(['views' => DB::raw('COALESCE(views,0) + 1')]);
         }
     }
 
-    /**
-     * Centralized single-bleep view recording so other controllers/actions can reuse.
-     *
-     * @param Bleep $bleep
-     * @return Bleep
-     */
     protected function recordSingleView(Bleep $bleep): Bleep
     {
-        $bleep->recordView(
-            Auth::user(),
-            session()->getId()
-        );
-
-        // refresh to get latest views count
+        $bleep->recordView(Auth::user(), session()->getId());
         $bleep->refresh();
-
         return $bleep;
     }
 }

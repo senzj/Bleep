@@ -1,7 +1,7 @@
 <nav class="navbar bg-base-100 sticky top-0 z-40">
 
     {{-- LEFT --}}
-    <div class="navbar-start md:hidden">
+    <div class="navbar-start lg:hidden">
         <button id="hor-mobile-menu-btn" class="btn btn-ghost lg:hidden" aria-label="Open menu">
             <i data-lucide="menu" class="w-5 h-5"></i>
         </button>

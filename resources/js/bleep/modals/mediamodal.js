@@ -206,35 +206,62 @@ document.addEventListener('DOMContentLoaded', () => {
     image.addEventListener('touchend', endDrag);
 
     // Pinch to zoom for mobile (images only)
+
+    // Improved pinch-to-zoom for mobile
     let initialDistance = 0;
     let initialZoom = 1;
+    let pinchZooming = false;
+    let lastPinchScale = 1;
+    let pinchRaf = null;
+
+    function getPinchDistance(e) {
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        return Math.hypot(
+            touch2.clientX - touch1.clientX,
+            touch2.clientY - touch1.clientY
+        );
+    }
+
+    function pinchZoomHandler(e) {
+        if (!pinchZooming) return;
+        if (e.touches.length !== 2) return;
+        const distance = getPinchDistance(e);
+        lastPinchScale = distance / initialDistance;
+        if (!pinchRaf) {
+            pinchRaf = requestAnimationFrame(() => {
+                setZoom(initialZoom * lastPinchScale);
+                pinchRaf = null;
+            });
+        }
+    }
 
     image.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
             e.preventDefault();
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            initialDistance = Math.hypot(
-                touch2.clientX - touch1.clientX,
-                touch2.clientY - touch1.clientY
-            );
+            pinchZooming = true;
+            initialDistance = getPinchDistance(e);
             initialZoom = currentZoom;
+            lastPinchScale = 1;
         }
     }, { passive: false });
 
     image.addEventListener('touchmove', (e) => {
         if (e.touches.length === 2) {
             e.preventDefault();
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            const distance = Math.hypot(
-                touch2.clientX - touch1.clientX,
-                touch2.clientY - touch1.clientY
-            );
-            const scale = distance / initialDistance;
-            setZoom(initialZoom * scale);
+            pinchZoomHandler(e);
         }
     }, { passive: false });
+
+    image.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+            pinchZooming = false;
+            if (pinchRaf) {
+                cancelAnimationFrame(pinchRaf);
+                pinchRaf = null;
+            }
+        }
+    });
 
     // Double tap to zoom on mobile (images only)
     let lastTap = 0;
