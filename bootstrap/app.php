@@ -4,6 +4,7 @@ use App\Http\Middleware\CheckUserBan;
 use Illuminate\Foundation\Application;
 use App\Http\Middleware\UpdateUserTimezone;
 use App\Http\Middleware\CheckRememberedDevice;
+use App\Http\Middleware\ProgressiveLockout;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Specific middleware with alias
         $middleware->alias([
             'check.banned' => CheckUserBan::class,
+            'progressive.lockout' => ProgressiveLockout::class,
         ]);
 
         // Apply to web group globally
@@ -24,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             UpdateUserTimezone::class,
             CheckUserBan::class,
             CheckRememberedDevice::class,
+            ProgressiveLockout::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

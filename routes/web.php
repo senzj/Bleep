@@ -19,6 +19,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SocialController;
 use App\Http\Controllers\UserPreferencesController;
 use App\Http\Controllers\Users\ProfileController;
+use GuzzleHttp\Middleware;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -33,7 +34,7 @@ Route::view('/register', 'auth.register')
     ->name('register');
 
 Route::post('/register', Register::class)
-    ->middleware('guest');
+    ->middleware('guest', 'progressive.lockout:register');
 
 
 // LOGIN
@@ -42,7 +43,7 @@ Route::view('/login', 'auth.login')
     ->name('login');
 
 Route::post('/login', Login::class)
-    ->middleware('guest');
+    ->middleware('guest', 'progressive.lockout:login');
 
 
 // LOGOUT
@@ -127,10 +128,16 @@ Route::middleware('auth')->group((function () {
     Route::get('/bleeps/{bleep}/likes-count', [LikesController::class, 'count']);
 
     // Comments Routes
-    Route::post('/bleeps/comments/{bleep}/post', [CommentsController::class, 'store']);
-    Route::post('/bleeps/comments/{comment}/update', [CommentsController::class, 'update']);
-    Route::delete('/bleeps/comments/{comment}/delete', [CommentsController::class, 'destroy']);
-    Route::post('/bleeps/comments/{comment}/report', [CommentsController::class, 'report']);
+    Route::post('/bleeps/comments/{bleep}/post', [CommentsController::class, 'store'])
+        ->middleware('progressive.lockout:comment')
+        ->name('comments.store');
+    Route::post('/bleeps/comments/{comment}/update', [CommentsController::class, 'update'])
+        ->name('comments.update');
+    Route::delete('/bleeps/comments/{comment}/delete', [CommentsController::class, 'destroy'])
+        ->name('comments.destroy');
+    Route::post('/bleeps/comments/{comment}/report', [CommentsController::class, 'report'])
+        ->middleware('progressive.lockout:report')
+        ->name('comments.report');
 
     Route::post('/bleeps/comments/{comment}/likes', [CommentsLikesController::class, 'store'])->name('comments.likes.store');
     Route::delete('/bleeps/comments/{comment}/likes', [CommentsLikesController::class, 'destroy'])->name('comments.likes.destroy');
@@ -178,6 +185,7 @@ Route::middleware('auth')->group((function () {
     Route::get('/settings/password', [SettingsController::class, 'editPassword'])
         ->name('settings.password');
     Route::put('/settings/password', [SettingsController::class, 'updatePassword'])
+        ->middleware('progressive.lockout:password-change')
         ->name('settings.password.update');
 
     Route::get('/settings/devices', [SettingsController::class, 'devices'])
@@ -192,6 +200,7 @@ Route::middleware('auth')->group((function () {
 
     // User report submission
     Route::post('/reports', [ReportsController::class, 'store'])
+        ->middleware('progressive.lockout:report')
         ->name('reports.store');
 
 
