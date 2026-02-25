@@ -19,10 +19,9 @@ export default function commentSheet() {
             document.addEventListener('mousemove', this._onMouseMove);
             document.addEventListener('mouseup', this._onMouseUp);
 
-            // Touch move needs passive: false to allow preventDefault
             this._onTouchMove = (e) => {
                 if (!this.dragging) return;
-                e.preventDefault(); // only called when actually dragging
+                e.preventDefault();
                 this.onDrag(e, true);
             };
             this._onTouchEnd = () => this.endDrag();
@@ -49,8 +48,19 @@ export default function commentSheet() {
         },
 
         updateSize() {
-            this.isMobile = window.innerWidth < 1024;
+            const wasMobile  = this.isMobile;
+            this.isMobile    = window.innerWidth < 1024;
             this.sheetHeight = Math.round(window.innerHeight * 0.85);
+
+            // Breakpoint crossed while open — close immediately (no animation)
+            // so the modal doesn't ghost-appear in the wrong layout.
+            if (wasMobile !== this.isMobile && this.open) {
+                this.open       = false;
+                this.sheetY     = 0;
+                this.fullscreen = false;
+                document.body.style.overflow = '';
+                window.dispatchEvent(new CustomEvent('close-comments'));
+            }
         },
 
         startDrag(e) {
@@ -64,15 +74,13 @@ export default function commentSheet() {
             const deltaY = clientY - this.startY;
 
             if (deltaY < -60 && !this.fullscreen) {
-                // Drag up past threshold — go fullscreen smoothly
                 this.fullscreen = true;
-                this.startY = clientY; // reset so it doesnt snap
+                this.startY = clientY;
                 this.sheetY = 0;
                 return;
             }
 
             if (this.fullscreen && deltaY > 60) {
-                // Drag down from fullscreen — exit fullscreen smoothly
                 this.fullscreen = false;
                 this.startY = clientY;
                 this.sheetY = 0;
@@ -80,13 +88,9 @@ export default function commentSheet() {
             }
 
             if (!this.fullscreen) {
-                // Rubber band effect when dragging up past 0
-                if (deltaY < 0) {
-                    // Allow slight upward drag with resistance
-                    this.sheetY = deltaY * 0.15;
-                } else {
-                    this.sheetY = Math.min(this.sheetHeight, deltaY);
-                }
+                this.sheetY = deltaY < 0
+                    ? deltaY * 0.15  // rubber band upward
+                    : Math.min(this.sheetHeight, deltaY);
             }
         },
 
@@ -99,7 +103,6 @@ export default function commentSheet() {
                 return;
             }
 
-            // Snap back
             this.sheetY = 0;
         },
 
@@ -108,11 +111,17 @@ export default function commentSheet() {
             this.sheetY = 0;
             this.bleepId = id;
             this.open = true;
+
+            // Show the spinner when the sheet opens (it's hidden by default in
+            // modal mode to prevent ghost flash on resize).
+            const spinner = document.querySelector(
+                '#comments-container-layout-modal [data-comment-spinner]'
+            );
+            if (spinner) spinner.style.display = '';
         },
 
         close() {
             if (!this.open) return;
-            // Animate out first, then fully close
             this.sheetY = this.sheetHeight;
             setTimeout(() => {
                 this.open = false;
@@ -120,40 +129,48 @@ export default function commentSheet() {
                 this.fullscreen = false;
                 document.body.style.overflow = '';
                 window.dispatchEvent(new CustomEvent('close-comments'));
-            }, 280); // match transition duration
+            }, 280);
         },
 
         get mobileStyle() {
+            // Hard-hide during breakpoint transition — same guard as desktopStyle.
+            if (!this.open) {
+                return 'display:none';
+            }
+
             const transition = this.dragging
-                ? 'none'  // no transition while dragging — feels immediate
+                ? 'none'
                 : 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)';
 
             if (this.fullscreen) {
-                return `
-                    position: fixed;
-                    height: 100dvh;
-                    width: 100vw;
-                    top: 0; left: 0; right: 0; bottom: auto;
-                    transform: translateY(0px);
-                    transition: ${transition};
-                `;
+                return [
+                    'position:fixed',
+                    'height:100dvh',
+                    'width:100vw',
+                    'top:0','left:0','right:0','bottom:auto',
+                    'transform:translateY(0px)',
+                    `transition:${transition}`,
+                ].join(';');
             }
 
-            return `
-                position: fixed;
-                height: min(${this.sheetHeight}px, 100dvh);
-                width: 100vw;
-                transform: translateY(${this.open ? this.sheetY : this.sheetHeight}px);
-                transition: ${transition};
-            `;
+            return [
+                'position:fixed',
+                `height:min(${this.sheetHeight}px, 100dvh)`,
+                'width:100vw',
+                `transform:translateY(${this.sheetY}px)`,
+                `transition:${transition}`,
+            ].join(';');
         },
 
         get desktopStyle() {
-            return `
-                width: min(35vw, 420px);
-                max-width: calc(100vw - 2rem);
-                height: min(85vh, 90dvh);
-            `;
-        }
+            if (!this.open) {
+                return 'display:none';
+            }
+            return [
+                'width:min(35vw, 420px)',
+                'max-width:calc(100vw - 2rem)',
+                'height:min(85vh, 90dvh)',
+            ].join(';');
+        },
     };
 }
