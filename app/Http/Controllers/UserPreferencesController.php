@@ -171,17 +171,18 @@ class UserPreferencesController extends Controller
 
         $validKeys = [
             'nav_layout',
+            'theme',
+
             'show_nsfw',
             'blur_nsfw_media',
-            'autoplay_videos',
-            'autoplay_audio',
             'show_reposts_in_feed',
             'show_anonymous_bleeps',
             'default_feed_sort',
             'bleeps_per_page',
+
             'recieve_notification_sound',
             'send_notification_sound',
-            'theme',
+
             'private_profile',
             'block_new_followers',
             'hide_online_status',
@@ -248,17 +249,18 @@ class UserPreferencesController extends Controller
         $validated = $request->validate([
             'preferences'                            => ['required', 'array'],
             'preferences.nav_layout'                 => ['sometimes', 'string', 'in:horizontal,vertical'],
+            'preferences.theme'                      => ['sometimes', 'string', 'max:50'],
+
             'preferences.show_nsfw'                  => ['sometimes', 'boolean'],
             'preferences.blur_nsfw_media'            => ['sometimes', 'boolean'],
-            'preferences.autoplay_videos'            => ['sometimes', 'boolean'],
-            'preferences.autoplay_audio'             => ['sometimes', 'boolean'],
             'preferences.show_reposts_in_feed'       => ['sometimes', 'boolean'],
             'preferences.show_anonymous_bleeps'      => ['sometimes', 'boolean'],
             'preferences.default_feed_sort'          => ['sometimes', 'string', 'in:newest,popular,following'],
             'preferences.bleeps_per_page'            => ['sometimes', 'integer', 'min:1', 'max:100'],
+
             'preferences.recieve_notification_sound' => ['sometimes', 'string', 'max:255'],
             'preferences.send_notification_sound'    => ['sometimes', 'string', 'max:255'],
-            'preferences.theme'                      => ['sometimes', 'string', 'max:50'],
+
             'preferences.private_profile'            => ['sometimes', 'boolean'],
             'preferences.block_new_followers'        => ['sometimes', 'boolean'],
             'preferences.hide_online_status'         => ['sometimes', 'boolean'],
