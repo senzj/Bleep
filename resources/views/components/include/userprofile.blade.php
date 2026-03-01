@@ -1,4 +1,8 @@
 @auth
+    @php
+        $pendingRequestsCount = Auth::user()->followRequests()->where('status', 'pending')->count();
+    @endphp
+
     {{-- Profile, hidden when mobile --}}
     <div class="dropdown dropdown-end w-full"
          x-data

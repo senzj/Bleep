@@ -29,8 +29,6 @@ class Userprofile extends Component
      */
     public function render(): View|Closure|string
     {
-        return view('components.include.userprofile', [
-            'pendingRequestsCount' => $this->pendingRequestsCount,
-        ]);
+        return view('components.include.userprofile');
     }
 }
