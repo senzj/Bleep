@@ -13,6 +13,7 @@ use App\Http\Controllers\Bleep\RepostController;
 use App\Http\Controllers\Bleep\ShareController;
 use App\Http\Controllers\BleepController;
 use App\Http\Controllers\FollowingController;
+use App\Http\Controllers\FollowRequestController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
@@ -160,6 +161,20 @@ Route::middleware('auth')->group((function () {
     Route::get('/api/users/search', [SocialController::class, 'searchUsers'])
         ->name('api.users.search');
 
+    // Follow Request Routes
+    Route::get('/requests', [FollowRequestController::class, 'index'])
+        ->name('follow.requests');
+    Route::post('/api/follow-requests', [FollowRequestController::class, 'store'])
+        ->name('follow.requests.store');
+    Route::delete('/api/follow-requests/user/{user}', [FollowRequestController::class, 'cancelByUserId'])
+        ->name('follow.requests.cancel-by-user');
+    Route::post('/api/follow-requests/{request}/accept', [FollowRequestController::class, 'accept'])
+        ->name('follow.requests.accept');
+    Route::post('/api/follow-requests/{request}/reject', [FollowRequestController::class, 'reject'])
+        ->name('follow.requests.reject');
+    Route::delete('/api/follow-requests/{request}', [FollowRequestController::class, 'cancel'])
+        ->name('follow.requests.cancel');
+
     // Settings Routes
     Route::get('/settings', fn () => redirect()->route('settings.profile'))
         ->name('settings');
@@ -212,7 +227,6 @@ Route::middleware('auth')->group((function () {
 
         Route::get('/admin/dashboard/chart-data', [AdminController::class, 'dashboardChartData'])
             ->name('admin.dashboard.chart-data');
-
 
         // Reports Dashboard
         Route::get('/admin/reports', [ReportsController::class, 'index'])

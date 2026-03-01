@@ -102,6 +102,9 @@ const formattedDate = computed(() => {
     const userTimezone = props.comment.user?.timezone
         || Intl.DateTimeFormat().resolvedOptions().timeZone
         || 'UTC';
+
+    console.log('Comment created_at:', props.comment.created_at);
+
     return formatRelativeTime(props.comment.created_at, userTimezone);
 });
 
@@ -521,38 +524,37 @@ const handleLoadMoreReplies = () => loadReplies();
                 </div>
 
                 <!-- Date + Actions -->
-                <div class="flex flex-col items-end gap-2 shrink-0">
-                    <div class="text-xs text-base-content/50 comment-date">{{ formattedDate }}</div>
+                <div class="flex items-center justify-end gap-1">
+                    <div class="text-xs text-base-content/50 comment-date">
+                        {{ formattedDate }}
+                    </div>
 
                     <div class="dropdown dropdown-end">
                         <button type="button" class="btn btn-ghost btn-xs rounded" title="More options">
                             <LucideIcon name="ellipsis-vertical" :size="isReply ? 12 : 16" />
                         </button>
 
-                        <ul :class="isReply ? 'w-40 p-1 text-xs' : 'w-52 p-2'"
+                        <ul :class="[isReply ? 'w-40 p-1 text-xs' : 'w-52 p-2', 'flex flex-row gap-2']"
                             class="dropdown-content menu bg-base-100/80 rounded-box z-1 shadow-lg border border-gray-300/50">
-
                             <!-- Edit — shown when canEdit, works for anon and non-anon -->
                             <li v-if="isOwner">
-                                <button @click="handleEdit">
+                                <button @click="handleEdit" class="flex flex-col items-center">
                                     <LucideIcon name="pencil" :size="iconSize" />
-                                    Edit
+                                    <span>Edit</span>
                                 </button>
                             </li>
-
                             <!-- Delete — shown when canDelete, works for anon and non-anon -->
                             <li v-if="canDelete">
-                                <button @click="handleDelete" class="text-error">
+                                <button @click="handleDelete" class="text-error flex flex-col items-center">
                                     <LucideIcon name="trash-2" :size="iconSize" />
-                                    Delete
+                                    <span>Delete</span>
                                 </button>
                             </li>
-
                             <!-- Report — shown to non-owners only -->
                             <li v-if="!isOwner">
-                                <a class="text-warning">
+                                <a class="text-warning flex flex-col items-center">
                                     <LucideIcon name="flag" :size="iconSize" />
-                                    Report
+                                    <span>Report</span>
                                 </a>
                             </li>
                         </ul>

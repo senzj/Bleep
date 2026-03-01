@@ -32,9 +32,9 @@
                             $isMutual = isset($user->is_mutual) && $user->is_mutual;
                             $mutualType = $user->mutual_type ?? null;
                             $mutualLabel = match ($mutualType) {
-                                'two-way' => 'Mutual',
-                                'friend-of-friend' => '2nd degree',
-                                'friend-of-friend-of-friend' => '3rd degree',
+                                'two-way' => 'Friend',
+                                'friend-of-friend' => '',
+                                'friend-of-friend-of-friend' => '',
                                 default => null,
                             };
                         @endphp
@@ -62,19 +62,7 @@
                             </div>
 
                             {{-- follow/unfollow button (use same markup as bleep follow.js expects) --}}
-                            <div class="shrink-0">
-                                <button
-                                    type="button"
-                                    class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn rounded-full px-2.5 py-1 transition-all duration-200 ease-out mt-2
-                                        {{ $isFollowing ? 'bg-blue-100 text-blue-700 shadow-sm hover:bg-red-100 hover:text-red-600' : 'bg-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600 shadow-sm' }}"
-                                    data-user-id="{{ $user->id }}"
-                                    data-following="{{ $isFollowing ? '1' : '0' }}"
-                                >
-                                    <i data-lucide="{{ $isFollowing ? 'user-round-check' : 'user-round-plus' }}" class="w-4 h-4 transition-transform duration-200 group-hover:scale-110 follow-icon"></i>
-                                    <span class="follow-text">{{ $isFollowing ? 'Following' : 'Follow' }}</span>
-                                    <span class="unfollow-text hidden">Unfollow</span>
-                                </button>
-                            </div>
+                            <x-button.follow :user="$user" :showMessage="true" :showFollowed="false" />
                         </div>
                     @empty
                         <div class="text-center text-base-content/60 py-4">

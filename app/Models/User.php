@@ -92,11 +92,7 @@ class User extends Authenticatable
      */
     public function isFollowing(User $user): bool
     {
-        if (!$user->getKey()) {
-            return false;
-        }
-
-        return $this->following()->where('users.id', $user->id)->exists();
+        return $this->following()->where('followed_id', $user->id)->exists();
     }
 
     // safe computed accessor — does not change DB value
@@ -184,5 +180,68 @@ class User extends Authenticatable
                 ->limit($count - 5)
                 ->delete();
         }
+    }
+
+    /**
+     * Check if this user is friend with another user (both follow each other)
+     */
+    public function isFriend(User $user): bool
+    {
+        // I follow them
+        $iFollowThem = $this->following()->where('followed_id', $user->id)->exists();
+        // They follow me
+        $theyFollowMe = $user->following()->where('followed_id', $this->id)->exists();
+
+        return $iFollowThem && $theyFollowMe;
+    }
+
+    /**
+     * Check if this users are mutuals (Friend's friend)
+     */
+    public function isMutual(User $user): bool
+    {
+        return $this->following()->whereHas('following', function ($query) use ($user) {
+            $query->where('following_id', $user->id);
+        })->exists() && $user->following()->whereHas('following', function ($query) use ($user) {
+            $query->where('following_id', $this->id);
+        })->exists();
+    }
+
+    /**
+     * Follow request relationships and checks from user who receives the request
+     */
+    public function followRequests(): HasMany
+    {
+        return $this->hasMany(FollowRequest::class, 'target_id');
+    }
+
+    /**
+     * Follow request relationships and checks from user who sent the request
+     */
+    public function sentFollowRequests(): HasMany
+    {
+        return $this->hasMany(FollowRequest::class, 'requester_id');
+    }
+
+    /**
+     * Check if this user has a pending follow request from another user
+     */
+    public function hasPendingRequestFrom(User $user): bool
+    {
+        return $this->followRequests()
+            ->where('requester_id', $user->id)
+            ->where('status', 'pending')
+            ->exists();
+    }
+
+    /**
+     * Check if this user has a pending follow request to another user
+     */
+    public function hasSentRequestTo(User $user): bool
+    {
+        return $this->sentFollowRequests()
+            ->where('target_id', $user->id)
+            ->where('status', 'pending')
+            ->exists();
     }
 }

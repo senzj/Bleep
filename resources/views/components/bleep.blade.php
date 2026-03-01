@@ -50,7 +50,7 @@
 >
 
     {{-- Wrapper --}}
-    <div class="bg-base-300 rounded-lg p-4 shadow-lg border border-gray-300/50 hover:shadow-xl transition-shadow duration-200" data-bleep-card="{{ $bleep->id }}">
+    <div class="bg-base-300 rounded-lg p-4 shadow-lg border border-gray-500/20 hover:shadow-xl transition-shadow duration-200" data-bleep-card="{{ $bleep->id }}">
         {{-- Repost Tag (if reposted by followed users) --}}
         @if($followedRepostCount > 0)
             <div class="flex items-center gap-2 mb-3 text-xs text-base-content/60">
@@ -198,25 +198,8 @@
                         @endif
 
                         {{-- Follow Button --}}
-                        @if (! $isAnonymous && $bleep->user && Auth::check() && Auth::id() !== $bleep->user->id)
-                            @php $isFollowing = Auth::user()->isFollowing($bleep->user); @endphp
-
-                            <button type="button"
-                                data-user-id="{{ $bleep->user->id }}"
-                                data-following="{{ $isFollowing ? '1' : '0' }}"
-                                class="cursor-pointer flex items-center gap-1.5 text-xs font-medium group follow-btn
-                                    rounded-full px-3 py-1.5 mt-1 transition-all duration-200 shadow-sm
-                                    {{ $isFollowing
-                                            ? 'bg-blue-100 text-blue-700 hover:bg-red-100 hover:text-red-600'
-                                            : 'bg-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600' }}">
-
-                                <i data-lucide="{{ $isFollowing ? 'user-round-check' : 'user-round-plus' }}"
-                                class="w-4 h-4 transition-transform group-hover:scale-110"></i>
-
-                                <span class="follow-text">{{ $isFollowing ? 'Following' : 'Follow' }}</span>
-                                <span class="unfollow-text hidden">Unfollow</span>
-
-                            </button>
+                        @if (! $isAnonymous && $bleep->user && Auth::check() && Auth::id() !== $bleep->user->id && !Route::is('user.profile'))
+                            <x-button.follow :user="$bleep->user" />
                         @endif
 
                     </div>

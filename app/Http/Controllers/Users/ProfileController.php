@@ -15,58 +15,83 @@ class ProfileController extends Controller
     // user profile page
     public function index($username)
     {
-        // Fetch user with relationships
-        $user = User::where('username', $username)->firstOrFail();
-
-        // Get user's bleeps (not anonymous ones for privacy)
-        $bleeps = $user->bleeps()
-            ->with(['user', 'media', 'likes', 'comments'])
-            ->where('is_anonymous', false)
-            ->latest()
-            ->paginate(20);
-
-        // Attach repost data for authenticated users
-        if (Auth::check()) {
-            $bleeps->getCollection()->transform(function ($bleep) {
-                $bleep->followedReposts = Repost::visibleToUser(Auth::id(), $bleep->id);
-                return $bleep;
-            });
-        }
-
-        // Get user's reposts
-        $reposts = Repost::where('user_id', $user->id)
-            ->with(['bleep.user', 'bleep.media', 'bleep.likes', 'bleep.comments'])
-            ->latest()
-            ->paginate(20);
-
-        // Attach repost data for reposts too
-        if (Auth::check()) {
-            $reposts->getCollection()->transform(function ($repost) {
-                if ($repost->bleep) {
-                    $repost->bleep->followedReposts = Repost::visibleToUser(Auth::id(), $repost->bleep->id);
-                }
-                return $repost;
-            });
-        }
-
-        // Get follow counts
-        $followersCount = $user->followers()->count();
-        $followingCount = $user->following()->count();
-
-        // Check if current user follows this profile
-        $isFollowing = Auth::check() ? Auth::user()->isFollowing($user) : false;
+        $user = User::where('username', $username)->with('preferences')->firstOrFail();
 
         // Check if this is the current user's profile
         $isOwnProfile = Auth::check() && Auth::id() === $user->id;
 
+        // Check if current user follows this profile
+        $isFollowing = Auth::check() ? Auth::user()->isFollowing($user) : false;
+
+        // Check friendship (mutual follow)
+        $isFriend = !$isOwnProfile && Auth::check() && Auth::user()->isFriend($user);
+
+        // Privacy flags from preferences
+        $isPrivate        = !$isOwnProfile && ($user->preferences?->private_profile ?? false);
+        $blockNewFollows  = $user->preferences?->block_new_followers ?? false;
+        $hideOnlineStatus = $user->preferences?->hide_online_status ?? false;
+
+        // Can view content: own profile, or not private, or already following
+        $canViewContent = $isOwnProfile || !$isPrivate || $isFollowing;
+
+        // Online status: hidden from non-friends if hide_online_status is on
+        $canSeeOnlineStatus = $isOwnProfile || !$hideOnlineStatus || $isFriend;
+
+        // Can follow: not own profile, logged in, not already following, and block_new_followers is off
+        // Friends (mutual) are exempt from block_new_followers
+        $canFollow = !$isOwnProfile
+            && Auth::check()
+            && !$isFollowing
+            && (!$blockNewFollows || $isFriend);
+
+        if ($canViewContent) {
+            $bleeps = $user->bleeps()
+                ->with(['user', 'media', 'likes', 'comments'])
+                ->where('is_anonymous', false)
+                ->latest()
+                ->paginate(20);
+
+            if (Auth::check()) {
+                $bleeps->getCollection()->transform(function ($bleep) {
+                    $bleep->followedReposts = Repost::visibleToUser(Auth::id(), $bleep->id);
+                    return $bleep;
+                });
+            }
+
+            $reposts = Repost::where('user_id', $user->id)
+                ->with(['bleep.user', 'bleep.media', 'bleep.likes', 'bleep.comments'])
+                ->latest()
+                ->paginate(20);
+
+            if (Auth::check()) {
+                $reposts->getCollection()->transform(function ($repost) {
+                    if ($repost->bleep) {
+                        $repost->bleep->followedReposts = Repost::visibleToUser(Auth::id(), $repost->bleep->id);
+                    }
+                    return $repost;
+                });
+            }
+        } else {
+            $bleeps  = null;
+            $reposts = null;
+        }
+
+        $followersCount = $user->followers()->count();
+        $followingCount = $user->following()->count();
+
         return view('pages.users.profile', [
-            'user' => $user,
-            'bleeps' => $bleeps,
-            'reposts' => $reposts,
-            'followersCount' => $followersCount,
-            'followingCount' => $followingCount,
-            'isFollowing' => $isFollowing,
-            'isOwnProfile' => $isOwnProfile,
+            'user'               => $user,
+            'bleeps'             => $bleeps,
+            'reposts'            => $reposts,
+            'followersCount'     => $followersCount,
+            'followingCount'     => $followingCount,
+            'isFollowing'        => $isFollowing,
+            'isOwnProfile'       => $isOwnProfile,
+            'isFriend'           => $isFriend,
+            'isPrivate'          => $isPrivate,
+            'canViewContent'     => $canViewContent,
+            'canFollow'          => $canFollow,
+            'canSeeOnlineStatus' => $canSeeOnlineStatus,
         ]);
     }
 

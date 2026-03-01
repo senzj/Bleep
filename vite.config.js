@@ -37,6 +37,7 @@ export default defineConfig({
                 'resources/js/bleep/posts/repost.js',
                 'resources/js/bleep/posts/send_notif.js',
                 'resources/js/bleep/posts/share.js',
+                'resources/js/bleep/users/follow-requests.js',
                 'resources/js/bleep/users/follow.js',
                 'resources/js/bleep/users/profile-lazyload.js',
                 'resources/js/bleep/users/profile.js',

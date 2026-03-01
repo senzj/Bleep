@@ -36,7 +36,6 @@ return new class extends Migration
             $table->boolean('private_profile')->default(false);
             $table->boolean('block_new_followers')->default(false);
             $table->boolean('hide_online_status')->default(false);
-            $table->boolean('hide_activity')->default(false);
 
             $table->timestamps();
 

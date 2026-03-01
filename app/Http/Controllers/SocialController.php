@@ -57,6 +57,7 @@ class SocialController extends Controller
                     ->orWhere('dname', 'like', "%{$query}%")
                     ->orWhereRaw("SUBSTRING_INDEX(email, '@', 1) like ?", ["%{$localPart}%"]);
             })
+            ->with('preferences')
             ->withCount('followers')
             ->get();
 
@@ -82,6 +83,7 @@ class SocialController extends Controller
         $secondDegreeUsers = collect();
         if (!empty($graph['second'])) {
             $secondDegreeUsers = User::whereIn('id', $graph['second'])
+                ->with('preferences')
                 ->withCount('followers')
                 ->orderByDesc('followers_count')
                 ->limit($limit)
@@ -93,6 +95,7 @@ class SocialController extends Controller
         $thirdDegreeUsers = collect();
         if ($remainingAfterSecond > 0 && !empty($graph['third'])) {
             $thirdDegreeUsers = User::whereIn('id', $graph['third'])
+                ->with('preferences')
                 ->withCount('followers')
                 ->orderByDesc('followers_count')
                 ->limit($remainingAfterSecond)
@@ -112,6 +115,7 @@ class SocialController extends Controller
         $randomUsers = collect();
         if ($remainingAfterThird > 0) {
             $randomUsers = User::whereNotIn('id', $excludeIds)
+                ->with('preferences')
                 ->withCount('followers')
                 ->inRandomOrder()
                 ->limit($remainingAfterThird)
@@ -165,11 +169,14 @@ class SocialController extends Controller
 
     protected function serializeUsers(Collection $users, array $graph): Collection
     {
-        return $users->map(function ($candidate) use ($graph) {
+        $authUser = Auth::user();
+
+        return $users->map(function ($candidate) use ($graph, $authUser) {
             $isDirectMutual = in_array($candidate->id, $graph['direct'], true);
             $isSecondDegree = in_array($candidate->id, $graph['second'], true);
             $isThirdDegree = in_array($candidate->id, $graph['third'], true);
             $isFollowing = in_array($candidate->id, $graph['following'], true);
+            $isFriend = $authUser ? $authUser->isFriend($candidate) : false;
 
             $mutualType = null;
             if ($isDirectMutual) {
@@ -188,6 +195,9 @@ class SocialController extends Controller
                 'is_mutual' => $isDirectMutual || $isSecondDegree || $isThirdDegree,
                 'mutual_type' => $mutualType,
                 'is_following' => $isFollowing,
+                'is_private' => (bool) ($candidate->preferences?->private_profile ?? false),
+                'has_pending_request' => $authUser ? Auth::user()->hasSentRequestTo($candidate) : false,
+                'is_friend' => $isFriend,
                 'followers_count' => $candidate->followers_count ?? 0,
             ];
         })->values();

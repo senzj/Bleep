@@ -67,7 +67,7 @@
                                     <textarea
                                         name="message"
                                         placeholder="What's on your mind? Share them with a bleep!"
-                                        class="textarea textarea-bordered w-full resize-none placeholder:text-lg @error('message') textarea-error @enderror"
+                                        class="textarea textarea-bordered rounded-lg w-full resize-none placeholder:text-lg @error('message') textarea-error @enderror"
                                         rows="2"
                                         maxlength="255"
                                     ></textarea>
