@@ -645,7 +645,7 @@ const handleLoadMoreReplies = () => loadReplies();
 
                 <!-- Display mode -->
                 <template v-else>
-                    <p v-if="comment.message" :class="textSize" class="comment-message text-base-content whitespace-pre-wrap break-words mb-2">
+                    <p v-if="comment.message" :class="textSize" class="comment-message text-base-content whitespace-pre-wrap wrap-break-words mb-2">
                         {{ comment.message }}
                     </p>
                     <CommentMedia

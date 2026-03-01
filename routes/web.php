@@ -20,7 +20,6 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SocialController;
 use App\Http\Controllers\UserPreferencesController;
 use App\Http\Controllers\Users\ProfileController;
-use GuzzleHttp\Middleware;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 

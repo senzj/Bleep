@@ -196,7 +196,7 @@
                 {{-- Tab Panels --}}
                 <div class="p-6" role="tabpanel" :aria-labelledby="'tab-btn-' + tab" x-transition>
                     <template x-if="tab === 'bleeps'">
-                        <div>
+                        <div x-show="tab === 'bleeps'">
                             @if($bleeps && $bleeps->count() > 0)
                                 <div id="bleeps-list" class="space-y-4"
                                     data-next-url="{{ $bleeps->hasMorePages() ? route('user.bleeps', ['username' => $user->username, 'page' => $bleeps->currentPage() + 1]) : '' }}">
@@ -224,15 +224,14 @@
                         </div>
                     </template>
                     <template x-if="tab === 'reposts'">
-                        <div>
+                        <div x-show="tab === 'reposts'">
                             @if($reposts && $reposts->count() > 0)
                                 <div id="reposts-list" class="space-y-4"
                                     data-next-url="{{ $reposts->hasMorePages() ? route('user.reposts', ['username' => $user->username, 'page' => $reposts->currentPage() + 1]) : '' }}">
                                     @foreach($reposts as $repost)
                                         @if($repost->bleep && !$repost->bleep->deleted_at)
                                                 <x-bleep :bleep="$repost->bleep" />
-                                            </div>
-                                        @endif
+                                            @endif
                                     @endforeach
                                 </div>
                                 <button id="reposts-load-more"
