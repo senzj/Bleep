@@ -53,23 +53,52 @@
     <div class="bg-base-300 rounded-lg p-4 shadow-lg border border-gray-500/20 hover:shadow-xl transition-shadow duration-200" data-bleep-card="{{ $bleep->id }}">
         {{-- Repost Tag (if reposted by followed users) --}}
         @if($followedRepostCount > 0)
-            <div class="flex items-center gap-2 mb-3 text-xs text-base-content/60">
+            <div class="flex items-center gap-2 mb-4 text-xs text-base-content/60">
                 <i data-lucide="repeat" class="w-4 h-4"></i>
 
                 @if($followedRepostCount === 1)
                     <span>
-                        <a href="{{ route('user.profile', ['username' => $followedReposts->first()->user->username]) }}" class="font-semibold hover:underline">{{ $followedReposts->first()->user->username }}</a> reposted
+                        <a href="{{ route('user.profile', ['username' => $followedReposts->first()->user->username]) }}" class="font-semibold hover:underline">
+                            <img src="{{ $followedReposts->first()->user->profile_picture ? asset('storage/' . $followedReposts->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                                alt="{{ $followedReposts->first()->user->username }}"
+                                class="w-4 h-4 rounded-full inline mr-0.5">
+                            {{ $followedReposts->first()->user->username }}
+                        </a> reposted
                     </span>
                 @elseif($followedRepostCount === 2)
                     <span>
-                        <a href="{{ route('user.profile', ['username' => $followedReposts->first()->user->username]) }}" class="font-semibold hover:underline">{{ $followedReposts->first()->user->username }}</a> and
-                        <a href="{{ route('user.profile', ['username' => $followedReposts->skip(1)->first()->user->username]) }}" class="font-semibold hover:underline">{{ $followedReposts->skip(1)->first()->user->username }}</a> reposted
+                        <a href="{{ route('user.profile', ['username' => $followedReposts->first()->user->username]) }}" class="font-semibold hover:underline">
+                            <img src="{{ $followedReposts->first()->user->profile_picture ? asset('storage/' . $followedReposts->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                                alt="{{ $followedReposts->first()->user->username }}"
+                                class="w-4 h-4 rounded-full inline mr-0.5">
+                            {{ $followedReposts->first()->user->username }}</a> and
+                        <a href="{{ route('user.profile', ['username' => $followedReposts->skip(1)->first()->user->username]) }}" class="font-semibold hover:underline">
+                            <img src="{{ $followedReposts->skip(1)->first()->user->profile_picture ? asset('storage/' . $followedReposts->skip(1)->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                                alt="{{ $followedReposts->skip(1)->first()->user->username }}"
+                                class="w-4 h-4 rounded-full inline mr-0.5">
+                            {{ $followedReposts->skip(1)->first()->user->username }}</a> reposted
                     </span>
                 @else
                     <div class="dropdown dropdown-bottom">
-                        <button tabindex="0" class="hover:underline cursor-pointer">
-                            <a href="#" class="font-semibold">{{ $followedReposts->first()->user->username }}</a>
-                            and {{ $followedRepostCount - 1 }} other{{ $followedRepostCount > 2 ? 's' : '' }} reposted
+                        <button tabindex="0" class="hover:font-bold cursor-pointer">
+                            {{-- recent reposter --}}
+                            <img src="{{ $followedReposts->first()->user->profile_picture ? asset('storage/' . $followedReposts->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                                alt="{{ $followedReposts->first()->user->username }}"
+                                class="w-4 h-4 rounded-full inline">
+                            {{-- other reposter --}}
+                            <img src="{{ $followedReposts->skip(1)->first()->user->profile_picture ? asset('storage/' . $followedReposts->skip(1)->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                                alt="{{ $followedReposts->skip(1)->first()->user->username }}"
+                                class="w-4 h-4 rounded-full inline">
+                            <img src="{{ $followedReposts->skip(2)->first()->user->profile_picture ? asset('storage/' . $followedReposts->skip(2)->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                                alt="{{ $followedReposts->skip(2)->first()->user->username }}"
+                                class="w-4 h-4 rounded-full inline">
+                            {{-- more reposter indicator --}}
+                            @if($followedRepostCount > 3)
+                                <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-300/50 text-base-content/50 text-xs font-bold mr-0.5" title="{{ $followedRepostCount - 3 }} more">
+                                    <p class="text-[9px]">+{{ $followedRepostCount - 3 }}</p>
+                                </span>
+                            @endif
+                            <span> reposted</span>
                         </button>
 
                         <div tabindex="0" class="dropdown-content z-10 card card-compact w-64 p-2 shadow-lg bg-base-100 border border-base-300 rounded-xl mt-1">
@@ -77,22 +106,28 @@
                                 <h3 class="font-semibold text-sm mb-2">Reposted by</h3>
                                 <div class="space-y-2 max-h-48 overflow-y-auto">
                                     @foreach($followedReposts as $repost)
-                                        <div class="flex items-center gap-2 text-xs">
-                                            <div class="avatar">
-                                                <div class="w-6 h-6 rounded-full">
-                                                    <img src="{{ $repost->user->profile_picture ? asset('storage/' . $repost->user->profile_picture) : asset('images/avatar/default.jpg') }}"
-                                                        alt="{{ $repost->user->username }}">
+                                        <a href="{{ route('user.profile', ['username' => $repost->user->username]) }}" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-base-200 hover:underline transition">
+                                            <div class="flex items-center gap-2 text-xs">
+                                                <div class="avatar">
+                                                    <div class="w-6 h-6 rounded-full">
+                                                        <img src="{{ $repost->user->profile_picture ? asset('storage/' . $repost->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                                                            alt="{{ $repost->user->username }}">
+                                                    </div>
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="font-semibold text-sm truncate block">
+                                                        {{ $repost->user->username }}
+                                                    </p>
+
+                                                    <span class="text-base-content/50 text-xs">
+                                                        @php
+                                                            $formatRepostTime = $repost->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y | g:i:s A');
+                                                        @endphp
+                                                        {{ $formatRepostTime }}
+                                                    </span>
                                                 </div>
                                             </div>
-                                            <div class="flex-1 min-w-0">
-                                                <a href="#" class="font-semibold hover:underline truncate block">
-                                                    {{ $repost->user->username }}
-                                                </a>
-                                                <span class="text-base-content/50 text-xs">
-                                                    {{ $repost->created_at->diffForHumans() }}
-                                                </span>
-                                            </div>
-                                        </div>
+                                        </a>
                                     @endforeach
                                 </div>
                             </div>
@@ -133,13 +168,6 @@
                                         @if (Auth::check() && $bleep->user_id === Auth::id() && !Route::is('post'))
                                             <span class="px-1.5 py-0.5 text-[8px] font-extrabold rounded bg-base-content/10 text-base-content/40 border border-base-content/20">
                                                 YOU
-                                            </span>
-                                        @endif
-
-                                        {{-- Role Tag moved beside name using only spacing --}}
-                                        @if (! $isAnonymous && $bleep->user && $bleep->user->role === 'moderator')
-                                            <span class="px-1 py-0.5 text-xs font-extrabold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-600/20">
-                                                MOD
                                             </span>
                                         @endif
                                     </div>

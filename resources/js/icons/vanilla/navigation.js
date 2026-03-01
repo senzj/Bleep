@@ -12,4 +12,5 @@ export {
     Search,
     SearchX,
     Filter,
+    Ellipsis,
 } from 'lucide';
