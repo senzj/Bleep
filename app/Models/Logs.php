@@ -65,64 +65,64 @@ class Logs extends Model
         }
     }
 
-    /**
-     * Return a non-technical, user-friendly description for this log entry.
-     */
-    public function readableDetails(): string
-    {
-        // Use explicit human message if present
-        if (is_array($this->details) && !empty($this->details['message'])) {
-            $base = (string) $this->details['message'];
-        } else {
-            $map = [
-                'login' => 'Signed in',
-                'failed_login' => 'Failed sign-in attempt',
-                'logout' => 'Signed out',
-                'password_change' => 'Password changed',
-                'profile_edit' => 'Profile updated',
-                'device_added' => 'Device remembered',
-                'device_removed' => 'Device removed',
-                'session_removed' => 'Session ended',
-                'bleep_deleted' => 'A post was deleted',
-            ];
+        /**
+         * Return a non-technical, user-friendly description for this log entry.
+         */
+        public function readableDetails(): string
+        {
+            // Use explicit human message if present
+            if (is_array($this->details) && !empty($this->details['message'])) {
+                $base = (string) $this->details['message'];
+            } else {
+                $map = [
+                    'login' => 'Signed in',
+                    'failed_login' => 'Failed sign-in attempt',
+                    'logout' => 'Signed out',
+                    'password_change' => 'Password changed',
+                    'profile_edit' => 'Profile updated',
+                    'device_added' => 'Device remembered',
+                    'device_removed' => 'Device removed',
+                    'session_removed' => 'Session ended',
+                    'bleep_deleted' => 'A post was deleted',
+                ];
 
-            $base = $this->action && isset($map[$this->action]) ? $map[$this->action] : 'Details available';
-        }
+                $base = $this->action && isset($map[$this->action]) ? $map[$this->action] : 'Details available';
+            }
 
-        // Add brief non-technical context: device/browser/os and IP (if present)
-        $pieces = [];
+            // Add brief non-technical context: device/browser/os and IP (if present)
+            $pieces = [];
 
-        // If controller provided friendly device string in details, use it
-        if (is_array($this->details) && !empty($this->details['device'])) {
-            $pieces[] = $this->details['device'];
-        } else {
-            // Best-effort parse from user_agent
-            if (!empty($this->user_agent)) {
-                try {
-                    $os = trim(strip_tags(UserAgentParser::parseOS($this->user_agent)));
-                    $browser = trim(strip_tags(UserAgentParser::parseBrowser($this->user_agent)));
-                    if ($browser && $os) {
-                        $pieces[] = "{$browser} on {$os}";
-                    } elseif ($browser) {
-                        $pieces[] = $browser;
-                    } elseif ($os) {
-                        $pieces[] = $os;
+            // If controller provided friendly device string in details, use it
+            if (is_array($this->details) && !empty($this->details['device'])) {
+                $pieces[] = $this->details['device'];
+            } else {
+                // Best-effort parse from user_agent
+                if (!empty($this->user_agent)) {
+                    try {
+                        $os = trim(strip_tags(UserAgentParser::parseOS($this->user_agent)));
+                        $browser = trim(strip_tags(UserAgentParser::parseBrowser($this->user_agent)));
+                        if ($browser && $os) {
+                            $pieces[] = "{$browser} on {$os}";
+                        } elseif ($browser) {
+                            $pieces[] = $browser;
+                        } elseif ($os) {
+                            $pieces[] = $os;
+                        }
+                    } catch (\Throwable $e) {
+                        // ignore UA parse failures
                     }
-                } catch (\Throwable $e) {
-                    // ignore UA parse failures
                 }
             }
-        }
 
-        if (!empty($this->ip)) {
-            $pieces[] = "from {$this->ip}";
-        }
+            if (!empty($this->ip)) {
+                $pieces[] = "from {$this->ip}";
+            }
 
-        if (!empty($pieces)) {
-            $context = implode(', ', $pieces);
-            return "{$base} — {$context}";
-        }
+            if (!empty($pieces)) {
+                $context = implode(', ', $pieces);
+                return "{$base} — {$context}";
+            }
 
-        return $base;
-    }
+            return $base;
+        }
 }

@@ -9,7 +9,8 @@ import * as security from './security';
 import * as misc from './misc';
 import * as devices from './devices';
 import * as theme from './theme';
-
+import * as statistics from './stats';
+import * as brand from './brand';
 
 export const VanillaIcons = {
     ...navigation,
@@ -22,4 +23,6 @@ export const VanillaIcons = {
     ...misc,
     ...devices,
     ...theme,
+    ...statistics,
+    ...brand,
 };

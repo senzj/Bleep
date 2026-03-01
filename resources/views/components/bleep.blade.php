@@ -461,7 +461,7 @@
                             <span class="repost-label">
                                 <span class="repost-count mr-0.5" data-bleep-id="{{ $bleep->id }}">{{ $totalRepostCount }}</span>
                                 <span class="repost-text-label">{{ $hasReposted ? 'Reposted' : 'Repost' }}</span>
-                                <span class="unrepost-text-label hidden">Remove Repost</span>
+                                <span class="unrepost-text-label hidden">Remove</span>
                             </span>
                         </span>
                     </button>

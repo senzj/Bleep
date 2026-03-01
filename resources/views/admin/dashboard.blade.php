@@ -37,10 +37,10 @@
             @endphp
 
             @foreach ($stats as $stat)
-                <div class="stat bg-base-100 rounded-xl border border-gray-300/50 min-w-[180px] shadow-xl">
+                <div class="stat bg-base-100 rounded-xl border border-gray-300/50 min-w-45 shadow-xl">
                     <div class="stat-title">{{ $stat['label'] }}</div>
                     <div class="stat-value text-xl {{ $stat['class'] ?? '' }}">
-                        {{ number_format($stat['value']) }}
+                        {{ number_format($stat['value']) }} 
                     </div>
                     @isset($stat['desc'])
                         <div class="stat-desc">{{ $stat['desc'] }}</div>

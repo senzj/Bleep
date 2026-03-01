@@ -3,37 +3,13 @@
 @endphp
 
 <x-settings.layout>
-    <div class="mb-8">
+    <div class="mb-3">
         <h1 class="text-2xl font-bold mb-2">Your Account Activity</h1>
         <p class="text-sm text-base-content/70">Track all actions and events on your account</p>
     </div>
 
-    {{-- Minimal Filters --}}
-    <div class="bg-base-200 rounded-lg p-4 mb-6">
-        <form method="GET" action="{{ route('settings.logs') }}" class="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-            <input type="search" name="q" value="{{ old('q', $q ?? request('q')) }}" placeholder="Search action, details or IP" class="input input-sm w-full md:flex-1" />
-
-            <select name="action" class="select select-sm w-full md:min-w-[180px] md:w-auto">
-                <option value="">All Actions</option>
-                @foreach($actions ?? [] as $a)
-                    <option value="{{ $a }}" @if(($action ?? request('action')) === $a) selected @endif>{{ ucwords(str_replace('_',' ',$a)) }}</option>
-                @endforeach
-            </select>
-
-            <div class="grid grid-cols-2 gap-2 md:flex md:gap-3">
-                <input type="date" name="date_from" value="{{ old('date_from', $dateFrom ?? request('date_from')) }}" class="input input-sm" />
-                <input type="date" name="date_to" value="{{ old('date_to', $dateTo ?? request('date_to')) }}" class="input input-sm" />
-            </div>
-
-            <div class="flex gap-2">
-                <button type="submit" class="btn btn-sm btn-primary flex-1 md:flex-none">Filter</button>
-                <a href="{{ route('settings.logs') }}" class="btn btn-sm btn-ghost flex-1 md:flex-none">Reset</a>
-            </div>
-        </form>
-    </div>
-
     {{-- Stats Overview --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
         <div class="bg-base-200 rounded-lg p-4">
             <div class="text-xs font-medium text-base-content/70 mb-1">Total Events</div>
             <div class="text-2xl font-bold">{{ $logs->total() }}</div>
@@ -52,9 +28,34 @@
         </div>
     </div>
 
+    {{-- Minimal Filters --}}
+    <div class="bg-base-200 rounded-lg p-4 mb-1">
+        <form method="GET" action="{{ route('settings.logs') }}" class="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+            <input type="search" name="q" value="{{ old('q', $q ?? request('q')) }}" placeholder="Search action, details or IP" class="input input-sm w-full md:flex-1" />
+
+            <select name="action" class="select select-sm w-full md:min-w-45 md:w-auto">
+                <option value="">All Actions</option>
+                @foreach($actions ?? [] as $a)
+                    <option value="{{ $a }}" @if(($action ?? request('action')) === $a) selected @endif>{{ ucwords(str_replace('_',' ',$a)) }}</option>
+                @endforeach
+            </select>
+
+            <div class="grid grid-cols-2 gap-2 md:flex md:gap-3">
+                <input type="date" name="date_from" value="{{ old('date_from', $dateFrom ?? request('date_from')) }}" class="input input-sm" />
+                <input type="date" name="date_to" value="{{ old('date_to', $dateTo ?? request('date_to')) }}" class="input input-sm" />
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary flex-1 md:flex-none">Filter</button>
+                <a href="{{ route('settings.logs') }}" class="btn btn-sm btn-ghost flex-1 md:flex-none">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    {{-- Table Logs --}}
     <div class="bg-base-100 border border-base-300 rounded-xl overflow-hidden">
         {{-- Desktop Header --}}
-        <div class="hidden md:grid grid-cols-[1.5fr_1fr_2fr_1fr_1.5fr] gap-3 px-4 py-3 bg-base-200 text-[11px] uppercase tracking-wide font-semibold text-center">
+        <div class="hidden md:grid grid-cols-5 gap-3 px-4 py-3 bg-base-200 text-[11px] uppercase tracking-wide font-semibold text-center">
             <div>Date & Time</div>
             <div>Action</div>
             <div>Details</div>
@@ -85,13 +86,23 @@
                     'device_removed' => 'smartphone',
                 ];
                 $icon = $actionIcons[strtolower($log->action)] ?? 'activity';
+
+                $hasExtraJson = is_array($log->details) && (count($log->details) > 1 || !isset($log->details['message']));
+                $formattedJson = collect($log->details)
+                    ->map(function($value, $key) {
+                        if (is_bool($value)) $value = $value ? 'true' : 'false';
+                        elseif (is_array($value)) $value = json_encode($value);
+                        return "\"{$key}\" = {$value}";
+                    })
+                    ->implode("\n");
             @endphp
 
             {{-- Desktop Layout --}}
-            <div class="hidden md:grid grid-cols-[1.5fr_1fr_2fr_1fr_1.5fr] gap-3 px-4 py-4 border-t border-base-300 hover:bg-base-200/40 transition items-center">
+            <div class="hidden md:grid grid-cols-5 gap-3 px-4 py-4 border-t border-base-300 hover:bg-base-200/40 transition items-center">
                 {{-- Date & Time --}}
                 <div>
-                    <div class="text-sm">{{ $log->created_at->format('M d, Y') }} | {{ $log->created_at->format('h:i:s A') }}</div>
+                    <div class="text-sm">{{ $log->created_at->format('F d, Y') }}</div>
+                    <div class="text-sm">{{ $log->created_at->format('h:i:s A') }}</div>
                     <div class="text-xs text-base-content/50">{{ $log->created_at->diffForHumans() }}</div>
                 </div>
 
@@ -103,10 +114,9 @@
                     </span>
                 </div>
 
-                {{-- Details --}}
-                <div class="text-sm text-center">
-                    {{ $log->readableDetails() }}
-                </div>
+                @if($hasExtraJson)
+                    <pre class="text-xs p-2 bg-base-200/50 rounded overflow-x-auto whitespace-pre-wrap wrap-break-word max-w-full">{{ $formattedJson }}</pre>
+                @endif
 
                 {{-- IP Address --}}
                 <div class="text-center">
@@ -132,31 +142,21 @@
             <div class="md:hidden border-t border-base-300">
                 <div class="p-4 hover:bg-base-200/40 transition">
                     <div class="flex items-start gap-3 mb-3">
-                        <div class="bg-base-200 rounded-lg p-2 flex-shrink-0">
+                        <div class="bg-base-200 rounded-lg p-2 shrink-0">
                             <i data-lucide="{{ $icon }}" class="w-5 h-5"></i>
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-start justify-between gap-2 mb-1">
-                                <div class="font-medium text-sm break-words">{{ ucwords(str_replace('_', ' ', $log->action)) }}</div>
-                                <span class="badge {{ $badgeColor }} badge-sm flex-shrink-0 whitespace-nowrap">
+                                <div class="font-medium text-sm wrap-break-word">{{ ucwords(str_replace('_', ' ', $log->action)) }}</div>
+                                <span class="badge {{ $badgeColor }} badge-sm shrink-0 whitespace-nowrap">
                                     {{ $log->created_at->diffForHumans(null, true) }}
                                 </span>
                             </div>
                             <div class="text-xs text-base-content/70 mb-2">{{ $log->created_at->format('M d, Y • h:i A') }}</div>
-
-                            {{-- Short readable message --}}
-                            @if($log->readableDetails())
-                                <div class="text-sm text-base-content/90 break-words">
-                                    {{ $log->readableDetails() }}
-                                </div>
-                            @endif
                         </div>
                     </div>
 
                     {{-- Collapsible details --}}
-                    @php
-                        $hasExtraJsonMobile = is_array($log->details) && (count($log->details) > 1 || !isset($log->details['message']));
-                    @endphp
                     <details class="mt-3">
                         <summary class="cursor-pointer text-xs text-base-content/60 hover:text-base-content flex items-center gap-2 select-none">
                             <i data-lucide="chevron-down" class="w-4 h-4"></i>
@@ -178,15 +178,15 @@
                                 @endphp
                                 <div class="p-3 bg-base-200 rounded-lg">
                                     <div class="text-xs font-semibold text-base-content/50 uppercase mb-1">Device</div>
-                                    <div class="text-sm leading-relaxed break-words">{!! $ua_browser !!}</div>
-                                    <div class="text-xs leading-relaxed opacity-70 mt-1 break-words">{!! $ua_os !!}</div>
+                                    <div class="text-sm leading-relaxed wrap-break-word">{!! $ua_browser !!}</div>
+                                    <div class="text-xs leading-relaxed opacity-70 mt-1 wrap-break-word">{!! $ua_os !!}</div>
                                 </div>
                             @endif
 
-                            @if($hasExtraJsonMobile)
-                                <div class="p-3 bg-base-300 rounded-lg">
-                                    <div class="text-xs font-semibold text-base-content/50 uppercase mb-2">Raw Details</div>
-                                    <pre class="text-xs p-2 bg-base-200 rounded overflow-x-auto whitespace-pre-wrap break-words max-w-full">{{ json_encode($log->details, JSON_PRETTY_PRINT) }}</pre>
+                            @if($hasExtraJson)
+                                <div class="p-3 bg-base-300/50 rounded-lg">
+                                    <div class="text-xs font-semibold text-base-content/50 uppercase mb-2">Details</div>
+                                    <pre class="text-xs p-2 bg-base-200 rounded overflow-x-auto whitespace-pre-wrap wrap-break-word max-w-full">{{ $formattedJson }}</pre>
                                 </div>
                             @endif
                         </div>
