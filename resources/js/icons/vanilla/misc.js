@@ -14,4 +14,5 @@ export {
     Sparkles,
     Sparkle,
     X,
+    Ban,
 } from 'lucide';

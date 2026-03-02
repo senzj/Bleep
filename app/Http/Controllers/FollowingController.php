@@ -22,6 +22,12 @@ class FollowingController extends Controller
             ], 422);
         }
 
+        if ($authUser->isBlockedOrHasBlocked($user)) {
+            return response()->json([
+                'message' => 'Follow action is unavailable due to a block relationship.',
+            ], 403);
+        }
+
         $existing = Following::where('follower_id', $authUser->id)
             ->where('followed_id', $user->id)
             ->first();

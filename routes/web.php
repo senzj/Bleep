@@ -12,6 +12,7 @@ use App\Http\Controllers\Bleep\LikesController;
 use App\Http\Controllers\Bleep\RepostController;
 use App\Http\Controllers\Bleep\ShareController;
 use App\Http\Controllers\BleepController;
+use App\Http\Controllers\BlockedUsersController;
 use App\Http\Controllers\FollowingController;
 use App\Http\Controllers\FollowRequestController;
 use App\Http\Controllers\PostController;
@@ -173,6 +174,14 @@ Route::middleware('auth')->group((function () {
         ->name('follow.requests.reject');
     Route::delete('/api/follow-requests/{request}', [FollowRequestController::class, 'cancel'])
         ->name('follow.requests.cancel');
+
+    // Blocked Users Routes
+    Route::get('/blocked', [BlockedUsersController::class, 'index'])
+        ->name('blocked.users');
+    Route::post('/blocked/{user}/block', [BlockedUsersController::class, 'store'])
+        ->name('blocked.users.block');
+    Route::delete('/blocked/{user}/unblock', [BlockedUsersController::class, 'destroy'])
+        ->name('blocked.users.unblock');
 
     // Settings Routes
     Route::get('/settings', fn () => redirect()->route('settings.profile'))

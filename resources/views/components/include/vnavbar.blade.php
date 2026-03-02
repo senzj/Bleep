@@ -3,7 +3,7 @@
 <aside id="vertical-nav-desktop" class="hidden lg:flex flex-col w-54 h-screen sticky top-0 bg-base-200/95 shadow-lg shrink-0">
     {{-- Logo --}}
     <div class="p-4 border-b border-base-200">
-        <a href="/" class="flex items-center gap-2 text-xl font-bold">
+        <a href="/" class="flex items-center gap-2 text-xl font-bold rounded-lg">
             <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="w-8 h-8">
             <span class="sidebar-text">Bleep</span>
         </a>

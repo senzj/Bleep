@@ -47,6 +47,7 @@ export default defineConfig({
                 'resources/js/settings/logs.js',
                 'resources/js/settings/password.js',
                 'resources/js/settings/preference.js',
+                'resources/js/social/blockuser.js',
                 'resources/js/social/people.js',
                 'resources/js/ui/mobile.js',
             ],

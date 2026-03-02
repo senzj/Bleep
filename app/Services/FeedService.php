@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Bleep;
+use App\Models\BlockedUsers;
 use App\Models\Following;
 use App\Models\Repost;
 use App\Models\User;
@@ -80,6 +81,13 @@ class FeedService
         $query = Bleep::with(['user', 'media'])
             ->withCount(['likes']);
 
+        if ($user) {
+            $blockedUserIds = $this->getBlockedRelationshipUserIds($user);
+            if (!empty($blockedUserIds)) {
+                $query->whereNotIn('user_id', $blockedUserIds);
+            }
+        }
+
         if ($preferences && $preferences->show_nsfw === false) {
             $query->where('is_nsfw', false);
         }
@@ -125,6 +133,21 @@ class FeedService
         }
 
         return $query;
+    }
+
+    protected function getBlockedRelationshipUserIds(User $user): array
+    {
+        return BlockedUsers::query()
+            ->where('blocker_id', $user->id)
+            ->orWhere('blocked_id', $user->id)
+            ->get(['blocker_id', 'blocked_id'])
+            ->map(function ($row) use ($user) {
+                return $row->blocker_id === $user->id ? $row->blocked_id : $row->blocker_id;
+            })
+            ->filter(fn ($id) => $id !== $user->id)
+            ->unique()
+            ->values()
+            ->toArray();
     }
 
     protected function applyScope($query, array $scopeIds, ?object $preferences): void

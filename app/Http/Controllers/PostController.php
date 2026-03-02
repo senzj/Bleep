@@ -15,6 +15,10 @@ class PostController extends Controller
             ->withTrashed()
             ->findOrFail($id);
 
+        if (Auth::check() && $bleep->user && Auth::user()->isBlockedOrHasBlocked($bleep->user)) {
+            abort(404);
+        }
+
         // Record view for single post page
         $bleep->recordView(
             Auth::user(),
@@ -40,6 +44,11 @@ class PostController extends Controller
     public function loadMorePostComments(Request $request, $id)
     {
         $bleep = Bleep::findOrFail($id);
+
+        if (Auth::check() && $bleep->user && Auth::user()->isBlockedOrHasBlocked($bleep->user)) {
+            abort(404);
+        }
+
         $page = (int) $request->get('page', 1);
         $perPage = 10;
 

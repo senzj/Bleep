@@ -23,7 +23,7 @@
     @if(!$isOwnProfile && Auth::check())
         @if($isFollowing)
             <button type="button"
-                class="btn btn-sm btn-primary gap-2 follow-btn"
+                class="btn btn-sm btn-primary gap-2 follow-btn rounded-lg"
                 data-user-id="{{ $user->id }}"
                 data-following="1">
                 <i data-lucide="user-check" class="w-4 h-4 follow-icon"></i>
@@ -33,7 +33,7 @@
 
         @elseif($hasPendingRequest)
             <button type="button"
-                class="btn btn-sm btn-outline gap-2 cancel-request-btn"
+                class="btn btn-sm btn-outline gap-2 cancel-request-btn rounded-lg"
                 data-user-id="{{ $user->id }}">
                 <i data-lucide="clock" class="w-4 h-4"></i>
                 Requested
@@ -42,14 +42,14 @@
         @elseif($canFollow)
             @if($isPrivate)
                 <button type="button"
-                    class="btn btn-sm btn-outline gap-2 request-follow-btn"
+                    class="btn btn-sm btn-outline gap-2 request-follow-btn rounded-lg btn-primary hover:btn-primary-focus"
                     data-user-id="{{ $user->id }}">
                     <i data-lucide="user-plus" class="w-4 h-4"></i>
                     Follow
                 </button>
             @else
                 <button type="button"
-                    class="btn btn-sm btn-outline gap-2 follow-btn"
+                    class="btn btn-sm btn-outline gap-2 follow-btn rounded-lg"
                     data-user-id="{{ $user->id }}"
                     data-following="0">
                     <i data-lucide="user-plus" class="w-4 h-4 follow-icon"></i>
@@ -61,7 +61,7 @@
 
         @if($showMessage && $isFriend)
             <a href="#"
-                class="btn btn-sm btn-outline gap-2">
+                class="btn btn-sm btn-outline gap-2 rounded-lg">
                 <i data-lucide="message-square" class="w-4 h-4"></i>
                 Message
             </a>

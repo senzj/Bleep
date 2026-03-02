@@ -7,7 +7,8 @@
         'resources/js/bleep/users/profile-lazyload.js',
         'resources/js/bleep/users/profile.js',
         'resources/js/bleep/users/follow.js',
-        'resources/js/bleep/modals/mediamodal.js'
+        'resources/js/bleep/modals/mediamodal.js',
+        'resources/js/social/blockuser.js'
         ])
 @endpush
 
@@ -74,10 +75,8 @@
                                     @if ($user->is_bot)
                                         <i data-lucide="cpu" class="w-5 h-5 text-green-500 shrink-0" title="This account is a bot"></i>
                                     @endif
-                                @endif
-
-                                {{-- Private Lock --}}
-                                @if (!$canViewContent)
+                                @else
+                                    {{-- If content is private, show lock icon --}}
                                     <i data-lucide="lock" class="w-5 h-5 text-base-content/60 shrink-0" title="This profile is private"></i>
                                 @endif
                             </div>
@@ -93,7 +92,41 @@
                                 Edit Profile
                             </a>
                         @else
-                            <x-button.follow :user="$user" :showMessage="$canViewContent" />
+                            <div class="gap-1 flex items-center">
+                                {{-- Blocked Button --}}
+                                @if ($isBlockedByCurrentUser)
+                                    <form method="POST"
+                                        action="{{ route('blocked.users.unblock', ['user' => $user->id]) }}"
+                                        data-block-confirm="unblock"
+                                        data-username="{{ '@' . $user->username }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline gap-2 rounded-lg hover:btn-error">
+                                            <i data-lucide="ban" class="w-4 h-4"></i>
+                                            Unblock User
+                                        </button>
+                                    </form>
+                                @elseif (!$isBlockedByUser)
+                                    {{-- Follow/Unfollow + message Button --}}
+                                    <x-button.follow :user="$user" :showMessage="$canViewContent" />
+
+                                    <form method="POST"
+                                        action="{{ route('blocked.users.block', ['user' => $user->id]) }}"
+                                        data-block-confirm="block"
+                                        data-username="{{ '@' . $user->username }}">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline gap-2 rounded-lg btn-error hover:btn-error-focus">
+                                            <i data-lucide="ban" class="w-4 h-4"></i>
+                                            Block User
+                                        </button>
+                                    </form>
+                                @else
+                                    <a href="{{ route('blocked.users') }}" class="btn btn-sm btn-outline gap-2 rounded-lg">
+                                        <i data-lucide="ban" class="w-4 h-4"></i>
+                                        Blocked You
+                                    </a>
+                                @endif
+                            </div>
                         @endif
                     </div>
 
@@ -149,13 +182,25 @@
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-base-200 mb-4">
                     <i data-lucide="lock" class="w-8 h-8 text-base-content/50"></i>
                 </div>
+
                 <h2 class="text-lg font-bold mb-1">This account is private</h2>
+
                 <p class="text-sm text-base-content/60 mb-4">
                     Follow <span class="font-medium">{{'@' . $user->username }}</span> to see their bleeps and reposts.
                 </p>
                 @if(!Auth::check())
                     <a href="{{ route('login') }}" class="btn btn-primary btn-sm">Log in to follow</a>
                 @endif
+            </div>
+        @elseif($isBlocked)
+            <div class="bg-base-100 rounded-lg shadow-lg border border-base-300 p-12 text-center">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-base-200 mb-4">
+                    <i data-lucide="ban" class="w-8 h-8 text-base-content/50"></i>
+                </div>
+                <h2 class="text-lg font-bold mb-1">You are blocked</h2>
+                <p class="text-sm text-base-content/60 mb-4">
+                    You have been blocked by <span class="font-medium">{{'@' . $user->username }}</span>. Please refrain from interacting with this user.
+                </p>
             </div>
         @else
 
@@ -194,65 +239,64 @@
                 </div>
 
                 {{-- Tab Panels --}}
-                <div class="p-6" role="tabpanel" :aria-labelledby="'tab-btn-' + tab" x-transition>
-                    <template x-if="tab === 'bleeps'">
-                        <div x-show="tab === 'bleeps'">
-                            @if($bleeps && $bleeps->count() > 0)
-                                <div id="bleeps-list" class="space-y-4"
-                                    data-next-url="{{ $bleeps->hasMorePages() ? route('user.bleeps', ['username' => $user->username, 'page' => $bleeps->currentPage() + 1]) : '' }}">
-                                    @foreach($bleeps as $bleep)
-                                        <x-bleep :bleep="$bleep" />
-                                    @endforeach
-                                </div>
-                                <button id="bleeps-load-more"
-                                    class="btn btn-outline btn-sm mt-4 w-full {{ $bleeps->hasMorePages() ? '' : 'hidden' }}">
-                                    Load more
-                                </button>
-                                <div id="bleeps-sentinel" class="h-4"></div>
-                            @else
-                                <div class="text-center py-12">
-                                    <i data-lucide="message-square" class="w-16 h-16 mx-auto text-base-content/30 mb-4"></i>
-                                    <p class="text-base-content/60">
-                                        @if($isOwnProfile)
-                                            You haven't posted any bleeps yet.
-                                        @else
-                                            {{ "@" . $user->username }} hasn't posted any bleeps yet.
+                <div class="p-6" role="tabpanel" :aria-labelledby="'tab-btn-' + tab">
+                    {{-- Bleeps Tab --}}
+                    <div x-show="tab === 'bleeps'">
+                        @if($bleeps && $bleeps->count() > 0)
+                            <div id="bleeps-list" class="space-y-4"
+                                data-next-url="{{ $bleeps->hasMorePages() ? route('user.bleeps', ['username' => $user->username, 'page' => $bleeps->currentPage() + 1]) : '' }}">
+                                @foreach($bleeps as $bleep)
+                                    <x-bleep :bleep="$bleep" />
+                                @endforeach
+                            </div>
+                            <button id="bleeps-load-more"
+                                class="btn btn-outline btn-sm mt-4 w-full {{ $bleeps->hasMorePages() ? '' : 'hidden' }}">
+                                Load more
+                            </button>
+                            <div id="bleeps-sentinel" class="h-4"></div>
+                        @else
+                            <div class="text-center py-12">
+                                <i data-lucide="message-square" class="w-16 h-16 mx-auto text-base-content/30 mb-4"></i>
+                                <p class="text-base-content/60">
+                                    @if($isOwnProfile)
+                                        You haven't posted any bleeps yet.
+                                    @else
+                                        {{ "@" . $user->username }} hasn't posted any bleeps yet.
+                                    @endif
+                                </p>
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- Reposts Tab --}}
+                    <div x-show="tab === 'reposts'">
+                        @if($reposts && $reposts->count() > 0)
+                            <div id="reposts-list" class="space-y-4"
+                                data-next-url="{{ $reposts->hasMorePages() ? route('user.reposts', ['username' => $user->username, 'page' => $reposts->currentPage() + 1]) : '' }}">
+                                @foreach($reposts as $repost)
+                                    @if($repost->bleep && !$repost->bleep->deleted_at)
+                                            <x-bleep :bleep="$repost->bleep" />
                                         @endif
-                                    </p>
-                                </div>
-                            @endif
-                        </div>
-                    </template>
-                    <template x-if="tab === 'reposts'">
-                        <div x-show="tab === 'reposts'">
-                            @if($reposts && $reposts->count() > 0)
-                                <div id="reposts-list" class="space-y-4"
-                                    data-next-url="{{ $reposts->hasMorePages() ? route('user.reposts', ['username' => $user->username, 'page' => $reposts->currentPage() + 1]) : '' }}">
-                                    @foreach($reposts as $repost)
-                                        @if($repost->bleep && !$repost->bleep->deleted_at)
-                                                <x-bleep :bleep="$repost->bleep" />
-                                            @endif
-                                    @endforeach
-                                </div>
-                                <button id="reposts-load-more"
-                                    class="btn btn-outline btn-sm mt-4 w-full {{ $reposts->hasMorePages() ? '' : 'hidden' }}">
-                                    Load more
-                                </button>
-                                <div id="reposts-sentinel" class="h-4"></div>
-                            @else
-                                <div class="text-center py-12">
-                                    <i data-lucide="repeat" class="w-16 h-16 mx-auto text-base-content/30 mb-4"></i>
-                                    <p class="text-base-content/60">
-                                        @if($isOwnProfile)
-                                            You haven't reposted anything yet.
-                                        @else
-                                            {{ "@" . $user->username }} hasn't reposted anything yet.
-                                        @endif
-                                    </p>
-                                </div>
-                            @endif
-                        </div>
-                    </template>
+                                @endforeach
+                            </div>
+                            <button id="reposts-load-more"
+                                class="btn btn-outline btn-sm mt-4 w-full {{ $reposts->hasMorePages() ? '' : 'hidden' }}">
+                                Load more
+                            </button>
+                            <div id="reposts-sentinel" class="h-4"></div>
+                        @else
+                            <div class="text-center py-12">
+                                <i data-lucide="repeat" class="w-16 h-16 mx-auto text-base-content/30 mb-4"></i>
+                                <p class="text-base-content/60">
+                                    @if($isOwnProfile)
+                                        You haven't reposted anything yet.
+                                    @else
+                                        {{ "@" . $user->username }} hasn't reposted anything yet.
+                                    @endif
+                                </p>
+                            </div>
+                        @endif
+                    </div>
                 </div>
             </div>
         @endif
@@ -264,5 +308,21 @@
     <x-modals.posts.comments />
     <x-modals.posts.edit />
     <x-modals.posts.share />
+
+    {{-- Block/Unblock Confirmation Modal --}}
+    <input type="checkbox" id="block_confirm_modal_toggle" class="modal-toggle" />
+    <div class="modal">
+        <div class="modal-box max-w-md relative">
+            <label for="block_confirm_modal_toggle" class="btn btn-sm btn-circle absolute right-3 top-3">✕</label>
+
+            <h3 class="font-bold text-lg mb-2" id="block-confirm-title">Confirm action</h3>
+            <p class="text-sm text-base-content/70" id="block-confirm-message">Are you sure?</p>
+
+            <div class="modal-action">
+                <label for="block_confirm_modal_toggle" class="btn btn-ghost">Cancel</label>
+                <button type="button" id="block-confirm-submit" class="btn btn-error">Confirm</button>
+            </div>
+        </div>
+    </div>
 
 </x-layout>

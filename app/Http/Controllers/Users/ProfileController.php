@@ -16,23 +16,28 @@ class ProfileController extends Controller
     public function index($username)
     {
         $user = User::where('username', $username)->with('preferences')->firstOrFail();
+        $authUser = Auth::user();
 
         // Check if this is the current user's profile
         $isOwnProfile = Auth::check() && Auth::id() === $user->id;
 
         // Check if current user follows this profile
-        $isFollowing = Auth::check() ? Auth::user()->isFollowing($user) : false;
+        $isFollowing = Auth::check() ? $authUser->isFollowing($user) : false;
 
         // Check friendship (mutual follow)
-        $isFriend = !$isOwnProfile && Auth::check() && Auth::user()->isFriend($user);
+        $isFriend = !$isOwnProfile && Auth::check() && $authUser->isFriend($user);
 
         // Privacy flags from preferences
         $isPrivate        = !$isOwnProfile && ($user->preferences?->private_profile ?? false);
         $blockNewFollows  = $user->preferences?->block_new_followers ?? false;
         $hideOnlineStatus = $user->preferences?->hide_online_status ?? false;
 
-        // Can view content: own profile, or not private, or already following
-        $canViewContent = $isOwnProfile || !$isPrivate || $isFollowing;
+        $isBlockedByCurrentUser = Auth::check() && $authUser->hasBlocked($user);
+        $isBlockedByUser = Auth::check() && $authUser->isBlockedBy($user);
+        $hasBlockingRelationship = $isBlockedByCurrentUser || $isBlockedByUser;
+
+        // Can view content: own profile, or not private, or already following; but never if blocked either direction
+        $canViewContent = !$hasBlockingRelationship && ($isOwnProfile || !$isPrivate || $isFollowing);
 
         // Online status: hidden from non-friends if hide_online_status is on
         $canSeeOnlineStatus = $isOwnProfile || !$hideOnlineStatus || $isFriend;
@@ -42,6 +47,7 @@ class ProfileController extends Controller
         $canFollow = !$isOwnProfile
             && Auth::check()
             && !$isFollowing
+            && !$hasBlockingRelationship
             && (!$blockNewFollows || $isFriend);
 
         if ($canViewContent) {
@@ -89,6 +95,9 @@ class ProfileController extends Controller
             'isOwnProfile'       => $isOwnProfile,
             'isFriend'           => $isFriend,
             'isPrivate'          => $isPrivate,
+            'isBlocked'          => $isBlockedByUser,
+            'isBlockedByUser'    => $isBlockedByUser,
+            'isBlockedByCurrentUser' => $isBlockedByCurrentUser,
             'canViewContent'     => $canViewContent,
             'canFollow'          => $canFollow,
             'canSeeOnlineStatus' => $canSeeOnlineStatus,
@@ -97,7 +106,14 @@ class ProfileController extends Controller
 
     public function bleeps(Request $request, $username)
     {
-        $user = User::where('username', $username)->firstOrFail();
+        $user = User::where('username', $username)->with('preferences')->firstOrFail();
+        $authUser = Auth::user();
+        $isOwnProfile = Auth::check() && Auth::id() === $user->id;
+        $isFollowing = Auth::check() ? $authUser->isFollowing($user) : false;
+        $isPrivate = !$isOwnProfile && ($user->preferences?->private_profile ?? false);
+        $hasBlockingRelationship = Auth::check() && $authUser->isBlockedOrHasBlocked($user);
+
+        abort_if($hasBlockingRelationship || ($isPrivate && !$isFollowing && !$isOwnProfile), 403);
 
         $bleeps = $user->bleeps()
             ->with(['user', 'media', 'likes', 'comments'])
@@ -122,7 +138,14 @@ class ProfileController extends Controller
 
     public function reposts(Request $request, $username)
     {
-        $user = User::where('username', $username)->firstOrFail();
+        $user = User::where('username', $username)->with('preferences')->firstOrFail();
+        $authUser = Auth::user();
+        $isOwnProfile = Auth::check() && Auth::id() === $user->id;
+        $isFollowing = Auth::check() ? $authUser->isFollowing($user) : false;
+        $isPrivate = !$isOwnProfile && ($user->preferences?->private_profile ?? false);
+        $hasBlockingRelationship = Auth::check() && $authUser->isBlockedOrHasBlocked($user);
+
+        abort_if($hasBlockingRelationship || ($isPrivate && !$isFollowing && !$isOwnProfile), 403);
 
         $reposts = Repost::where('user_id', $user->id)
             ->with(['bleep.user', 'bleep.media', 'bleep.likes', 'bleep.comments'])

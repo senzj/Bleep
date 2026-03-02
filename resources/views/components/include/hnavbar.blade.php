@@ -9,7 +9,7 @@
 
     {{-- CENTER --}}
     <div class="absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0 flex items-center lg:items-start">
-        <a href="/" class="btn btn-ghost text-2xl gap-2 normal-case flex items-center">
+        <a href="/" class="btn btn-ghost text-2xl gap-2 normal-case flex items-center rounded-lg">
             <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="w-6 h-6 sm:w-8 sm:h-8">
             <span class="hidden sm:inline">Bleep</span>
         </a>

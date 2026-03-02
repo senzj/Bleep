@@ -1,14 +1,22 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Re-initialize event listeners when tab changes
-    const tabInputs = document.querySelectorAll('input[name="profile_tabs"]');
+    // Detect tab changes via Alpine.js button clicks
+    const tabButtons = document.querySelectorAll('[role="tab"]');
+    const tabContainer = document.querySelector('[role="tablist"]');
 
-    tabInputs.forEach(input => {
-        input.addEventListener('change', function() {
-            // Small delay to ensure content is visible
+    if (!tabContainer) return;
+
+    // Watch for tab button clicks and dispatch custom event
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Small delay to ensure Alpine has updated the DOM
             setTimeout(() => {
-                // Dispatch custom event to reinitialize listeners
+                // Reinitialize Lucide icons and notify observers
+                if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                    window.lucide.createIcons();
+                }
+                // Dispatch custom event to notify lazy loaders
                 window.dispatchEvent(new Event('tab-changed'));
-            }, 100);
+            }, 50);
         });
     });
 });

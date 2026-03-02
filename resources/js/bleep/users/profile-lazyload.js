@@ -8,9 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!bleepsList || !repostsList) return;
 
-    const isTabActive = (label) => {
-        const input = document.querySelector(`input[role="tab"][aria-label="${label}"]`);
-        return input?.checked;
+    // Determine active tab from Alpine.js
+    const getActiveTab = () => {
+        const tabPanel = document.querySelector('[role="tabpanel"]');
+        if (!tabPanel) return null;
+        const ariaLabel = tabPanel.getAttribute('aria-labelledby');
+        if (ariaLabel && ariaLabel.includes('bleeps')) return 'bleeps';
+        if (ariaLabel && ariaLabel.includes('reposts')) return 'reposts';
+        return null;
     };
 
     async function loadMore(listEl, type) {
@@ -39,21 +44,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.lucide) window.lucide.createIcons();
             window.dispatchEvent(new Event('content-appended'));
         } catch (e) {
-            // optional: console.warn(e);
+            console.warn('Load more error:', e);
         } finally {
             listEl.dataset.loading = '0';
         }
     }
 
     const bleepsObserver = new IntersectionObserver((entries) => {
-        if (entries.some(e => e.isIntersecting) && isTabActive('Bleeps')) {
-        loadMore(bleepsList, 'bleeps');
+        const activeTab = getActiveTab();
+        if (entries.some(e => e.isIntersecting) && activeTab === 'bleeps') {
+            loadMore(bleepsList, 'bleeps');
         }
     }, { rootMargin: '600px' });
 
     const repostsObserver = new IntersectionObserver((entries) => {
-        if (entries.some(e => e.isIntersecting) && isTabActive('Reposts')) {
-        loadMore(repostsList, 'reposts');
+        const activeTab = getActiveTab();
+        if (entries.some(e => e.isIntersecting) && activeTab === 'reposts') {
+            loadMore(repostsList, 'reposts');
         }
     }, { rootMargin: '600px' });
 
@@ -63,11 +70,15 @@ document.addEventListener('DOMContentLoaded', () => {
     bleepsBtn?.addEventListener('click', () => loadMore(bleepsList, 'bleeps'));
     repostsBtn?.addEventListener('click', () => loadMore(repostsList, 'reposts'));
 
-    // Update buttons visibility when tabs change
-    const refreshButtons = () => {
+    // On tab change: reinitialize icons, update button visibility
+    const onTabChanged = () => {
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
         bleepsBtn?.classList.toggle('hidden', !bleepsList.dataset.nextUrl);
         repostsBtn?.classList.toggle('hidden', !repostsList.dataset.nextUrl);
     };
-    window.addEventListener('tab-changed', refreshButtons);
-    refreshButtons();
+
+    window.addEventListener('tab-changed', onTabChanged);
+    onTabChanged();
 });

@@ -9,7 +9,6 @@ use App\Models\BleepViews;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 use App\Services\MediaUploadService;
 use Illuminate\Support\Facades\Auth;
@@ -56,6 +55,10 @@ class BleepController extends Controller
      */
     public function recordView(Bleep $bleep)
     {
+        if (Auth::check() && $bleep->user && Auth::user()->isBlockedOrHasBlocked($bleep->user)) {
+            abort(404);
+        }
+
         $bleep = $this->recordSingleView($bleep);
 
         return response()->json([
@@ -118,6 +121,10 @@ class BleepController extends Controller
     public function show(Bleep $bleep)
     {
         $bleep->load(['user', 'media']);
+
+        if (Auth::check() && $bleep->user && Auth::user()->isBlockedOrHasBlocked($bleep->user)) {
+            abort(404);
+        }
 
         // Build media with real integer IDs — edit modal needs these for remove_media_ids[]
         $mediaPayload = $bleep->media->map(fn ($m) => [

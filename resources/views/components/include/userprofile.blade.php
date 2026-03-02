@@ -35,6 +35,7 @@
 
         {{-- Dropdown Menu --}}
         <ul tabindex="0" class="dropdown-content z-1 shadow-lg bg-base-100 rounded-md w-full border border-base-200 p-2 space-y-1 mt-2 mb-2">
+            {{-- Profile --}}
             <li>
                 <a href="{{ route('user.profile', ['username' => Auth::user()->username]) }}"
                     class="flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
@@ -42,6 +43,8 @@
                     <span>Profile</span>
                 </a>
             </li>
+
+            {{-- Follow Request --}}
             <li>
                 <a href="{{ route('follow.requests') }}" class="flex items-center justify-between gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
                     <div class="flex items-center gap-2">
@@ -58,12 +61,24 @@
                     @endif
                 </a>
             </li>
+
+            {{-- Blocked Users --}}
+            <li>
+                <a href="{{ route('blocked.users') }}" class="flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
+                    <i data-lucide="ban" class="w-4 h-4"></i>
+                    <span>Blocked Users</span>
+                </a>
+            </li>
+
+            {{-- Settings --}}
             <li>
                 <a href="{{ route('settings') }}" class="flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
                     <i data-lucide="settings" class="w-4 h-4"></i>
                     <span>Settings</span>
                 </a>
             </li>
+
+            {{-- Admin Dashboard --}}
             @can('is_admin')
                 <li>
                     <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
@@ -72,6 +87,8 @@
                     </a>
                 </li>
             @endcan
+
+            {{-- Theme View --}}
             <li>
                 <span class="text-xs text-base-content/70 inline-flex items-center gap-2 ml-3">
                     Theme:
@@ -79,6 +96,8 @@
                     <span class="font-semibold theme-current-label">System</span>
                 </span>
             </li>
+
+            {{-- Logout --}}
             <li class="pt-1 border-t border-base-400/80">
                 <form method="POST" action="/logout" class="w-full">
                     @csrf

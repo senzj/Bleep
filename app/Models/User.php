@@ -244,4 +244,34 @@ class User extends Authenticatable
             ->where('status', 'pending')
             ->exists();
     }
+
+    // People I have blocked
+    public function blockedUsers()
+    {
+        return $this->hasMany(BlockedUsers::class, 'blocker_id');
+    }
+
+    // People who have blocked me
+    public function blockedByUsers()
+    {
+        return $this->hasMany(BlockedUsers::class, 'blocked_id');
+    }
+
+    // Check if I have blocked someone
+    public function hasBlocked(User $user): bool
+    {
+        return $this->blockedUsers()->where('blocked_id', $user->id)->exists();
+    }
+
+    // Check if I am blocked by someone
+    public function isBlockedBy(User $user): bool
+    {
+        return $this->blockedByUsers()->where('blocker_id', $user->id)->exists();
+    }
+
+    // Check if either user has blocked the other
+    public function isBlockedOrHasBlocked(User $user): bool
+    {
+        return $this->hasBlocked($user) || $this->isBlockedBy($user);
+    }
 }
