@@ -11,6 +11,9 @@ use App\Http\Controllers\Bleep\CommentsRepliesController;
 use App\Http\Controllers\Bleep\LikesController;
 use App\Http\Controllers\Bleep\RepostController;
 use App\Http\Controllers\Bleep\ShareController;
+use App\Http\Controllers\Chat\ConversationController;
+use App\Http\Controllers\Chat\MediaUploadController;
+use App\Http\Controllers\Chat\MessageController;
 use App\Http\Controllers\BleepController;
 use App\Http\Controllers\BlockedUsersController;
 use App\Http\Controllers\FollowingController;
@@ -118,6 +121,23 @@ Route::middleware('auth')->group((function () {
     Route::get('/messages', function () {
         return view('chat');
     })->name('messages');
+
+    Route::get('/chat/conversations', [ConversationController::class, 'index'])
+        ->name('chat.conversations.index');
+    Route::get('/chat/users', [ConversationController::class, 'users'])
+        ->name('chat.users.index');
+    Route::post('/chat/conversations/direct', [ConversationController::class, 'createDirect'])
+        ->name('chat.conversations.direct');
+    Route::get('/chat/conversations/{conversation}/messages', [ConversationController::class, 'messages'])
+        ->name('chat.conversations.messages');
+
+    Route::post('/chat/media', [MediaUploadController::class, 'store'])
+        ->name('chat.media.store');
+
+    Route::post('/messages', [MessageController::class, 'store'])
+        ->name('chat.messages.store');
+    Route::post('/chat/conversations/{conversation}/read', [MessageController::class, 'markRead'])
+        ->name('chat.conversations.read');
 
     // Bleep Resource Routes
     Route::post('/bleeps', [BleepController::class, 'store']);

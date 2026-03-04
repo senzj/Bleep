@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -255,6 +254,32 @@ class User extends Authenticatable
     public function blockedByUsers()
     {
         return $this->hasMany(BlockedUsers::class, 'blocked_id');
+    }
+
+    public function conversations(): BelongsToMany
+    {
+        return $this->belongsToMany(Conversation::class, 'conversation_user')
+            ->withPivot([
+                'role',
+                'last_read_at',
+                'joined_at',
+                'is_muted',
+                'muted_until',
+                'is_pinned',
+                'is_archived',
+                'snoozed_until',
+            ])
+            ->withTimestamps();
+    }
+
+    public function sentMessages(): HasMany
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    public function messageDeliveries(): HasMany
+    {
+        return $this->hasMany(MessageDelivery::class);
     }
 
     // Check if I have blocked someone

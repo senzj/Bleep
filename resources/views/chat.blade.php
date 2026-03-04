@@ -1,4 +1,14 @@
 <x-layout>
-    <div id="chat-app" user-id="{{ auth()->id() }}" class="flex flex-col items-center gap-4">
+    <x-slot:title>
+        Chat
+    </x-slot:title>
+
+    <div
+        id="chat-app"
+        data-user-id="{{ auth()->id() }}"
+        data-username="{{ auth()->user()->dname ?: auth()->user()->username }}"
+        class="h-[86vh] w-full"
+    >
     </div>
+
 </x-layout>
