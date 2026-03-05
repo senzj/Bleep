@@ -93,6 +93,7 @@ const activeConversationMeta = computed(() => {
 	const conversationId = Number(store.state.activeConversationId || 0);
 	if (!conversationId) {
 		return {
+			loaded: false,
 			hasMore: false,
 			loading: false,
 			oldestMessageId: null,
@@ -100,6 +101,7 @@ const activeConversationMeta = computed(() => {
 	}
 
 	return store.state.messageMetaByConversation[conversationId] || {
+		loaded: false,
 		hasMore: false,
 		loading: false,
 		oldestMessageId: null,
@@ -120,44 +122,47 @@ watch(() => store.state.activeConversationId, async (conversationId) => {
 </script>
 
 <template>
-	<section class="bg-base-200 flex h-full min-h-0 flex-1 flex-col">
-		<header class="border-base-300 bg-base-100 flex items-center justify-between border-b px-4 py-3">
+	<section class="bg-base-200 flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+		<header class="border-base-300 bg-base-100 sticky top-0 z-10 shrink-0 flex items-center justify-between border-b px-4 py-3">
 			<div class="flex items-center gap-3">
 				<button class="btn btn-ghost btn-sm btn-circle md:hidden" @click="emit('go-back')">
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-					</svg>
+					<i data-lucide="arrow-left" class="lucide lucide-sm"></i>
 				</button>
 				<img
 					:src="headerAvatarUrl"
 					:alt="`${store.activeConversation.value?.title || 'Conversation'} avatar`"
 					class="h-10 w-10 rounded-full object-cover"
 				>
-
 				<div>
-				<h3 class="font-semibold">
-					{{ store.activeConversation.value?.title || 'Select a conversation' }}
-				</h3>
-				<p class="text-base-content/70 text-xs">
-					<span v-if="showOnlineIndicator" class="mr-1 inline-block h-2 w-2 rounded-full bg-success align-middle" />
-					{{ headerStatusText }}
-				</p>
+					<h3 class="font-semibold">
+						{{ store.activeConversation.value?.title || 'Select a conversation' }}
+					</h3>
+					<p class="text-base-content/70 text-xs">
+						<span v-if="showOnlineIndicator" class="mr-1 inline-block h-2 w-2 rounded-full bg-success align-middle" />
+						{{ headerStatusText }}
+					</p>
 				</div>
 			</div>
 		</header>
 
 		<MessageList
+			class="min-h-0 flex-1"
 			:messages="store.activeMessages.value"
 			:current-user-id="store.state.currentUserId"
 			:conversation-id="Number(store.state.activeConversationId || 0)"
 			:loading="store.state.loadingMessages"
+			:loaded="activeConversationMeta.loaded"
 			:has-more="activeConversationMeta.hasMore"
 			:loading-older="activeConversationMeta.loading && !!activeConversationMeta.oldestMessageId"
 			@load-older="handleLoadOlderMessages"
 		/>
 
-		<div v-if="typingText" class="px-4 pb-1 text-xs opacity-70">{{ typingText }}</div>
-
-		<MessageInput />
+		<div class="bg-base-100 shrink-0">
+			<div v-if="typingText" class="px-4 pt-2 text-xs opacity-70">
+                <span class="loading loading-dots loading-sm loading-primary mr-1"></span>
+                {{ typingText }}
+            </div>
+			<MessageInput />
+		</div>
 	</section>
 </template>

@@ -27,6 +27,6 @@ const pickFile = () => {
 
 <template>
 	<button class="btn btn-circle btn-outline" type="button" :disabled="disabled" @click="pickFile">
-		+
+		<i data-lucide="paperclip" class="h-5 w-5"></i>
 	</button>
 </template>

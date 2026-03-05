@@ -122,13 +122,14 @@ const startDirectMessage = async (userId) => {
 
 <template>
 	<aside class="border-base-300 bg-base-100 flex h-full flex-col border-r p-4">
-		<div class="mb-3">
+		<div class="mb-3 flex items-center justify-between">
 			<h2 class="text-lg font-semibold">Chats</h2>
+
 		</div>
 
 		<SearchBar v-model="query" />
 
-		<div class="max-h-[calc(100dvh-220px)] space-y-2 overflow-y-auto">
+		<div class="max-h-full space-y-2 overflow-y-auto">
 			<template v-for="item in mergedList" :key="item.id">
 				<button
 					v-if="item.type === 'conversation'"

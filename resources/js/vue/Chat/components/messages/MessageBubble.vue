@@ -56,7 +56,7 @@ const messageStatusText = computed(() => {
 </script>
 
 <template>
-	<div class="flex flex-col" :class="mine ? 'items-end' : 'items-start'">
+	<div class="flex flex-col" :class="mine ? 'items-end' : 'items-start mt-3'">
 		<!-- Sender name -->
 		<p v-if="!mine" class="mb-1 text-xs font-semibold opacity-70 ml-11">
 			{{ message.sender?.dname || message.sender?.username || 'User' }}

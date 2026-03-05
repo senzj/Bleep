@@ -12,4 +12,6 @@ export {
     VolumeX,
     ZoomIn,
     ZoomOut,
+    Mic,
+    Users,
 } from 'lucide';

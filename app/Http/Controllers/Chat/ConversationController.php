@@ -51,6 +51,14 @@ class ConversationController extends Controller
                 $join->on('they_follow_me.follower_id', '=', 'users.id')
                     ->where('they_follow_me.followed_id', '=', $currentUser->id);
             })
+            ->leftJoin('blocked_users as blocked_by_me', function ($join) use ($currentUser) {
+                $join->on('blocked_by_me.blocked_id', '=', 'users.id')
+                    ->where('blocked_by_me.blocker_id', '=', $currentUser->id);
+            })
+            ->leftJoin('blocked_users as blocked_me', function ($join) use ($currentUser) {
+                $join->on('blocked_me.blocker_id', '=', 'users.id')
+                    ->where('blocked_me.blocked_id', '=', $currentUser->id);
+            })
             ->leftJoinSub($activeSessionsSubquery, 'active_sessions', function ($join) {
                 $join->on('users.id', '=', 'active_sessions.user_id');
             })
@@ -62,12 +70,11 @@ class ConversationController extends Controller
                 'recent_dm.last_messaged_at',
                 'active_sessions.last_activity',
             ])
-            ->selectRaw('CASE WHEN i_follow_them.id IS NOT NULL AND they_follow_me.id IS NOT NULL THEN 1 ELSE 0 END as is_friend');
-
-        if ($keyword === '') {
-            $usersQuery->whereNotNull('i_follow_them.id')
-                ->whereNotNull('they_follow_me.id');
-        }
+            ->selectRaw('CASE WHEN i_follow_them.id IS NOT NULL AND they_follow_me.id IS NOT NULL THEN 1 ELSE 0 END as is_friend')
+            ->whereNull('blocked_by_me.id')
+            ->whereNull('blocked_me.id')
+            ->whereNotNull('i_follow_them.id')
+            ->whereNotNull('they_follow_me.id');
 
         if ($keyword !== '') {
             $usersQuery->where(function ($query) use ($keyword) {

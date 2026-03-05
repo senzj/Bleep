@@ -30,12 +30,12 @@ onMounted(() => {
     <div class="bg-base-100 rounded-lg grid h-full min-h-0 w-full grid-cols-1 overflow-hidden md:grid-cols-[360px_1fr]">
         <Nav
             class="min-h-0"
-            :class="mobileView === 'nav' ? 'block' : 'hidden md:block'"
+            :class="mobileView === 'nav' ? 'flex' : 'hidden md:flex'"
             @open-chat="openChat"
         />
         <Message
             class="min-h-0"
-            :class="mobileView === 'chat' ? 'block' : 'hidden md:block'"
+            :class="mobileView === 'chat' ? 'flex' : 'hidden md:flex'"
             @go-back="goBackToNav"
         />
     </div>

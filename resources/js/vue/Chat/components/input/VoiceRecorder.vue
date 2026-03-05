@@ -54,6 +54,6 @@ const stopRecording = () => {
 		:disabled="disabled"
 		@click="recording ? stopRecording() : startRecording()"
 	>
-		{{ recording ? '■' : '🎤' }}
+		<i :data-lucide="recording ? 'square' : 'mic'" class="h-5 w-5"></i>
 	</button>
 </template>

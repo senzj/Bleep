@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import MessageBubble from './MessageBubble.vue';
 
 const props = defineProps({
@@ -19,6 +19,10 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
+	loaded: {
+		type: Boolean,
+		default: false,
+	},
 	hasMore: {
 		type: Boolean,
 		default: false,
@@ -32,8 +36,11 @@ const props = defineProps({
 const emit = defineEmits(['load-older']);
 
 const listRef = ref(null);
+const contentRef = ref(null);
 const initialized = ref(false);
 const pendingPrependAdjust = ref(null);
+const isAtBottom = ref(true);
+let resizeObserver = null;
 
 const formatDateHeader = (isoString) => {
 	const date = new Date(isoString || Date.now());
@@ -99,6 +106,8 @@ const onScroll = () => {
 	const el = listRef.value;
 	if (!el) return;
 
+	isAtBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+
 	if (el.scrollTop <= 60) {
 		requestOlderMessages();
 	}
@@ -135,16 +144,40 @@ watch(() => props.conversationId, () => {
 onMounted(async () => {
 	await nextTick();
 	scrollToBottom();
+
+	if (contentRef.value) {
+		resizeObserver = new ResizeObserver(() => {
+			if (isAtBottom.value) {
+				scrollToBottom();
+			}
+		});
+		resizeObserver.observe(contentRef.value);
+	}
 });
+
+onUnmounted(() => {
+	resizeObserver?.disconnect();
+	resizeObserver = null;
+});
+
+const showInitialLoader = computed(() => !props.loaded || props.loading);
+const showEmptyState = computed(() => props.loaded && !props.loading && !props.messages.length);
 </script>
 
 <template>
-	<div ref="listRef" class="flex-1 min-h-0 space-y-2 overflow-y-auto px-4 py-4" @scroll="onScroll">
-		<p v-if="loadingOlder" class="text-base-content/60 text-center text-xs">Loading older messages…</p>
-		<p v-if="loading" class="text-base-content/70 text-sm">Loading messages...</p>
-		<p v-else-if="!messages.length" class="text-base-content/70 text-sm">No messages yet.</p>
+	<div ref="listRef" class="flex-1 min-h-0 overflow-y-auto px-4 py-4" @scroll="onScroll">		<div ref="contentRef">		<p v-if="loadingOlder" class="text-base-content/60 text-center text-xs">Loading older messages…</p>
 
-		<template v-for="group in groupedMessages" :key="group.key">
+		<div v-if="showInitialLoader" class="text-base-content/70 flex min-h-full items-center justify-center gap-2 text-sm">
+			<span class="loading loading-spinner loading-sm loading-primary"></span>
+			<span>Fetching messages</span>
+		</div>
+
+		<div v-else-if="showEmptyState" class="text-base-content/70 flex min-h-full items-center justify-center gap-2 text-sm">
+			<i data-lucide="message-square" class="lucide lucide-sm"></i>
+			<span>Start a conversation by sending a message!</span>
+		</div>
+
+		<template v-else v-for="group in groupedMessages" :key="group.key">
 			<div class="sticky top-0 z-1 flex justify-center py-1">
 				<span class="bg-base-300/80 rounded-full px-3 py-1 text-[11px] font-medium">
 					{{ group.label }}
@@ -158,5 +191,6 @@ onMounted(async () => {
 				:mine="Number(message.sender_id) === Number(currentUserId)"
 			/>
 		</template>
+		</div>
 	</div>
 </template>
