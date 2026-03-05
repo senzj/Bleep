@@ -61,6 +61,18 @@ onBeforeUnmount(() => {
 	clearTimeout(searchTimer);
 });
 
+const getConversationOtherParticipant = (conversation) => {
+	const participants = conversation?.participants || [];
+	return participants.find((p) => Number(p.id) !== Number(store.state.currentUserId)) || null;
+};
+
+// Returns up to 4 participants (excluding self) for the group avatar grid.
+const getGroupAvatarParticipants = (conversation) => {
+	return (conversation?.participants || [])
+		.filter((p) => Number(p.id) !== Number(store.state.currentUserId))
+		.slice(0, 4);
+};
+
 const getConversationAvatar = (conversation) => {
 	const participants = conversation?.participants || [];
 	const otherParticipant = participants.find((participant) => Number(participant.id) !== Number(store.state.currentUserId));
@@ -102,7 +114,7 @@ const formatConversationTime = (isoString) => {
 };
 
 
-const emit = defineEmits(['open-chat']);
+const emit = defineEmits(['open-chat', 'create-group']);
 
 const handleSelectConversation = (conversationId) => {
 	store.selectConversation(conversationId);
@@ -125,6 +137,11 @@ const startDirectMessage = async (userId) => {
 		<div class="mb-3 flex items-center justify-between">
 			<h2 class="text-lg font-semibold">Chats</h2>
 
+            <!-- Create Group Button -->
+            <button class="btn btn-primary btn-sm rounded-md" @click="emit('create-group')">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Create Group</span>
+            </button>
 		</div>
 
 		<SearchBar v-model="query" />
@@ -138,28 +155,115 @@ const startDirectMessage = async (userId) => {
 					@click="handleSelectConversation(item.conversation.id)"
 				>
 					<div class="flex items-center gap-2">
-						<div class="relative">
-							<img
-								:src="getConversationAvatar(item.conversation)"
-								:alt="`${item.conversation.title} avatar`"
-								class="h-9 w-9 rounded-full object-cover"
+						<!-- Avatar: group photo grid vs user photo -->
+						<div class="relative shrink-0">
+							<div
+								v-if="item.conversation.is_group"
+								class="h-10 w-10 rounded-full overflow-hidden bg-base-300"
 							>
-							<span
-								v-if="getConversationOnlineState(item.conversation) !== null"
-								class="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border border-base-100"
-								:class="getConversationOnlineState(item.conversation) ? 'bg-success' : 'bg-base-content/30'"
-							/>
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="flex items-center justify-between gap-2">
-								<p class="truncate text-sm font-semibold">{{ item.conversation.title }}</p>
-								<p class="text-base-content/60 shrink-0 text-[11px]">
-									{{ formatConversationTime(item.conversation.last_message_at) }}
-								</p>
+								<!-- 1 photo: full circle -->
+								<template v-if="getGroupAvatarParticipants(item.conversation).length === 1">
+									<img
+										:src="getGroupAvatarParticipants(item.conversation)[0].profile_picture_url || '/images/avatar/default.jpg'"
+										class="h-full w-full object-cover"
+									/>
+								</template>
+								<!-- 2 photos: side by side -->
+								<template v-else-if="getGroupAvatarParticipants(item.conversation).length === 2">
+									<div class="flex h-full w-full">
+										<img
+											v-for="p in getGroupAvatarParticipants(item.conversation)"
+											:key="p.id"
+											:src="p.profile_picture_url || '/images/avatar/default.jpg'"
+											class="h-full w-1/2 object-cover"
+										/>
+									</div>
+								</template>
+								<!-- 3 photos: left half + right column of 2 -->
+								<template v-else-if="getGroupAvatarParticipants(item.conversation).length === 3">
+									<div class="flex h-full w-full">
+										<img
+											:src="getGroupAvatarParticipants(item.conversation)[0].profile_picture_url || '/images/avatar/default.jpg'"
+											class="h-full w-1/2 object-cover"
+										/>
+										<div class="flex h-full w-1/2 flex-col">
+											<img
+												:src="getGroupAvatarParticipants(item.conversation)[1].profile_picture_url || '/images/avatar/default.jpg'"
+												class="h-1/2 w-full object-cover"
+											/>
+											<img
+												:src="getGroupAvatarParticipants(item.conversation)[2].profile_picture_url || '/images/avatar/default.jpg'"
+												class="h-1/2 w-full object-cover border-t border-base-100/40"
+											/>
+										</div>
+									</div>
+								</template>
+								<!-- 4 photos: 2×2 grid -->
+								<template v-else-if="getGroupAvatarParticipants(item.conversation).length >= 4">
+									<div class="grid h-full w-full grid-cols-2 grid-rows-2">
+										<img
+											v-for="p in getGroupAvatarParticipants(item.conversation)"
+											:key="p.id"
+											:src="p.profile_picture_url || '/images/avatar/default.jpg'"
+											class="h-full w-full object-cover"
+										/>
+									</div>
+								</template>
+								<!-- 0 photos fallback: icon -->
+								<template v-else>
+									<div class="text-base-content/60 flex h-full w-full items-center justify-center">
+										<i data-lucide="users" class="lucide h-5 w-5"></i>
+									</div>
+								</template>
 							</div>
-							<p class="text-base-content/70 truncate text-xs">
-								{{ item.conversation.last_message?.body || (item.conversation.last_message ? 'Media' : 'No messages yet') }}
-							</p>
+							<template v-else>
+								<img
+									:src="getConversationAvatar(item.conversation)"
+									:alt="`${item.conversation.title}'s avatar`"
+									class="h-10 w-10 rounded-full object-cover"
+								>
+								<span
+									v-if="getConversationOnlineState(item.conversation) !== null"
+									class="absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-base-100"
+									:class="getConversationOnlineState(item.conversation) ? 'bg-success' : 'bg-base-content/30'"
+								/>
+							</template>
+						</div>
+
+						<div class="min-w-0 flex-1">
+							<div class="flex items-start justify-between gap-2">
+								<div class="min-w-0 flex items-center gap-2">
+                                    <p class="truncate text-sm font-semibold">
+                                        {{ item.conversation.title }}
+
+                                    </p>
+                                    <p
+                                        v-if="!item.conversation.is_group && getConversationOtherParticipant(item.conversation)"
+                                        class="text-base-content/40 truncate text-xs"
+                                    >
+                                        @{{ getConversationOtherParticipant(item.conversation).username }}
+                                    </p>
+								</div>
+
+								<div class="flex shrink-0 flex-col items-end">
+									<span
+										v-if="item.conversation.unread_count > 0"
+										class="badge badge-error badge-xs min-w-5 text-white font-semibold"
+									>
+										{{ item.conversation.unread_count > 99 ? '99+' : item.conversation.unread_count }}
+									</span>
+								</div>
+							</div>
+
+							<div class="flex items-center justify-between gap-2">
+                                <p class="text-base-content/70 truncate text-xs ml-1">
+                                    {{ item.conversation.last_message?.body || (item.conversation.last_message ? 'Media' : 'No messages yet') }}
+                                </p>
+
+                                <p class="text-base-content/60 text-[11px]">
+                                    {{ formatConversationTime(item.conversation.last_message_at) }}
+                                </p>
+                            </div>
 						</div>
 					</div>
 				</button>
@@ -175,10 +279,10 @@ const startDirectMessage = async (userId) => {
 								<img
 									:src="item.user.profile_picture_url"
 									:alt="`${item.user.username} avatar`"
-									class="h-9 w-9 rounded-full object-cover"
+									class="h-10 w-10 rounded-full object-cover"
 								>
 								<span
-									class="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border border-base-100"
+									class="absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-base-100"
 									:class="getUserOnlineState(item.user) ? 'bg-success' : 'bg-base-content/30'"
 								/>
 							</div>

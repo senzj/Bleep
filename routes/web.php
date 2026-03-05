@@ -128,6 +128,8 @@ Route::middleware('auth')->group((function () {
         ->name('chat.users.index');
     Route::post('/chat/conversations/direct', [ConversationController::class, 'createDirect'])
         ->name('chat.conversations.direct');
+    Route::post('/chat/conversations/group', [ConversationController::class, 'createGroup'])
+        ->name('chat.conversations.group');
     Route::get('/chat/conversations/{conversation}/messages', [ConversationController::class, 'messages'])
         ->name('chat.conversations.messages');
 

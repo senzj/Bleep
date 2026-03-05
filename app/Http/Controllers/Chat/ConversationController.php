@@ -134,7 +134,21 @@ class ConversationController extends Controller
             ->selectRaw('user_id, MAX(last_activity) as last_activity')
             ->pluck('last_activity', 'user_id');
 
-        $data = $conversations->map(function (Conversation $conversation) use ($user) {
+        $conversationIds = $conversations->pluck('id');
+        $unreadCounts = DB::table('messages as m')
+            ->join('conversation_user as cu', function ($join) use ($user) {
+                $join->on('cu.conversation_id', '=', 'm.conversation_id')
+                    ->where('cu.user_id', '=', $user->id);
+            })
+            ->whereIn('m.conversation_id', $conversationIds)
+            ->where('m.sender_id', '!=', $user->id)
+            ->whereRaw('(cu.last_read_at IS NULL OR m.created_at > cu.last_read_at)')
+            ->whereNull('m.deleted_at')
+            ->groupBy('m.conversation_id')
+            ->selectRaw('m.conversation_id, COUNT(*) as unread_count')
+            ->pluck('unread_count', 'conversation_id');
+
+        $data = $conversations->map(function (Conversation $conversation) use ($user, $unreadCounts) {
             $participants = $conversation->participants->map(fn ($participant) => [
                 'id' => $participant->id,
                 'username' => $participant->username,
@@ -163,6 +177,7 @@ class ConversationController extends Controller
                 'last_read_at' => optional($conversation->pivot->last_read_at)?->toIso8601String(),
                 'last_message_at' => optional($conversation->last_message_at)?->toIso8601String(),
                 'last_message' => $lastMessage ? ChatMessageFormatter::format($lastMessage, $user->id) : null,
+                'unread_count' => (int) ($unreadCounts[$conversation->id] ?? 0),
             ];
         })->map(function (array $conversation) use ($lastActivityByUserId, $onlineCutoff) {
             $conversation['participants'] = collect($conversation['participants'])
@@ -278,5 +293,49 @@ class ConversationController extends Controller
                 'id' => $existing->id,
             ],
         ]);
+    }
+
+    public function createGroup(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'user_ids' => ['required', 'array', 'min:2', 'max:50'],
+            'user_ids.*' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $me = $request->user();
+        $userIds = collect($validated['user_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id !== (int) $me->id)
+            ->unique()
+            ->values();
+
+        if ($userIds->isEmpty()) {
+            return response()->json(['message' => 'At least one other user is required.'], 422);
+        }
+
+        $conversation = Conversation::create([
+            'name' => trim($validated['name']),
+            'is_group' => true,
+            'creator_id' => $me->id,
+        ]);
+
+        $attach = $userIds
+            ->push((int) $me->id)
+            ->mapWithKeys(fn ($id) => [
+                $id => [
+                    'role' => $id === (int) $me->id ? 'admin' : 'member',
+                    'joined_at' => now(),
+                ],
+            ])
+            ->all();
+
+        $conversation->participants()->attach($attach);
+
+        foreach ($userIds as $userId) {
+            broadcast(new ConversationUpdated($userId, $conversation->id));
+        }
+
+        return response()->json(['data' => ['id' => $conversation->id]]);
     }
 }

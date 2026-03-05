@@ -11,7 +11,7 @@ class MediaUploadController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'file' => ['required', 'file', 'max:30720', 'mimetypes:image/jpeg,image/png,image/webp,video/mp4,video/webm,audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg,application/pdf'],
+            'file' => ['required', 'file', 'max:1500000', 'mimetypes:image/jpeg,image/png,image/webp,video/mp4,video/webm,audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg,application/pdf'],
             'media_kind' => ['nullable', 'in:media,audio,voice'],
         ]);
 

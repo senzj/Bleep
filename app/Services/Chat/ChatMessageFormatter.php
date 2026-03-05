@@ -11,7 +11,7 @@ class ChatMessageFormatter
         $message->loadMissing([
             'sender:id,username,dname,profile_picture',
             'conversation.participants:id,username,dname',
-            'deliveries.user:id,username,dname',
+            'deliveries.user:id,username,dname,profile_picture',
         ]);
 
         $participantCount = $message->conversation->participants->count();
@@ -44,6 +44,7 @@ class ChatMessageFormatter
                 'username' => $delivery->user?->username,
                 'dname' => $delivery->user?->dname,
                 'read_at' => optional($delivery->read_at)?->toIso8601String(),
+                'profile_picture_url' => $delivery->user?->profile_picture_url,
             ])
             ->values();
 

@@ -19,7 +19,7 @@ const state = reactive({
 });
 
 const typingTimeouts = {};
-let conversationsSyncInterval = null;
+const ACTIVE_CONV_KEY = 'chat_active_conversation_id';
 
 const ensureConversationArrays = (conversationId) => {
     if (!state.messagesByConversation[conversationId]) {
@@ -101,6 +101,7 @@ const applyReadReceipt = (conversationId, messageId, reader, readAt) => {
             username: reader.username,
             dname: reader.dname,
             read_at: readAt,
+            profile_picture_url: reader.profile_picture_url ?? null,
         };
 
         if (existingIndex >= 0) {
@@ -173,7 +174,8 @@ const fetchConversations = async ({ silent = false } = {}) => {
         state.loadingConversations = true;
     }
 
-    const previousActiveId = Number(state.activeConversationId || 0);
+    const storedId = Number(localStorage.getItem(ACTIVE_CONV_KEY) || 0);
+    const previousActiveId = Number(state.activeConversationId || storedId || 0);
 
     try {
         const response = await window.axios.get('/chat/conversations');
@@ -189,7 +191,7 @@ const fetchConversations = async ({ silent = false } = {}) => {
         const activeStillExists = state.conversations.some((conversation) => Number(conversation.id) === previousActiveId);
 
         if (activeStillExists) {
-            state.activeConversationId = previousActiveId;
+            await selectConversation(previousActiveId);
         } else if (state.conversations.length > 0) {
             await selectConversation(state.conversations[0].id);
         }
@@ -290,18 +292,30 @@ const fetchOlderMessages = async (conversationId = state.activeConversationId) =
 const markConversationRead = async (conversationId) => {
     ensureConversationArrays(conversationId);
     const list = state.messagesByConversation[conversationId] || [];
-    const lastMessage = list[list.length - 1];
-    if (!lastMessage?.id) return;
+    // Find the last message with a real server ID (skip optimistic tmp-... UUIDs)
+    const lastRealMessage = [...list].reverse().find((m) => m?.id && Number.isInteger(Number(m.id)) && !String(m.id).startsWith('tmp-'));
+    if (!lastRealMessage) return;
 
-    await window.axios.post(`/chat/conversations/${conversationId}/read`, {
-        last_message_id: lastMessage.id,
-    });
+    try {
+        await window.axios.post(`/chat/conversations/${conversationId}/read`, {
+            last_message_id: lastRealMessage.id,
+        });
+    } catch {
+        // Non-critical — silently ignore read-receipt failures
+    }
 };
 
 const selectConversation = async (conversationId) => {
     state.activeConversationId = Number(conversationId);
+    localStorage.setItem(ACTIVE_CONV_KEY, String(conversationId));
     ensureConversationArrays(conversationId);
     const meta = state.messageMetaByConversation[conversationId];
+
+    // Reset unread count immediately in local state
+    const conv = state.conversations.find((c) => Number(c.id) === Number(conversationId));
+    if (conv) {
+        conv.unread_count = 0;
+    }
 
     subscribeConversation(conversationId);
 
@@ -352,10 +366,10 @@ const sendMessage = async (payload) => {
         });
 
         upsertMessage(conversationId, response.data.data);
-        await markConversationRead(conversationId);
-        await fetchUserDirectory();
+        markConversationRead(conversationId); // fire-and-forget, never throws
         return response.data.data;
     } catch (error) {
+        // Only roll back on actual send failure, not read-receipt errors
         state.messagesByConversation[conversationId] = (state.messagesByConversation[conversationId] || [])
             .filter((message) => message.client_uuid !== clientUuid && message.id !== clientUuid);
 
@@ -363,24 +377,29 @@ const sendMessage = async (payload) => {
     }
 };
 
-const uploadMedia = async (file, mediaKind = 'media') => {
+const uploadMedia = async (file, mediaKind = 'media', onProgress = null) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('media_kind', mediaKind);
 
     const response = await window.axios.post('/chat/media', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (event) => {
+            if (onProgress && event.total) {
+                onProgress(Math.round((event.loaded * 100) / event.total));
+            }
+        },
     });
 
     return response.data.data;
 };
 
-const sendVoiceMessage = async (blob) => {
+const sendVoiceMessage = async (blob, onProgress = null) => {
     const voiceFile = new File([blob], `voice-${Date.now()}.webm`, {
         type: blob.type || 'audio/webm',
     });
 
-    const uploaded = await uploadMedia(voiceFile, 'voice');
+    const uploaded = await uploadMedia(voiceFile, 'voice', onProgress);
     return sendMessage({
         media_path: uploaded.media_path,
         media_url: uploaded.media_url,
@@ -400,6 +419,20 @@ const createDirectConversation = async (userId) => {
     if (id) {
         await selectConversation(id);
     }
+};
+
+const createGroupConversation = async ({ name, userIds }) => {
+    const response = await window.axios.post('/chat/conversations/group', {
+        name,
+        user_ids: userIds,
+    });
+
+    await fetchConversations();
+    const id = response.data?.data?.id;
+    if (id) {
+        await selectConversation(id);
+    }
+    return id;
 };
 
 const sendTyping = () => {
@@ -431,11 +464,12 @@ const init = async ({ currentUserId, currentUsername }) => {
 
             if (!updatedConversationId) return;
 
+            // Subscribe to the new/updated conversation so we start receiving its messages.
+            // Do NOT force-fetch messages here — .chat.message.delivered already upserts
+            // the message directly, so a full re-fetch would cause a spurious
+            // "loading older messages" / "fetching messages" flash.
             ensureConversationArrays(updatedConversationId);
-            if (Number(state.activeConversationId) === updatedConversationId) {
-                await fetchMessages(updatedConversationId, { force: true });
-                await markConversationRead(updatedConversationId);
-            }
+            subscribeConversation(updatedConversationId);
         });
 
         state.userChannelRef.listen('.chat.message.delivered', async (event) => {
@@ -454,12 +488,6 @@ const init = async ({ currentUserId, currentUsername }) => {
                 await markConversationRead(conversationId);
             }
         });
-    }
-
-    if (!conversationsSyncInterval) {
-        conversationsSyncInterval = setInterval(() => {
-            fetchConversations({ silent: true });
-        }, 8000);
     }
 
     await Promise.all([
@@ -505,6 +533,7 @@ export const useMessageStore = () => {
         uploadMedia,
         sendVoiceMessage,
         createDirectConversation,
+        createGroupConversation,
         sendTyping,
         markConversationRead,
     };

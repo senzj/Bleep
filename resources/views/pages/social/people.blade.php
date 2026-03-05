@@ -33,8 +33,8 @@
                             $mutualType = $user->mutual_type ?? null;
                             $mutualLabel = match ($mutualType) {
                                 'two-way' => 'Friend',
-                                'friend-of-friend' => '',
-                                'friend-of-friend-of-friend' => '',
+                                'friend-of-friend' => 'Mutual Friend',
+                                'friend-of-friend-of-friend' => 'Mutual Friend of Friend',
                                 default => null,
                             };
                         @endphp

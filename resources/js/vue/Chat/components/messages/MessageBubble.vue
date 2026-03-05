@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import MessageMedia from './MessageMedia.vue';
 
 const props = defineProps({
@@ -11,21 +11,19 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
+	seenAvatars: {
+		type: Array,
+		default: () => [],
+	},
 });
 
-const seenByLabel = computed(() => {
-	if (!props.mine || !Array.isArray(props.message.seen_by) || !props.message.seen_by.length) return '';
+const showSeenPopover = ref(false);
 
-	if (props.message.seen_by.length === 1) {
-		return 'Seen';
-	}
+const visibleSeenBy = computed(() => props.seenAvatars.slice(0, 5));
+const hiddenSeenBy = computed(() => props.seenAvatars.slice(5));
 
-	const names = props.message.seen_by.map((item) => item.dname || item.username || 'User');
-	return `Seen by ${names.join(', ')}`;
-});
-
-const statusLabel = computed(() => {
-	if (!props.mine) return '';
+const messageStatusText = computed(() => {
+	if (!props.mine || props.seenAvatars.length > 0) return '';
 
 	switch (props.message.status) {
 		case 'sending':
@@ -39,19 +37,6 @@ const statusLabel = computed(() => {
 		default:
 			return 'Sent';
 	}
-});
-
-const messageStatusText = computed(() => {
-	if (!props.mine) return '';
-
-	const status = statusLabel.value;
-	const seenBy = seenByLabel.value;
-
-	if (status && seenBy) {
-		return `${status}`;
-	}
-
-	return status;
 });
 </script>
 
@@ -80,8 +65,60 @@ const messageStatusText = computed(() => {
 			</div>
 		</div>
 
-		<!-- Status and seen label -->
-		<p v-if="messageStatusText" class="mt-1 text-[11px] opacity-80" :class="mine ? 'text-right' : 'text-left'">
+		<!-- Seen-by avatar stack -->
+		<div v-if="seenAvatars.length > 0" class="flex items-center mt-1" :class="mine ? 'mr-12' : 'ml-11'">
+			<img
+				v-for="(person, index) in visibleSeenBy"
+				:key="person.id"
+				:src="person.profile_picture_url || '/images/avatar/default.jpg'"
+				:alt="person.dname || person.username"
+				:title="person.dname || person.username"
+				:class="index > 0 ? '-ml-1.5' : ''"
+				class="h-5 w-5 rounded-full object-cover border-2 border-base-100"
+			/>
+
+			<!-- +N more button with speech bubble popover -->
+			<div v-if="hiddenSeenBy.length" class="relative -ml-1.5">
+				<button
+					class="h-5 w-5 rounded-full bg-base-300 text-base-content text-[9px] font-bold flex items-center justify-center border-2 border-base-100 cursor-pointer hover:bg-base-200"
+					@click.stop="showSeenPopover = !showSeenPopover"
+				>
+					+{{ hiddenSeenBy.length }}
+				</button>
+
+				<!-- Click-outside backdrop -->
+				<Teleport to="body">
+					<div v-if="showSeenPopover" class="fixed inset-0 z-40" @click="showSeenPopover = false" />
+				</Teleport>
+
+				<!-- Speech bubble popover -->
+				<div
+					v-if="showSeenPopover"
+					class="absolute bottom-full right-0 mb-3 min-w-40 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-xl z-50"
+				>
+					<!-- Triangle tail (border outline layer) -->
+					<div class="absolute -bottom-2 right-2 h-0 w-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-8 border-t-base-300" />
+					<!-- Triangle tail (fill layer) -->
+					<div class="absolute -bottom-2 right-2 h-0 w-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[7px] border-t-base-100" />
+
+					<p class="mb-1 px-1 text-[10px] font-semibold opacity-50">Seen by</p>
+					<div
+						v-for="person in hiddenSeenBy"
+						:key="person.id"
+						class="flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-base-200"
+					>
+						<img
+							:src="person.profile_picture_url || '/images/avatar/default.jpg'"
+							class="h-5 w-5 shrink-0 rounded-full object-cover"
+						/>
+						<span class="max-w-28 truncate text-xs">{{ person.dname || person.username }}</span>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Status text (Sending / Sent / Received) -->
+		<p v-if="messageStatusText" class="mt-1 mr-12 text-[11px] opacity-80 text-right">
 			{{ messageStatusText }}
 		</p>
 	</div>

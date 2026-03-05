@@ -2,10 +2,12 @@
 import { onMounted, ref } from 'vue';
 import Message from './layout/Message.vue';
 import Nav from './layout/Nav.vue';
+import CreateGroupChat from './components/modals/CreateGroupChat.vue';
 import { useMessageStore } from './store/useMessageStore';
 
 const store = useMessageStore();
 const mobileView = ref('nav');
+const showCreateGroup = ref(false);
 
 const openChat = () => {
     mobileView.value = 'chat';
@@ -32,11 +34,17 @@ onMounted(() => {
             class="min-h-0"
             :class="mobileView === 'nav' ? 'flex' : 'hidden md:flex'"
             @open-chat="openChat"
+            @create-group="showCreateGroup = true"
         />
         <Message
             class="min-h-0"
             :class="mobileView === 'chat' ? 'flex' : 'hidden md:flex'"
             @go-back="goBackToNav"
+        />
+        <CreateGroupChat
+            v-if="showCreateGroup"
+            @close="showCreateGroup = false"
+            @created="showCreateGroup = false"
         />
     </div>
 </template>

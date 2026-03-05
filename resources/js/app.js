@@ -24,7 +24,6 @@ app.component('LucideIcon', lucideicons);
 // Chat App
 if (document.getElementById('chat-app')) {
     const app = createApp(ChatApp);
-    app.use(router);
     app.mount('#chat-app');
 }
 

@@ -164,6 +164,7 @@ class MessageController extends Controller
             'id' => $user->id,
             'username' => $user->username,
             'dname' => $user->dname,
+            'profile_picture_url' => $user->profile_picture_url,
         ];
 
         broadcast(new MessageRead($conversation->id, $lastMessageId, $reader, $now->toIso8601String()))->toOthers();

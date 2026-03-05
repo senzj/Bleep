@@ -49,8 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const degreeLabel = (type) => {
                 if (type === 'two-way') return 'Friend';
-                if (type === 'friend-of-friend') return '';
-                if (type === 'friend-of-friend-of-friend') return '';
+                if (type === 'friend-of-friend') return 'Mutual Friend';
+                if (type === 'friend-of-friend-of-friend') return 'Mutual Friend of Friend';
                 return '';
             };
 

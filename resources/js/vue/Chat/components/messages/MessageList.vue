@@ -9,7 +9,7 @@ const props = defineProps({
 	},
 	currentUserId: {
 		type: Number,
-		required: true,
+		default: 0,
 	},
 	conversationId: {
 		type: Number,
@@ -59,6 +59,34 @@ const dateKeyFromMessage = (message) => {
 	if (Number.isNaN(date.getTime())) return 'unknown-date';
 	return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 };
+
+// For each participant, find the highest real message ID where they appear in seen_by.
+// That message gets their avatar — they are not shown on any earlier message.
+const seenAvatarsByMessageId = computed(() => {
+	const userHighest = new Map(); // userId -> { msgId, person }
+
+	(props.messages || []).forEach((message) => {
+		const numId = Number(message.id);
+		if (!numId || !Number.isInteger(numId)) return; // skip optimistic tmp-... IDs
+
+		(message.seen_by || []).forEach((person) => {
+			const uid = Number(person.id);
+			if (uid === Number(props.currentUserId)) return; // never show yourself
+			const existing = userHighest.get(uid);
+			if (!existing || numId > Number(existing.msgId)) {
+				userHighest.set(uid, { msgId: message.id, person });
+			}
+		});
+	});
+
+	const result = new Map(); // msgId -> person[]
+	userHighest.forEach(({ msgId, person }) => {
+		if (!result.has(msgId)) result.set(msgId, []);
+		result.get(msgId).push(person);
+	});
+
+	return result;
+});
 
 const groupedMessages = computed(() => {
 	const groups = [];
@@ -167,15 +195,15 @@ const showEmptyState = computed(() => props.loaded && !props.loading && !props.m
 <template>
 	<div ref="listRef" class="flex-1 min-h-0 overflow-y-auto px-4 py-4" @scroll="onScroll">		<div ref="contentRef">		<p v-if="loadingOlder" class="text-base-content/60 text-center text-xs">Loading older messages…</p>
 
-		<div v-if="showInitialLoader" class="text-base-content/70 flex min-h-full items-center justify-center gap-2 text-sm">
-			<span class="loading loading-spinner loading-sm loading-primary"></span>
-			<span>Fetching messages</span>
-		</div>
+		<div v-if="showInitialLoader" class="text-base-content/70 flex flex-1 items-center justify-center gap-2 text-sm">
+            <span class="loading loading-spinner loading-sm loading-primary"></span>
+            <span>Fetching messages</span>
+        </div>
 
-		<div v-else-if="showEmptyState" class="text-base-content/70 flex min-h-full items-center justify-center gap-2 text-sm">
-			<i data-lucide="message-square" class="lucide lucide-sm"></i>
-			<span>Start a conversation by sending a message!</span>
-		</div>
+        <div v-else-if="showEmptyState" class="text-base-content/70 flex flex-1 items-center justify-center gap-2 text-sm">
+            <i data-lucide="message-square" class="lucide lucide-sm"></i>
+            <span>Start a conversation by sending a message!</span>
+        </div>
 
 		<template v-else v-for="group in groupedMessages" :key="group.key">
 			<div class="sticky top-0 z-1 flex justify-center py-1">
@@ -189,6 +217,7 @@ const showEmptyState = computed(() => props.loaded && !props.loading && !props.m
 				:key="message.id"
 				:message="message"
 				:mine="Number(message.sender_id) === Number(currentUserId)"
+				:seen-avatars="seenAvatarsByMessageId.get(message.id) || []"
 			/>
 		</template>
 		</div>

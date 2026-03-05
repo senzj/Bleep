@@ -10,7 +10,7 @@ const emit = defineEmits(['update:modelValue']);
 </script>
 
 <template>
-	<label class="input input-bordered mb-3 flex w-full items-center gap-2">
+	<label class="input input-bordered mb-3 flex w-full items-center gap-2 rounded-md">
 		<input
 			:value="modelValue"
 			type="text"
