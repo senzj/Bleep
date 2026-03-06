@@ -118,7 +118,7 @@ Route::get('/banned', function () {
 Route::middleware('auth')->group((function () {
 
     // Bleep Chat/Message Page
-    Route::get('/messages', function () {
+    Route::get('/chat', function () {
         return view('chat');
     })->name('messages');
 

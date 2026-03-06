@@ -20,11 +20,12 @@
     <a href="{{ route('messages') }}" class="relative flex items-center gap-3 px-3 py-2 rounded-lg bg-base-100/50 hover:bg-base-300/80 border border-base-300/50 shadow-lg transition-colors {{ request()->routeIs('messages') ? 'bg-primary text-primary-content' : '' }}">
         <span class="relative shrink-0">
             <i data-lucide="message-square" class="w-5 h-5"></i>
-            @if($unreadConversationCount > 0)
-                <span class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white leading-none">
-                    {{ $unreadConversationCount > 99 ? '99+' : $unreadConversationCount }}
-                </span>
-            @endif
+            <span
+                id="nav-chat-unread-badge"
+                class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white leading-none{{ $unreadConversationCount > 0 ? '' : ' hidden' }}"
+            >
+                {{ $unreadConversationCount > 0 ? ($unreadConversationCount > 99 ? '99+' : $unreadConversationCount) : '' }}
+            </span>
         </span>
         <span class="sidebar-text">Chat</span>
     </a>
@@ -40,4 +41,20 @@
         <i data-lucide="bell" class="w-5 h-5 shrink-0"></i>
         <span class="sidebar-text">Notifications</span>
     </a>
+
+    {{-- Keep nav chat badge in sync with Vue chat store --}}
+    <script>
+        document.addEventListener('chat:unread-updated', function(e) {
+            var badge = document.getElementById('nav-chat-unread-badge');
+            if (!badge) return;
+            var count = Number(e.detail?.count || 0);
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : String(count);
+                badge.classList.remove('hidden');
+            } else {
+                badge.textContent = '';
+                badge.classList.add('hidden');
+            }
+        });
+    </script>
 @endauth

@@ -14,4 +14,5 @@ export {
     ZoomOut,
     Mic,
     Users,
+    Expand,
 } from 'lucide';

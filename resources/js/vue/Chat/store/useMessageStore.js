@@ -1,4 +1,37 @@
 import { computed, reactive } from 'vue';
+import {
+    getCachedConversations,
+    setCachedConversations,
+    getCachedMessages,
+    setCachedMessages,
+    purgeExpired,
+} from './chatCache';
+
+// ── Notification sound helpers ──
+const soundConfig = { sendSound: null, receiveSound: null };
+const audioCache = {};
+
+const playSound = (path) => {
+    if (!path || path === 'none') return;
+    try {
+        if (!audioCache[path]) {
+            audioCache[path] = new Audio(path);
+            audioCache[path].load();
+        }
+        const audio = audioCache[path];
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+    } catch { /* silently ignore */ }
+};
+
+const playSendSound = () => playSound(soundConfig.sendSound);
+const playReceiveSound = () => playSound(soundConfig.receiveSound);
+
+// ── Nav badge sync ──
+const broadcastUnreadCount = () => {
+    const total = state.conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+    document.dispatchEvent(new CustomEvent('chat:unread-updated', { detail: { count: total } }));
+};
 
 const state = reactive({
     initialized: false,
@@ -114,6 +147,15 @@ const applyReadReceipt = (conversationId, messageId, reader, readAt) => {
         message.read_count = seenBy.length;
         message.status = 'seen';
     });
+
+    // Update participant's last_read_at in the conversation
+    const conversation = state.conversations.find((c) => Number(c.id) === Number(conversationId));
+    if (conversation && conversation.participants) {
+        const participant = conversation.participants.find((p) => Number(p.id) === Number(reader.id));
+        if (participant) {
+            participant.last_read_at = readAt;
+        }
+    }
 };
 
 const subscribeConversation = (conversationId) => {
@@ -122,6 +164,7 @@ const subscribeConversation = (conversationId) => {
     const privateChannel = window.Echo.private(`conversation.${conversationId}`);
     privateChannel.listen('.message.sent', (event) => {
         upsertMessage(conversationId, event.message);
+        playReceiveSound();
 
         if (Number(state.activeConversationId) === Number(conversationId)) {
             markConversationRead(conversationId);
@@ -179,7 +222,35 @@ const fetchConversations = async ({ silent = false } = {}) => {
 
     try {
         const response = await window.axios.get('/chat/conversations');
+
+        // Preserve locally-known last_read_at values that may be newer
+        // than the server snapshot (WebSocket read events can arrive before
+        // the HTTP response that was already in-flight).
+        const localReadPositions = new Map();
+        state.conversations.forEach((conv) => {
+            (conv.participants || []).forEach((p) => {
+                if (p.last_read_at) {
+                    localReadPositions.set(`${conv.id}:${p.id}`, p.last_read_at);
+                }
+            });
+        });
+
         state.conversations = response.data?.data || [];
+
+        // Restore any local read positions that are newer than what the server returned
+        state.conversations.forEach((conv) => {
+            (conv.participants || []).forEach((p) => {
+                const key = `${conv.id}:${p.id}`;
+                const local = localReadPositions.get(key);
+                if (local) {
+                    const localTime = new Date(local).getTime();
+                    const serverTime = p.last_read_at ? new Date(p.last_read_at).getTime() : 0;
+                    if (localTime > serverTime) {
+                        p.last_read_at = local;
+                    }
+                }
+            });
+        });
 
         state.conversations.forEach((conversation) => {
             ensureConversationArrays(conversation.id);
@@ -195,10 +266,14 @@ const fetchConversations = async ({ silent = false } = {}) => {
         } else if (state.conversations.length > 0) {
             await selectConversation(state.conversations[0].id);
         }
+
+        // Persist to cache for instant load next time
+        setCachedConversations(state.conversations);
     } finally {
         if (!silent) {
             state.loadingConversations = false;
         }
+        broadcastUnreadCount();
     }
 };
 
@@ -263,6 +338,9 @@ const fetchMessages = async (conversationId, { beforeId = null, limit = 40, forc
         meta.oldestMessageId = firstMessage?.id || null;
         meta.hasMore = Boolean(serverMeta.has_more);
         meta.loaded = true;
+
+        // Persist to cache for instant load next time
+        setCachedMessages(conversationId, state.messagesByConversation[conversationId]);
     } finally {
         meta.loading = false;
         state.loadingMessages = false;
@@ -300,6 +378,15 @@ const markConversationRead = async (conversationId) => {
         await window.axios.post(`/chat/conversations/${conversationId}/read`, {
             last_message_id: lastRealMessage.id,
         });
+
+        // Update current user's last_read_at in the conversation participants
+        const conversation = state.conversations.find((c) => Number(c.id) === Number(conversationId));
+        if (conversation && conversation.participants) {
+            const currentParticipant = conversation.participants.find((p) => Number(p.id) === Number(state.currentUserId));
+            if (currentParticipant) {
+                currentParticipant.last_read_at = new Date().toISOString();
+            }
+        }
     } catch {
         // Non-critical — silently ignore read-receipt failures
     }
@@ -316,10 +403,20 @@ const selectConversation = async (conversationId) => {
     if (conv) {
         conv.unread_count = 0;
     }
+    broadcastUnreadCount();
 
     subscribeConversation(conversationId);
 
     if (!meta.loaded) {
+        // Try cache first for instant render
+        const cached = await getCachedMessages(conversationId);
+        if (cached && cached.length > 0) {
+            state.messagesByConversation[conversationId] = cached;
+            meta.loaded = true;
+            meta.oldestMessageId = cached[0]?.id || null;
+        }
+
+        // Always fetch fresh data from server
         await fetchMessages(conversationId, { force: true });
     }
 
@@ -347,6 +444,7 @@ const sendMessage = async (payload) => {
         media_url: payload.media_url || null,
         media_type: payload.media_type || null,
         media_kind: payload.media_kind || 'none',
+        media_duration: payload.media_duration || null,
         status: 'sending',
         seen_by: [],
         created_at: new Date().toISOString(),
@@ -362,11 +460,13 @@ const sendMessage = async (payload) => {
             media_path: payload.media_path || null,
             media_type: payload.media_type || null,
             media_kind: payload.media_kind || 'none',
+            media_duration: payload.media_duration || null,
             client_uuid: clientUuid,
         });
 
         upsertMessage(conversationId, response.data.data);
         markConversationRead(conversationId); // fire-and-forget, never throws
+        playSendSound();
         return response.data.data;
     } catch (error) {
         // Only roll back on actual send failure, not read-receipt errors
@@ -394,7 +494,7 @@ const uploadMedia = async (file, mediaKind = 'media', onProgress = null) => {
     return response.data.data;
 };
 
-const sendVoiceMessage = async (blob, onProgress = null) => {
+const sendVoiceMessage = async (blob, durationSeconds = 0, onProgress = null) => {
     const voiceFile = new File([blob], `voice-${Date.now()}.webm`, {
         type: blob.type || 'audio/webm',
     });
@@ -405,6 +505,7 @@ const sendVoiceMessage = async (blob, onProgress = null) => {
         media_url: uploaded.media_url,
         media_type: uploaded.media_type,
         media_kind: 'voice',
+        media_duration: durationSeconds,
     });
 };
 
@@ -449,12 +550,15 @@ const sendTyping = () => {
     });
 };
 
-const init = async ({ currentUserId, currentUsername }) => {
+const init = async ({ currentUserId, currentUsername, sendSound, receiveSound }) => {
     if (state.initialized) return;
 
     state.currentUserId = Number(currentUserId);
     state.currentUsername = currentUsername || 'You';
     state.initialized = true;
+
+    soundConfig.sendSound = sendSound || null;
+    soundConfig.receiveSound = receiveSound || null;
 
     if (window.Echo && !state.userChannelRef) {
         state.userChannelRef = window.Echo.private(`App.Models.User.${state.currentUserId}`);
@@ -490,8 +594,45 @@ const init = async ({ currentUserId, currentUsername }) => {
         });
     }
 
+    // Purge expired cache entries, then hydrate from cache for instant render
+    purgeExpired();
+
+    const cachedConversations = await getCachedConversations();
+    if (cachedConversations && cachedConversations.length > 0) {
+        state.conversations = cachedConversations;
+        sortConversations();
+        broadcastUnreadCount();
+
+        // Restore the previously active conversation from cache
+        const storedId = Number(localStorage.getItem(ACTIVE_CONV_KEY) || 0);
+        const activeId = storedId || state.conversations[0]?.id;
+        if (activeId) {
+            state.activeConversationId = Number(activeId);
+            ensureConversationArrays(activeId);
+
+            // Load cached messages for the active conversation
+            const cachedMessages = await getCachedMessages(activeId);
+            if (cachedMessages && cachedMessages.length > 0) {
+                state.messagesByConversation[activeId] = cachedMessages;
+                const meta = state.messageMetaByConversation[activeId];
+                meta.loaded = true;
+                meta.oldestMessageId = cachedMessages[0]?.id || null;
+            }
+
+            // Subscribe channels for all cached conversations
+            state.conversations.forEach((conversation) => {
+                ensureConversationArrays(conversation.id);
+                subscribeConversation(conversation.id);
+            });
+        }
+
+        // Mark loading as done so UI renders the cached data immediately
+        state.loadingConversations = false;
+    }
+
+    // Fetch fresh data from server in background, replacing cache
     await Promise.all([
-        fetchConversations(),
+        fetchConversations({ silent: cachedConversations?.length > 0 }),
         fetchUserDirectory(),
     ]);
 };

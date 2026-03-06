@@ -86,7 +86,10 @@ const getConversationOnlineState = (conversation) => {
 	const otherParticipant = participants.find((participant) => Number(participant.id) !== Number(store.state.currentUserId));
 	if (!otherParticipant) return null;
 
-	return Boolean(otherParticipant.is_online);
+	const presenceMap = store.state.onlineUsersByConversation[conversation.id] || {};
+	const isPresenceOnline = Boolean(presenceMap[otherParticipant.id]);
+
+	return isPresenceOnline || Boolean(otherParticipant.is_online);
 };
 
 const getUserOnlineState = (user) => {
@@ -225,7 +228,7 @@ const startDirectMessage = async (userId) => {
 								<span
 									v-if="getConversationOnlineState(item.conversation) !== null"
 									class="absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-base-100"
-									:class="getConversationOnlineState(item.conversation) ? 'bg-success' : 'bg-base-content/30'"
+									:class="getConversationOnlineState(item.conversation) ? 'bg-success' : 'bg-gray-500'"
 								/>
 							</template>
 						</div>
@@ -282,8 +285,8 @@ const startDirectMessage = async (userId) => {
 									class="h-10 w-10 rounded-full object-cover"
 								>
 								<span
-									class="absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-base-100"
-									:class="getUserOnlineState(item.user) ? 'bg-success' : 'bg-base-content/30'"
+									class="absolute -right-0.5 -bottom-0.5 h-4 w-4 rounded-full border-2 border-base-100"
+									:class="getUserOnlineState(item.user) ? 'bg-success' : 'bg-gray-500'"
 								/>
 							</div>
 							<div class="min-w-0">

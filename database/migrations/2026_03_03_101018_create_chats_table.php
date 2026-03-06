@@ -59,6 +59,8 @@ return new class extends Migration
             $table->text('body')->nullable();
             $table->string('media_path')->nullable();
             $table->string('media_type')->nullable();
+            $table->string('media_kind')->default('none');
+            $table->unsignedInteger('media_duration')->nullable();
 
             $table->foreignId('reply_to_id')
                 ->nullable()
@@ -66,12 +68,24 @@ return new class extends Migration
                 ->nullOnDelete();
 
             $table->boolean('is_edited')->default(false);
+            $table->string('client_uuid', 64)->nullable();
 
             $table->softDeletes();
             $table->timestamps();
 
-            $table->index(['conversation_id', 'created_at']);
-            $table->unique(['conversation_id', 'sender_id']);
+            $table->index(['conversation_id', 'client_uuid', 'created_at']);
+        });
+
+        Schema::create('message_deliveries', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('message_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->timestamp('delivered_at')->nullable();
+            $table->timestamp('read_at')->nullable();
+            $table->timestamps();
+
+            $table->unique(['message_id', 'user_id']);
+            $table->index(['user_id', 'read_at']);
         });
 
         Schema::create('message_reactions', function (Blueprint $table) {
@@ -112,6 +126,7 @@ return new class extends Migration
         Schema::dropIfExists('message_mentions');
         Schema::dropIfExists('message_reactions');
         Schema::dropIfExists('messages');
+        Schema::dropIfExists('message_deliveries');
         Schema::dropIfExists('conversation_user');
         Schema::dropIfExists('conversations');
     }

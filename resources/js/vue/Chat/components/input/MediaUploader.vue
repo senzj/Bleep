@@ -1,4 +1,6 @@
 <script setup>
+import LucideIcons from '../../../LucideIcons.vue';
+
 defineProps({
 	disabled: {
 		type: Boolean,
@@ -27,6 +29,6 @@ const pickFile = () => {
 
 <template>
 	<button class="btn btn-circle btn-outline" type="button" :disabled="disabled" @click="pickFile">
-		<i data-lucide="paperclip" class="h-5 w-5"></i>
+		<LucideIcons name="paperclip" class="h-5 w-5" />
 	</button>
 </template>

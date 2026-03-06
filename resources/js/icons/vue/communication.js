@@ -9,4 +9,5 @@ export {
     HatGlasses,
     Image,
     Flag,
+    Keyboard,
 } from 'lucide-vue-next';

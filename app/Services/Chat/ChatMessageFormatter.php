@@ -63,6 +63,7 @@ class ChatMessageFormatter
             'media_url' => $message->media_path ? asset('storage/' . ltrim($message->media_path, '/')) : null,
             'media_type' => $message->media_type,
             'media_kind' => $message->media_kind,
+            'media_duration' => $message->media_duration,
             'client_uuid' => $message->client_uuid,
             'status' => $status,
             'delivery_count' => $deliveryCount,

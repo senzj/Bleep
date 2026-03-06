@@ -15,16 +15,30 @@ import CommentLayout from './vue/Bleeps/comments/CommentLayout.vue';
 // Import Lucide Vue Icon Component
 import lucideicons from './vue/LucideIcons.vue';
 
+// Custom directive to render lucide icons in Vue components
+const lucideDirective = {
+	mounted(el) {
+		if (window.lucide && window.lucide.replace) {
+			window.lucide.replace({ nodes: el.querySelectorAll('[data-lucide]') });
+		}
+	},
+	updated(el) {
+		if (window.lucide && window.lucide.replace) {
+			window.lucide.replace({ nodes: el.querySelectorAll('[data-lucide]') });
+		}
+	},
+};
 
 // Lucide Vue Icon
 const app = createApp(lucideicons);
 app.component('LucideIcon', lucideicons);
-
+app.directive('lucide', lucideDirective);
 
 // Chat App
 if (document.getElementById('chat-app')) {
-    const app = createApp(ChatApp);
-    app.mount('#chat-app');
+	const app = createApp(ChatApp);
+	app.directive('lucide', lucideDirective);
+	app.mount('#chat-app');
 }
 
 
@@ -73,6 +87,8 @@ const mountCommentLayout = (containerId) => {
         isAuthenticated: isAuthStr,
         isAnonymousEnabled: isAnon,
     });
+
+	app.directive('lucide', lucideDirective);
 
     // console.log('Mounting CommentLayout with props:', {
     //     bleepId: bleepIdAttr,

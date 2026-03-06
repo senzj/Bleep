@@ -41,85 +41,102 @@ const messageStatusText = computed(() => {
 </script>
 
 <template>
-	<div class="flex flex-col" :class="mine ? 'items-end' : 'items-start mt-3'">
-		<!-- Sender name -->
-		<p v-if="!mine" class="mb-1 text-xs font-semibold opacity-70 ml-11">
-			{{ message.sender?.dname || message.sender?.username || 'User' }}
-		</p>
+    <div class="chat w-full" :class="mine ? 'chat-end' : 'chat-start'">
+        <div class="chat-image avatar">
+            <div class="w-10 rounded-full">
+                <img
+                    :src="message.sender?.profile_picture_url || '/images/avatar/default.jpg'"
+                    :alt="`${message.sender?.username || 'user'} avatar`"
+                />
+            </div>
+        </div>
 
-		<!-- Avatar + Bubble -->
-		<div class="flex items-end gap-2" :class="mine ? 'flex-row-reverse' : 'flex-row'">
-			<img
-				:src="message.sender?.profile_picture_url || '/images/avatar/default.jpg'"
-				:alt="`${message.sender?.username || 'user'} avatar`"
-				class="h-8 w-8 shrink-0 rounded-full object-cover"
-			>
+        <div v-if="!mine" class="chat-header opacity-70 text-xs font-semibold">
+            {{ message.sender?.dname || message.sender?.username || 'User' }}
+        </div>
 
-			<div class="max-w-[80%] rounded-lg px-3 py-2" :class="mine ? 'bg-primary text-primary-content' : 'bg-base-100 border-base-300 border'">
-				<p v-if="message.body" class="whitespace-pre-wrap text-sm">{{ message.body }}</p>
-				<MessageMedia :message="message" />
+        <div class="chat-bubble" :class="mine ? 'chat-bubble-primary' : 'chat-bubble-neutral'">
+            <p v-if="message.body" class="whitespace-pre-wrap">{{ message.body }}</p>
+            <MessageMedia :message="message" />
+        </div>
 
-				<div class="mt-1 text-[11px] opacity-75">
-					<span>{{ new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</span>
-				</div>
-			</div>
-		</div>
+        <div class="chat-footer flex items-center gap-1 opacity-50">
+            <time class="text-xs">
+                {{ new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }}
+            </time>
+        </div>
+    </div>
 
-		<!-- Seen-by avatar stack -->
-		<div v-if="seenAvatars.length > 0" class="flex items-center mt-1" :class="mine ? 'mr-12' : 'ml-11'">
-			<img
-				v-for="(person, index) in visibleSeenBy"
-				:key="person.id"
-				:src="person.profile_picture_url || '/images/avatar/default.jpg'"
-				:alt="person.dname || person.username"
-				:title="person.dname || person.username"
-				:class="index > 0 ? '-ml-1.5' : ''"
-				class="h-5 w-5 rounded-full object-cover border-2 border-base-100"
-			/>
+    <!-- Seen avatars -->
+    <div
+        v-if="seenAvatars.length > 0"
+        class="flex items-center px-12 mb-1"
+        :class="mine ? 'justify-end' : 'justify-end mr-10'"
+    >
+        <div
+            v-for="(person, index) in visibleSeenBy"
+            :key="person.id"
+            class="relative group"
+            :class="index > 0 ? 'ml-0.5' : ''"
+        >
+            <img
+                :src="person.profile_picture_url || '/images/avatar/default.jpg'"
+                :alt="person.dname || person.username"
+                class="h-4 w-4 rounded-full object-cover ring-2 ring-base-200 cursor-default"
+            />
 
-			<!-- +N more button with speech bubble popover -->
-			<div v-if="hiddenSeenBy.length" class="relative -ml-1.5">
-				<button
-					class="h-5 w-5 rounded-full bg-base-300 text-base-content text-[9px] font-bold flex items-center justify-center border-2 border-base-100 cursor-pointer hover:bg-base-200"
-					@click.stop="showSeenPopover = !showSeenPopover"
-				>
-					+{{ hiddenSeenBy.length }}
-				</button>
+            <!-- Custom tooltip -->
+            <div class="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-50 pointer-events-none
+                        opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
+                <div class="bg-base-content text-base-100 text-[10px] rounded-lg px-2 py-1 shadow-lg">
+                    <p class="font-semibold">{{ person.dname || person.username }}</p>
+                    <p v-if="person.last_read_at" class="opacity-70">
+                        Seen at {{ new Date(person.last_read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }}
+                    </p>
+                </div>
+                <!-- Tooltip arrow -->
+                <div class="absolute top-full left-1/2 -translate-x-1/2 h-0 w-0
+                            border-l-4 border-l-transparent border-r-4 border-r-transparent
+                            border-t-4 border-t-base-content" />
+            </div>
+        </div>
 
-				<!-- Click-outside backdrop -->
-				<Teleport to="body">
-					<div v-if="showSeenPopover" class="fixed inset-0 z-40" @click="showSeenPopover = false" />
-				</Teleport>
+        <!-- +N more popover (unchanged structure, but add seen time inside) -->
+        <div v-if="hiddenSeenBy.length" class="relative -ml-0.5">
+            <button
+                class="h-4 w-4 rounded-full bg-base-300 text-[8px] font-bold flex items-center justify-center ring-2 ring-base-200 cursor-pointer hover:bg-base-200"
+                @click.stop="showSeenPopover = !showSeenPopover"
+            >
+                +{{ hiddenSeenBy.length }}
+            </button>
 
-				<!-- Speech bubble popover -->
-				<div
-					v-if="showSeenPopover"
-					class="absolute bottom-full right-0 mb-3 min-w-40 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-xl z-50"
-				>
-					<!-- Triangle tail (border outline layer) -->
-					<div class="absolute -bottom-2 right-2 h-0 w-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-8 border-t-base-300" />
-					<!-- Triangle tail (fill layer) -->
-					<div class="absolute -bottom-2 right-2 h-0 w-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[7px] border-t-base-100" />
+            <Teleport to="body">
+                <div v-if="showSeenPopover" class="fixed inset-0 z-40" @click="showSeenPopover = false" />
+            </Teleport>
 
-					<p class="mb-1 px-1 text-[10px] font-semibold opacity-50">Seen by</p>
-					<div
-						v-for="person in hiddenSeenBy"
-						:key="person.id"
-						class="flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-base-200"
-					>
-						<img
-							:src="person.profile_picture_url || '/images/avatar/default.jpg'"
-							class="h-5 w-5 shrink-0 rounded-full object-cover"
-						/>
-						<span class="max-w-28 truncate text-xs">{{ person.dname || person.username }}</span>
-					</div>
-				</div>
-			</div>
-		</div>
+            <div
+                v-if="showSeenPopover"
+                class="absolute bottom-full mb-3 min-w-44 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-xl z-50"
+                :class="mine ? 'right-0' : 'left-0'"
+            >
+                <div class="absolute -bottom-2 h-0 w-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-8 border-t-base-300" :class="mine ? 'right-2' : 'left-2'" />
+                <div class="absolute -bottom-2 h-0 w-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[7px] border-t-base-100" :class="mine ? 'right-2' : 'left-2'" />
 
-		<!-- Status text (Sending / Sent / Received) -->
-		<p v-if="messageStatusText" class="mt-1 mr-12 text-[11px] opacity-80 text-right">
-			{{ messageStatusText }}
-		</p>
-	</div>
+                <p class="mb-1 px-1 text-[10px] font-semibold opacity-50">Seen by</p>
+                <div
+                    v-for="person in hiddenSeenBy"
+                    :key="person.id"
+                    class="flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-base-200"
+                >
+                    <img :src="person.profile_picture_url || '/images/avatar/default.jpg'" class="h-5 w-5 shrink-0 rounded-full object-cover" />
+                    <div class="flex flex-col min-w-0">
+                        <span class="max-w-28 truncate text-xs font-medium">{{ person.dname || person.username }}</span>
+                        <span v-if="person.last_read_at" class="text-[10px] opacity-60">
+                            {{ new Date(person.last_read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>

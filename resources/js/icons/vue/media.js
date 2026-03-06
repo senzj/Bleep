@@ -11,4 +11,8 @@ export {
     Volume1,
     VolumeX,
     Download,
+    Expand,
+    Mic,
+    Square,
+    X,
 } from 'lucide-vue-next';

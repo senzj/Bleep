@@ -31,6 +31,10 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
+	participants: {
+		type: Array,
+		default: () => [],
+	},
 });
 
 const emit = defineEmits(['load-older']);
@@ -60,29 +64,65 @@ const dateKeyFromMessage = (message) => {
 	return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 };
 
-// For each participant, find the highest real message ID where they appear in seen_by.
-// That message gets their avatar — they are not shown on any earlier message.
+// For each participant, find the latest message they have read.
+// Uses two data sources for reliability:
+//   1. participant.last_read_at — find the latest message where created_at <= last_read_at
+//   2. message.seen_by arrays — find the highest message ID where the participant appears
+// Whichever yields a later message wins (handles race conditions with stale data).
 const seenAvatarsByMessageId = computed(() => {
-	const userHighest = new Map(); // userId -> { msgId, person }
-
-	(props.messages || []).forEach((message) => {
-		const numId = Number(message.id);
-		if (!numId || !Number.isInteger(numId)) return; // skip optimistic tmp-... IDs
-
-		(message.seen_by || []).forEach((person) => {
-			const uid = Number(person.id);
-			if (uid === Number(props.currentUserId)) return; // never show yourself
-			const existing = userHighest.get(uid);
-			if (!existing || numId > Number(existing.msgId)) {
-				userHighest.set(uid, { msgId: message.id, person });
-			}
-		});
-	});
-
 	const result = new Map(); // msgId -> person[]
-	userHighest.forEach(({ msgId, person }) => {
-		if (!result.has(msgId)) result.set(msgId, []);
-		result.get(msgId).push(person);
+
+	const otherParticipants = (props.participants || []).filter(
+		(p) => Number(p.id) !== Number(props.currentUserId),
+	);
+
+	const messageList = props.messages || [];
+
+	otherParticipants.forEach((participant) => {
+		const uid = Number(participant.id);
+		let latestReadMessage = null;
+
+		// Source 1: last_read_at timestamp on the participant
+		if (participant.last_read_at) {
+			const readTimestamp = new Date(participant.last_read_at).getTime();
+			if (!Number.isNaN(readTimestamp)) {
+				for (let i = messageList.length - 1; i >= 0; i--) {
+					const msg = messageList[i];
+					const msgTime = new Date(msg.created_at).getTime();
+					if (!Number.isNaN(msgTime) && msgTime <= readTimestamp) {
+						latestReadMessage = msg;
+						break; // messages are sorted ascending, so first match from end is latest
+					}
+				}
+			}
+		}
+
+		// Source 2: seen_by arrays on individual messages (fallback / supplement)
+		for (let i = messageList.length - 1; i >= 0; i--) {
+			const msg = messageList[i];
+			if (!Array.isArray(msg.seen_by)) continue;
+			const found = msg.seen_by.some((s) => Number(s.id) === uid);
+			if (found) {
+				// If this message is later than what last_read_at found, use it instead
+				if (!latestReadMessage || Number(msg.id) > Number(latestReadMessage.id)) {
+					latestReadMessage = msg;
+				}
+				break; // seen_by is populated on messages up to the read point; highest ID wins
+			}
+		}
+
+		if (latestReadMessage) {
+			if (!result.has(latestReadMessage.id)) {
+				result.set(latestReadMessage.id, []);
+			}
+			result.get(latestReadMessage.id).push({
+				id: participant.id,
+				profile_picture_url: participant.profile_picture_url,
+				dname: participant.dname,
+				username: participant.username,
+                last_read_at: participant.last_read_at
+			});
+		}
 	});
 
 	return result;
@@ -193,33 +233,38 @@ const showEmptyState = computed(() => props.loaded && !props.loading && !props.m
 </script>
 
 <template>
-	<div ref="listRef" class="flex-1 min-h-0 overflow-y-auto px-4 py-4" @scroll="onScroll">		<div ref="contentRef">		<p v-if="loadingOlder" class="text-base-content/60 text-center text-xs">Loading older messages…</p>
+	<div ref="listRef" class="flex flex-col flex-1 min-h-0 overflow-y-auto px-4 py-4" @scroll="onScroll">
 
-		<div v-if="showInitialLoader" class="text-base-content/70 flex flex-1 items-center justify-center gap-2 text-sm">
-            <span class="loading loading-spinner loading-sm loading-primary"></span>
-            <span>Fetching messages</span>
-        </div>
-
-        <div v-else-if="showEmptyState" class="text-base-content/70 flex flex-1 items-center justify-center gap-2 text-sm">
-            <i data-lucide="message-square" class="lucide lucide-sm"></i>
-            <span>Start a conversation by sending a message!</span>
-        </div>
-
-		<template v-else v-for="group in groupedMessages" :key="group.key">
-			<div class="sticky top-0 z-1 flex justify-center py-1">
-				<span class="bg-base-300/80 rounded-full px-3 py-1 text-[11px] font-medium">
-					{{ group.label }}
-				</span>
-			</div>
-
-			<MessageBubble
-				v-for="message in group.messages"
-				:key="message.id"
-				:message="message"
-				:mine="Number(message.sender_id) === Number(currentUserId)"
-				:seen-avatars="seenAvatarsByMessageId.get(message.id) || []"
-			/>
-		</template>
+		<!-- Loaders sit outside contentRef so they can flex-fill the scroll container -->
+		<div v-if="showInitialLoader" class="flex flex-1 items-center justify-center gap-2 text-sm text-base-content/70">
+			<span class="loading loading-spinner loading-sm loading-primary"></span>
+			<span>Fetching messages</span>
 		</div>
+
+		<div v-else-if="showEmptyState" class="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-base-content/70">
+			<i data-lucide="message-square" class="h-10 w-10"></i>
+			<span>Start a conversation by sending a message!</span>
+		</div>
+
+		<div v-else ref="contentRef">
+			<p v-if="loadingOlder" class="text-base-content/60 text-center text-xs mb-2">Loading older messages…</p>
+
+			<template v-for="group in groupedMessages" :key="group.key">
+				<div class="sticky top-0 z-1 flex justify-center py-1">
+					<span class="bg-base-300/80 rounded-full px-3 py-1 text-[11px] font-medium">
+						{{ group.label }}
+					</span>
+				</div>
+
+				<MessageBubble
+					v-for="message in group.messages"
+					:key="message.id"
+					:message="message"
+					:mine="Number(message.sender_id) === Number(currentUserId)"
+					:seen-avatars="seenAvatarsByMessageId.get(message.id) || []"
+				/>
+			</template>
+		</div>
+
 	</div>
 </template>

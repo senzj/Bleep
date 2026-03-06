@@ -73,7 +73,7 @@ const headerStatusText = computed(() => {
 	const isPresenceOnline = store.onlineUsers.value.some((user) => Number(user.id) === Number(otherParticipant.id));
 	const isSessionOnline = Boolean(otherParticipant.is_online);
 	const isOnlineNow = isPresenceOnline || isSessionOnline;
-	if (isOnlineNow) return 'Online now';
+	if (isOnlineNow) return 'Online';
 
 	return formatActiveAgo(otherParticipant.last_seen_at || otherParticipant.last_read_at);
 });
@@ -93,7 +93,7 @@ const activeConversationMeta = computed(() => {
 	const conversationId = Number(store.state.activeConversationId || 0);
 	if (!conversationId) {
 		return {
-			loaded: false,
+			loaded: true,
 			hasMore: false,
 			loading: false,
 			oldestMessageId: null,
@@ -128,17 +128,25 @@ watch(() => store.state.activeConversationId, async (conversationId) => {
 				<button class="btn btn-ghost btn-sm btn-circle md:hidden" @click="emit('go-back')">
 					<i data-lucide="arrow-left" class="lucide lucide-sm"></i>
 				</button>
-				<img
-					:src="headerAvatarUrl"
-					:alt="`${store.activeConversation.value?.title || 'Conversation'} avatar`"
-					class="h-10 w-10 rounded-full object-cover"
-				>
+
+                <div class="relative">
+					<img
+						:src="headerAvatarUrl"
+						:alt="`${store.activeConversation.value?.title || 'Conversation'} avatar`"
+						class="h-10 w-10 rounded-full object-cover"
+					>
+                    <span
+                        v-if="showOnlineIndicator"
+                        class="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-base-100 animate-pulse"
+                        :class="showOnlineIndicator ? 'bg-green-500' : 'bg-gray-500'"
+                    ></span>
+				</div>
+
 				<div>
 					<h3 class="font-semibold">
-						{{ store.activeConversation.value?.title || 'Select a conversation' }}
+                        {{ store.activeConversation.value?.title || 'Select a conversation' }}
 					</h3>
 					<p class="text-base-content/70 text-xs">
-						<span v-if="showOnlineIndicator" class="mr-1 inline-block h-2 w-2 rounded-full bg-success align-middle" />
 						{{ headerStatusText }}
 					</p>
 				</div>
@@ -154,15 +162,16 @@ watch(() => store.state.activeConversationId, async (conversationId) => {
 			:loaded="activeConversationMeta.loaded"
 			:has-more="activeConversationMeta.hasMore"
 			:loading-older="activeConversationMeta.loading && !!activeConversationMeta.oldestMessageId"
-			@load-older="handleLoadOlderMessages"
-		/>
+		:participants="store.activeConversation.value?.participants || []"
+		@load-older="handleLoadOlderMessages"
+	/>
 
-		<div class="bg-base-100 shrink-0">
-			<div v-if="typingText" class="px-4 pt-2 text-xs opacity-70">
-                <span class="loading loading-dots loading-sm loading-primary mr-1"></span>
-                {{ typingText }}
-            </div>
-			<MessageInput />
-		</div>
-	</section>
+	<div class="bg-base-100 shrink-0">
+		<p v-if="typingText" class="border-base-300 border-t px-4 py-1.5 text-xs italic opacity-70">
+            <span class="loading loading-dots loading-md mr-1"></span>
+			{{ typingText }}
+		</p>
+		<MessageInput />
+	</div>
+</section>
 </template>

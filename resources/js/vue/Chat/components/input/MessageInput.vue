@@ -4,6 +4,7 @@ import MediaUploader from './MediaUploader.vue';
 import TextAreaInput from './TextAreaInput.vue';
 import VoiceRecorder from './VoiceRecorder.vue';
 import { useMessageStore } from '../../store/useMessageStore';
+import LucideIcons from '../../../LucideIcons.vue';
 
 const store = useMessageStore();
 
@@ -13,10 +14,14 @@ const uploadProgress = ref(null); // null = idle, 0-100 = uploading
 const pendingMediaFile = ref(null);
 const pendingMediaKind = ref('media');
 const pendingMediaPreviewUrl = ref('');
+const inputMode = ref('text');
 
 const hasPendingMedia = computed(() => Boolean(pendingMediaFile.value));
 const pendingMediaIsImage = computed(() => pendingMediaFile.value?.type?.startsWith('image/'));
 const pendingMediaIsVideo = computed(() => pendingMediaFile.value?.type?.startsWith('video/'));
+const canTalk = computed(() => !sending.value && Boolean(store.state.activeConversationId));
+const canSendText = computed(() => Boolean(store.state.activeConversationId));
+const isVoiceMode = computed(() => inputMode.value === 'voice');
 
 const clearPendingMedia = () => {
     if (pendingMediaPreviewUrl.value) {
@@ -80,13 +85,13 @@ const onMediaSelected = async ({ file, mediaKind }) => {
 	pendingMediaPreviewUrl.value = URL.createObjectURL(file);
 };
 
-const onVoiceRecorded = async (blob) => {
+const onVoiceRecorded = async (blob, durationSeconds) => {
 	if (!blob || !store.state.activeConversationId) return;
 
 	sending.value = true;
 	uploadProgress.value = 0;
 	try {
-		await store.sendVoiceMessage(blob, (pct) => { uploadProgress.value = pct; });
+		await store.sendVoiceMessage(blob, durationSeconds || 0, (pct) => { uploadProgress.value = pct; });
 	} catch {
 		window.alert('Failed to send voice message.');
 	} finally {
@@ -97,6 +102,11 @@ const onVoiceRecorded = async (blob) => {
 
 const onTyping = () => {
 	store.sendTyping();
+};
+
+const toggleInputMode = () => {
+	if (hasPendingMedia.value && inputMode.value === 'text') return;
+	inputMode.value = inputMode.value === 'text' ? 'voice' : 'text';
 };
 </script>
 
@@ -129,7 +139,7 @@ const onTyping = () => {
 					:disabled="sending"
 					@click="clearPendingMedia"
 				>
-					✕
+					<LucideIcons name="x" class="h-3 w-3" />
 				</button>
 			</div>
 		</div>
@@ -141,30 +151,51 @@ const onTyping = () => {
 			<span class="text-base-content/70 shrink-0 text-xs font-medium">{{ uploadProgress }}%</span>
 		</div>
 
-		<div class="flex items-center gap-2">
-			<div class="flex items-center gap-2">
-				<MediaUploader :disabled="sending || !store.state.activeConversationId" @file-selected="onMediaSelected" />
-				<VoiceRecorder
+		<div class="flex items-end gap-2">
+			<div class="flex shrink-0 items-center gap-2">
+				<MediaUploader
+					v-if="!isVoiceMode"
 					:disabled="sending || !store.state.activeConversationId"
-					@voice-recorded="onVoiceRecorded"
+					@file-selected="onMediaSelected"
 				/>
+
+				<button
+					type="button"
+					class="btn btn-circle"
+					:class="isVoiceMode ? 'btn-primary' : 'btn-outline'"
+					:disabled="sending || !store.state.activeConversationId"
+					:title="isVoiceMode ? 'Switch to keyboard' : 'Switch to voice hold'"
+					@click="toggleInputMode"
+				>
+					<LucideIcons :name="isVoiceMode ? 'keyboard' : 'mic'" class="h-5 w-5" />
+				</button>
 			</div>
 
-			<TextAreaInput
-				v-model="text"
-				:disabled="!store.state.activeConversationId"
-				@submit="submitText"
-				@typing="onTyping"
-			/>
+			<div class="min-w-0 flex-1">
+				<VoiceRecorder
+					v-if="isVoiceMode"
+					:disabled="!canTalk"
+					@voice-recorded="onVoiceRecorded"
+				/>
 
-			<button
-				class="btn btn-primary min-w-20"
-				:disabled="!store.state.activeConversationId"
-				@click="submitText"
-			>
-				<i data-lucide="send" class="w-4 h-4"></i>
-				Send
-			</button>
+				<div v-else class="flex items-center gap-2">
+					<TextAreaInput
+						v-model="text"
+						:disabled="!canSendText"
+						@submit="submitText"
+						@typing="onTyping"
+					/>
+
+					<button
+						class="btn btn-primary min-w-20"
+						:disabled="!canSendText"
+						@click="submitText"
+					>
+						<LucideIcons name="send" class="h-5 w-5" />
+						Send
+					</button>
+				</div>
+			</div>
 		</div>
 	</div>
 </template>

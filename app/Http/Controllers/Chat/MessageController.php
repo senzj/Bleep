@@ -25,6 +25,7 @@ class MessageController extends Controller
             'media_path' => ['nullable', 'string', 'max:2048'],
             'media_type' => ['nullable', 'string', 'max:255'],
             'media_kind' => ['nullable', 'in:none,media,audio,voice'],
+            'media_duration' => ['nullable', 'integer', 'min:0', 'max:3600'],
             'reply_to_id' => ['nullable', 'integer', 'exists:messages,id'],
             'client_uuid' => ['nullable', 'string', 'max:64'],
         ]);
@@ -66,6 +67,7 @@ class MessageController extends Controller
                 'media_path' => $mediaPath,
                 'media_type' => $validated['media_type'] ?? null,
                 'media_kind' => $validated['media_kind'] ?? ($mediaPath ? 'media' : 'none'),
+                'media_duration' => $validated['media_duration'] ?? null,
                 'reply_to_id' => $validated['reply_to_id'] ?? null,
                 'client_uuid' => $validated['client_uuid'] ?? null,
             ]);

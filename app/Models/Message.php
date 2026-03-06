@@ -20,6 +20,7 @@ class Message extends Model
         'media_path',
         'media_type',
         'media_kind',
+        'media_duration',
         'reply_to_id',
         'is_edited',
         'client_uuid',
