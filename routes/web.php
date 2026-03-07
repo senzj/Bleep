@@ -14,6 +14,7 @@ use App\Http\Controllers\Bleep\ShareController;
 use App\Http\Controllers\Chat\ConversationController;
 use App\Http\Controllers\Chat\MediaUploadController;
 use App\Http\Controllers\Chat\MessageController;
+use App\Http\Controllers\Chat\MessageReactionController;
 use App\Http\Controllers\BleepController;
 use App\Http\Controllers\BlockedUsersController;
 use App\Http\Controllers\FollowingController;
@@ -144,6 +145,8 @@ Route::middleware('auth')->group((function () {
         ->name('chat.messages.destroy');
     Route::post('/chat/conversations/{conversation}/read', [MessageController::class, 'markRead'])
         ->name('chat.conversations.read');
+    Route::post('/messages/{message}/reactions', [MessageReactionController::class, 'toggle'])
+        ->name('chat.messages.reactions.toggle');
 
     // Bleep Resource Routes
     Route::post('/bleeps', [BleepController::class, 'store']);

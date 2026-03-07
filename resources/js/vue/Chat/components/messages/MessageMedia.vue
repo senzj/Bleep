@@ -88,7 +88,7 @@ const itemIsVoice = (item) => item?.media_kind === 'voice';
 		</div>
 	</div>
 
-	<div v-else-if="message.media_url || message.media_path" class="mt-2">
+	<div v-else-if="message.media_url || message.media_path" class="mt-1">
 		<ImageViewer v-if="isImage" :src="mediaSrc" :alt="message.media_type" />
 		<VoiceMessage v-else-if="isVoice" :src="mediaSrc" :duration="message.media_duration" />
 		<VideoPlayer v-else-if="isVideo" :src="mediaSrc" :type="message.media_type" />
@@ -96,7 +96,7 @@ const itemIsVoice = (item) => item?.media_kind === 'voice';
 		<a v-else :href="message.media_url" target="_blank" rel="noopener" class="link link-primary text-sm">Open attachment</a>
 	</div>
 
-	<div v-else-if="normalizedItems.length === 1" class="mt-2">
+	<div v-else-if="normalizedItems.length === 1" class="mt-1">
 		<ImageViewer v-if="itemIsImage(normalizedItems[0])" :src="itemSrc(normalizedItems[0])" :alt="normalizedItems[0].media_type" />
 		<VoiceMessage v-else-if="itemIsVoice(normalizedItems[0])" :src="itemSrc(normalizedItems[0])" :duration="normalizedItems[0].media_duration" />
 		<VideoPlayer v-else-if="itemIsVideo(normalizedItems[0])" :src="itemSrc(normalizedItems[0])" :type="normalizedItems[0].media_type" />

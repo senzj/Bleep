@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\MessageDelivery;
 use App\Models\MessageEdit;
 use App\Models\MessageMedia;
+use App\Models\MessageReaction;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -64,6 +65,11 @@ class Message extends Model
     public function mediaItems(): HasMany
     {
         return $this->hasMany(MessageMedia::class);
+    }
+
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(MessageReaction::class);
     }
 
     public function getImageCountAttribute(): int

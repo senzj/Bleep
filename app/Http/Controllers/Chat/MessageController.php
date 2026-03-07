@@ -18,6 +18,7 @@ use App\Services\Chat\ChatMessageFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class MessageController extends Controller
 {
@@ -300,6 +301,23 @@ class MessageController extends Controller
         abort_unless((int) $message->sender_id === (int) $user->id, 403);
 
         if (! $message->trashed()) {
+            // Hard delete reactions
+            $message->reactions()->delete();
+
+            // Hard delete media files from storage and database
+            $mediaItems = $message->mediaItems;
+            foreach ($mediaItems as $mediaItem) {
+                if ($mediaItem->media_path && Storage::disk('public')->exists($mediaItem->media_path)) {
+                    Storage::disk('public')->delete($mediaItem->media_path);
+                }
+            }
+            $message->mediaItems()->delete();
+
+            // Clear message body
+            $message->body = null;
+            $message->save();
+
+            // Soft delete the message (keeps reply_to_id intact)
             $message->delete();
         }
 

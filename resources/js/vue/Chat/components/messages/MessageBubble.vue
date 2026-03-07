@@ -1,8 +1,15 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import LucideIcons from '../../../LucideIcons.vue';
-import MessageMedia from './MessageMedia.vue';
+import MessageReply from './MessageReply.vue';
+import MessageContent from './MessageContent.vue';
+import MessageActions from './MessageActions.vue';
+import MessageEdit from './MessageEdit.vue';
+import MessageSeen from './MessageSeen.vue';
 import { useMessageStore } from '../../store/useMessageStore';
+import MessageFooter from './MessageFooter.vue';
+
+const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
 const props = defineProps({
     message: {
@@ -21,13 +28,17 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    highlighted: {
+        type: Boolean,
+        default: false,
+    },
 });
 
-const emit = defineEmits(['edit-message', 'delete-message']);
+const emit = defineEmits(['edit-message', 'delete-message', 'reply', 'react', 'scroll-to-message']);
 const store = useMessageStore();
 
-const showSeenPopover = ref(false);
 const showActionMenu = ref(false);
+const showEmojiPicker = ref(false);
 const editing = ref(false);
 const editBody = ref('');
 const editError = ref('');
@@ -37,9 +48,18 @@ const retainedMediaItems = ref([]);
 const pendingMediaItems = ref([]);
 let longPressTimer = null;
 
-const visibleSeenBy = computed(() => props.seenAvatars.slice(0, 5));
-const hiddenSeenBy = computed(() => props.seenAvatars.slice(5));
+// ── Swipe-to-reply state ──
+const swipeOffsetX = ref(0);
+const isSwiping = ref(false);
+let swipeStartX = 0;
+let swipeStartY = 0;
+let swipeDirection = null; // null | 'horizontal' | 'vertical'
+
+const SWIPE_THRESHOLD = 60;
+const MAX_SWIPE = 80;
+
 const canManageMessage = computed(() => props.mine && !props.message.is_deleted);
+const isDeleted = computed(() => props.message.is_deleted);
 const hasEditMedia = computed(() => retainedMediaItems.value.length + pendingMediaItems.value.length > 0);
 
 const normalizeMessageMedia = (message) => {
@@ -155,18 +175,19 @@ const pickEditMedia = () => {
 };
 
 const toggleActionMenu = () => {
-    if (!canManageMessage.value) return;
     showActionMenu.value = !showActionMenu.value;
+    if (!showActionMenu.value) showEmojiPicker.value = false;
 };
 
 const closeActionMenu = () => {
     showActionMenu.value = false;
+    showEmojiPicker.value = false;
 };
 
 const onPointerDown = (event) => {
     // Long press for mobile only (skip if mouse device)
     if (event.pointerType === 'mouse') return;
-    if (!canManageMessage.value) return;
+    if (isDeleted.value) return;
 
     clearTimeout(longPressTimer);
     longPressTimer = setTimeout(() => {
@@ -189,12 +210,74 @@ const handleDelete = () => {
     closeActionMenu();
 };
 
+const handleReply = () => {
+    emit('reply', props.message);
+    closeActionMenu();
+};
+
+const handleQuickReact = async (emoji) => {
+    closeActionMenu();
+    await store.toggleReaction(props.message.id, emoji);
+};
+
+const toggleEmojiPicker = () => {
+    showEmojiPicker.value = !showEmojiPicker.value;
+};
+
 const onClickOutside = (event) => {
-    if (!showActionMenu.value) return;
+    if (!showActionMenu.value && !showEmojiPicker.value) return;
     // Close if click is outside the entire component
     if (!event.target.closest('.group\\/msg')) {
         closeActionMenu();
     }
+};
+
+// ── Swipe-to-reply (touch only) ──
+const onTouchStart = (event) => {
+    if (isDeleted.value || editing.value) return;
+    const touch = event.touches[0];
+    swipeStartX = touch.clientX;
+    swipeStartY = touch.clientY;
+    swipeDirection = null;
+    isSwiping.value = false;
+};
+
+const onTouchMove = (event) => {
+    if (isDeleted.value || editing.value) return;
+    const touch = event.touches[0];
+    const dx = touch.clientX - swipeStartX;
+    const dy = touch.clientY - swipeStartY;
+
+    if (swipeDirection === null) {
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+            swipeDirection = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+        }
+        return;
+    }
+
+    if (swipeDirection !== 'horizontal') return;
+
+    // For mine: allow negative (right-to-left), for others: allow positive (left-to-right)
+    if (props.mine) {
+        const clamped = Math.max(-MAX_SWIPE, Math.min(0, dx));
+        swipeOffsetX.value = clamped;
+    } else {
+        const clamped = Math.max(0, Math.min(MAX_SWIPE, dx));
+        swipeOffsetX.value = clamped;
+    }
+
+    if (Math.abs(swipeOffsetX.value) > 10) {
+        isSwiping.value = true;
+    }
+};
+
+const onTouchEnd = () => {
+    if (Math.abs(swipeOffsetX.value) >= SWIPE_THRESHOLD) {
+        emit('reply', props.message);
+    }
+    swipeOffsetX.value = 0;
+    isSwiping.value = false;
+    swipeDirection = null;
 };
 
 const submitInlineEdit = async () => {
@@ -252,269 +335,143 @@ onUnmounted(() => {
 
 <template>
     <div
-        class="relative group/msg"
+        class="relative group/msg w-full"
+        :class="{ 'highlighted-message': highlighted }"
         @pointerdown="onPointerDown"
         @pointerup="cancelLongPress"
         @pointerleave="cancelLongPress"
         @pointercancel="cancelLongPress"
+        @touchstart.passive="onTouchStart"
+        @touchmove.passive="onTouchMove"
+        @touchend.passive="onTouchEnd"
     >
         <!-- Mobile long-press menu — appears above the bubble -->
         <div
             v-if="showActionMenu"
-            class="absolute z-40 min-w-28 rounded-xl border border-base-300 bg-base-100 p-1 shadow-xl md:hidden"
+            class="absolute z-40 rounded-xl border border-base-300 bg-base-100 p-1 shadow-xl md:hidden"
             :class="mine ? 'right-4 bottom-full mb-1' : 'left-14 bottom-full mb-1'"
         >
-            <button type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200" @click="handleEdit">Edit</button>
-            <button type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs text-error hover:bg-base-200" @click="handleDelete">Delete</button>
-        </div>
-
-        <!-- Chat bubble — completely untouched -->
-        <div class="chat w-full" :class="mine ? 'chat-end' : 'chat-start'">
-            <div class="chat-image avatar">
-                <div class="h-10 w-10 rounded-full" :class="props.showAvatar ? '' : 'opacity-0'">
-                    <img
-                        v-if="props.showAvatar"
-                        :src="message.sender?.profile_picture_url || '/images/avatar/default.jpg'"
-                        :alt="`${message.sender?.username || 'user'} avatar`"
-                    />
-                </div>
+            <!-- Quick emoji row -->
+            <div class="flex items-center gap-1 px-1 py-1 border-b border-base-300 mb-1">
+                <button
+                    v-for="emoji in QUICK_EMOJIS"
+                    :key="emoji"
+                    type="button"
+                    class="text-lg hover:scale-125 transition-transform px-0.5"
+                    @click="handleQuickReact(emoji)"
+                >{{ emoji }}</button>
             </div>
-
-            <div class="chat-header">
-                <span v-if="!mine && props.showAvatar" class="text-xs font-semibold">
-                    {{ message.sender?.dname || message.sender?.username || 'User' }}
-                </span>
-                <time class="opacity-50" :class="!mine && props.showAvatar ? 'ml-2' : ''">
-                    {{ new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
-                </time>
-            </div>
-
-            <div class="chat-bubble relative" :class="mine ? 'chat-bubble-primary' : 'chat-bubble-neutral'">
-                <!-- quick action menu -->
-                <div
-                    v-if="canManageMessage"
-                    class="absolute top-1/2 -translate-y-1/2 z-30 hidden md:flex items-center opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 gap-1"
-                    :class="mine ? 'right-full mr-1' : 'left-full ml-1'"
-                >
-                    
-                    <!-- Elipsis -->
-                    <div class="relative">
-                        <button
-                            type="button"
-                            class="p-1 rounded-full bg-gray-600/20 hover:bg-gray-600/30 transition-colors cursor-pointer"
-                            @click.stop="toggleActionMenu"
-                        >
-                            <LucideIcons name="ellipsis-vertical" class="h-4 w-4 opacity-60" />
-                        </button>
-
-                        <!-- Desktop dropdown -->
-                        <div
-                            v-if="showActionMenu"
-                            class="absolute top-0 z-40 min-w-28 rounded-xl border border-base-300 bg-base-100 p-1 shadow-xl"
-                            :class="mine ? 'right-full mr-1' : 'left-full ml-1'"
-                        >
-                            <button type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200" @click="handleEdit">Edit</button>
-                            <button type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs text-error hover:bg-base-200" @click="handleDelete">Delete</button>
-                        </div>
-                    </div>
-
-                    <!-- Reply -->
-                    <div class="relative">
-                        <button
-                            type="button"
-                            class="p-1 rounded-full bg-gray-600/20 hover:bg-gray-600/30 transition-colors cursor-pointer"
-                            @click.stop="$emit('reply', message)"
-                        >
-                            <LucideIcons name="reply" class="h-4 w-4 opacity-60" />
-                        </button>
-                    </div>
-
-                    <!-- Reaction -->
-                    <div class="relative">
-                        <button
-                            type="button"
-                            class="p-1 rounded-full bg-gray-600/20 hover:bg-gray-600/30 transition-colors cursor-pointer"
-                            @click.stop="$emit('react', message)"
-                        >
-                            <LucideIcons name="smile" class="h-4 w-4 opacity-60" />
-                        </button>
-                    </div>
-                </div>
-
-                <div v-if="editing" class="space-y-2">
-                    <textarea
-                        v-model="editBody"
-                        class="textarea textarea-bordered w-full min-h-24"
-                        maxlength="5000"
-                        placeholder="Edit your message"
-                        :disabled="savingEdit"
-                    />
-
-                    <div v-if="retainedMediaItems.length || pendingMediaItems.length" class="grid grid-cols-2 gap-2">
-                        <div
-                            v-for="(item, index) in retainedMediaItems"
-                            :key="item.id || `${item.media_path}-${index}`"
-                            class="relative overflow-hidden rounded-lg border border-base-300 bg-base-200 p-1"
-                        >
-                            <img
-                                v-if="(item.media_type || '').startsWith('image/')"
-                                :src="item.media_url || (item.media_path ? `/storage/${item.media_path}` : '')"
-                                alt="Media"
-                                class="h-24 w-full rounded object-cover"
-                            >
-                            <video
-                                v-else-if="(item.media_type || '').startsWith('video/')"
-                                :src="item.media_url || (item.media_path ? `/media/stream/${item.media_path}` : '')"
-                                class="h-24 w-full rounded object-cover"
-                                controls
-                            />
-                            <div v-else class="line-clamp-2 px-2 py-2 text-xs">{{ item.media_path || 'Attachment' }}</div>
-
-                            <button
-                                type="button"
-                                class="btn btn-xs btn-circle btn-error absolute right-1 top-1"
-                                :disabled="savingEdit"
-                                @click="removeExistingMediaAt(index)"
-                            >
-                                <LucideIcons name="x" class="h-3 w-3" />
-                            </button>
-                        </div>
-
-                        <div
-                            v-for="(item, index) in pendingMediaItems"
-                            :key="`pending-${item.file?.name}-${index}`"
-                            class="relative overflow-hidden rounded-lg border border-base-300 bg-base-200 p-1"
-                        >
-                            <img
-                                v-if="item.file?.type?.startsWith('image/')"
-                                :src="item.previewUrl"
-                                alt="Pending upload"
-                                class="h-24 w-full rounded object-cover"
-                            >
-                            <video
-                                v-else-if="item.file?.type?.startsWith('video/')"
-                                :src="item.previewUrl"
-                                class="h-24 w-full rounded object-cover"
-                                controls
-                            />
-                            <div v-else class="line-clamp-2 px-2 py-2 text-xs">{{ item.file?.name || 'Attachment' }}</div>
-
-                            <button
-                                type="button"
-                                class="btn btn-xs btn-circle btn-error absolute right-1 top-1"
-                                :disabled="savingEdit"
-                                @click="removePendingMediaAt(index)"
-                            >
-                                <LucideIcons name="x" class="h-3 w-3" />
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-outline" :disabled="savingEdit" @click="pickEditMedia">
-                            <LucideIcons name="paperclip" class="h-4 w-4" />
-                            Add media
-                        </button>
-                        <button type="button" class="btn btn-sm btn-primary" :disabled="savingEdit" @click="submitInlineEdit">
-                            Save
-                        </button>
-                        <button type="button" class="btn btn-sm btn-ghost" :disabled="savingEdit" @click="cancelInlineEditor">
-                            Cancel
-                        </button>
-                    </div>
-
-                    <div v-if="editUploadProgress !== null" class="flex items-center gap-2">
-                        <progress class="progress progress-primary flex-1" :value="editUploadProgress" max="100" />
-                        <span class="text-xs font-medium">{{ editUploadProgress }}%</span>
-                    </div>
-
-                    <p v-if="editError" class="text-xs text-error">{{ editError }}</p>
-                </div>
-
-                <template v-else>
-                    <p v-if="message.body" class="whitespace-pre-wrap">{{ message.body }}</p>
-                    <MessageMedia :message="message" />
-                </template>
-            </div>
-
-            <div class="chat-footer flex items-center gap-1 mt-1 opacity-50">
-                <span class="text-[10px]">
-                    {{ message.edited_at ? 'Edited' : '' }}
-                </span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Seen avatars -->
-    <div
-        v-if="seenAvatars.length > 0"
-        class="flex items-center px-12 mb-1"
-        :class="mine ? 'justify-end' : 'justify-end mr-10'"
-    >
-        <div
-            v-for="(person, index) in visibleSeenBy"
-            :key="person.id"
-            class="relative group"
-            :class="index > 0 ? 'ml-0.5' : ''"
-        >
-            <img
-                :src="person.profile_picture_url || '/images/avatar/default.jpg'"
-                :alt="person.dname || person.username"
-                class="h-4 w-4 rounded-full object-cover ring-2 ring-base-200 cursor-default"
-            />
-
-            <!-- Custom tooltip -->
-            <div class="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-50 pointer-events-none
-                        opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
-                <div class="bg-base-content text-base-100 text-[10px] rounded-lg px-2 py-1 shadow-lg">
-                    <p class="font-semibold">{{ person.dname || person.username }}</p>
-                    <p v-if="person.last_read_at" class="opacity-70">
-                        Seen at {{ new Date(person.last_read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
-                    </p>
-                </div>
-                <!-- Tooltip arrow -->
-                <div class="absolute top-full left-1/2 -translate-x-1/2 h-0 w-0
-                            border-l-4 border-l-transparent border-r-4 border-r-transparent
-                            border-t-4 border-t-base-content" />
-            </div>
-        </div>
-
-        <!-- +N more popover (unchanged structure, but add seen time inside) -->
-        <div v-if="hiddenSeenBy.length" class="relative -ml-0.5">
-            <button
-                class="h-4 w-4 rounded-full bg-base-300 text-[8px] font-bold flex items-center justify-center ring-2 ring-base-200 cursor-pointer hover:bg-base-200"
-                @click.stop="showSeenPopover = !showSeenPopover"
-            >
-                +{{ hiddenSeenBy.length }}
+            <button type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200 flex items-center gap-2" @click="handleReply">
+                <LucideIcons name="reply" class="h-3.5 w-3.5" /> Reply
             </button>
+            <button v-if="canManageMessage" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200 flex items-center gap-2" @click="handleEdit">
+                <LucideIcons name="pencil" class="h-3.5 w-3.5" /> Edit
+            </button>
+            <button v-if="canManageMessage" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs text-error hover:bg-base-200 flex items-center gap-2" @click="handleDelete">
+                <LucideIcons name="trash-2" class="h-3.5 w-3.5" /> Delete
+            </button>
+        </div>
 
-            <Teleport to="body">
-                <div v-if="showSeenPopover" class="fixed inset-0 z-40" @click="showSeenPopover = false" />
-            </Teleport>
-
-            <div
-                v-if="showSeenPopover"
-                class="absolute bottom-full mb-3 min-w-44 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-xl z-50"
-                :class="mine ? 'right-0' : 'left-0'"
-            >
-                <div class="absolute -bottom-2 h-0 w-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-8 border-t-base-300" :class="mine ? 'right-2' : 'left-2'" />
-                <div class="absolute -bottom-2 h-0 w-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[7px] border-t-base-100" :class="mine ? 'right-2' : 'left-2'" />
-
-                <p class="mb-1 px-1 text-[10px] font-semibold opacity-50">Seen by</p>
-                <div
-                    v-for="person in hiddenSeenBy"
-                    :key="person.id"
-                    class="flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-base-200"
-                >
-                    <img :src="person.profile_picture_url || '/images/avatar/default.jpg'" class="h-5 w-5 shrink-0 rounded-full object-cover" />
-                    <div class="flex flex-col min-w-0">
-                        <span class="max-w-28 truncate text-xs font-medium">{{ person.dname || person.username }}</span>
-                        <span v-if="person.last_read_at" class="text-[10px] opacity-60">
-                            {{ new Date(person.last_read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
-                        </span>
+        <!-- Swipe wrapper for touch gestures -->
+        <div
+            :style="{ transform: `translateX(${swipeOffsetX}px)`, transition: isSwiping ? 'none' : 'transform 0.2s ease' }"
+        >
+            <!-- Chat bubble -->
+            <div class="chat w-full" :class="mine ? 'chat-end' : 'chat-start'">
+                <div class="chat-image avatar">
+                    <div class="h-10 w-10 rounded-full" :class="props.showAvatar ? '' : 'opacity-0'">
+                        <img
+                            v-if="props.showAvatar"
+                            :src="message.sender?.profile_picture_url || '/images/avatar/default.jpg'"
+                            :alt="`${message.sender?.username || 'user'} avatar`"
+                        />
                     </div>
+                </div>
+
+                <div class="chat-header gap-3 flex items-center">
+                    <span v-if="!mine && props.showAvatar" class="text-sm font-semibold">
+                        {{ message.sender?.dname || 'User' }}
+                    </span>
+                </div>
+
+                <!-- Reply + Message bubbles wrapper (flex column to stack vertically) -->
+                <div class="flex flex-col gap-1">
+                    <!-- Reply preview above the message bubble (hidden if deleted) -->
+                    <MessageReply
+                        v-if="!isDeleted"
+                        :message="message"
+                        :mine="mine"
+                        @scroll-to-message="(id) => emit('scroll-to-message', id)"
+                    />
+
+                    <div class="chat-bubble relative items-center min-w-30 max-w-80 gap-1" :class="[
+                        isDeleted ? 'chat-bubble-ghost' : (mine ? 'chat-bubble-primary' : 'chat-bubble-secondary'),
+                        highlighted ? 'ring-2 ring-primary ring-offset-1 ring-offset-base-100' : '',
+                    ]">
+                        <!-- Desktop hover actions — beside the bubble -->
+                        <MessageActions
+                            :is-deleted="isDeleted"
+                            :mine="mine"
+                            :can-manage-message="canManageMessage"
+                            :show-emoji-picker="showEmojiPicker"
+                            :show-action-menu="showActionMenu"
+                            :quick-emojis="QUICK_EMOJIS"
+                            @toggle-emoji-picker="toggleEmojiPicker"
+                            @react="handleQuickReact"
+                            @reply="handleReply"
+                            @toggle-action-menu="toggleActionMenu"
+                            @edit="handleEdit"
+                            @delete="handleDelete"
+                        />
+
+                        <!-- Inline editor -->
+                        <MessageEdit
+                            v-if="editing"
+                            :editing="editing"
+                            :edit-body="editBody"
+                            :saving-edit="savingEdit"
+                            :retained-media-items="retainedMediaItems"
+                            :pending-media-items="pendingMediaItems"
+                            :edit-error="editError"
+                            :edit-upload-progress="editUploadProgress"
+                            @update:edit-body="editBody = $event"
+                            @remove-existing-media="removeExistingMediaAt"
+                            @remove-pending-media="removePendingMediaAt"
+                            @pick-media="pickEditMedia"
+                            @save="submitInlineEdit"
+                            @cancel="cancelInlineEditor"
+                        />
+
+                        <!-- Normal message content -->
+                        <MessageContent
+                            v-else
+                            :message="message"
+                        />
+                    </div>
+                </div>
+
+                <div class="chat-footer mt-1 justify-end">
+                    <!-- Reactions (hidden for deleted messages) -->
+                    <MessageFooter
+                        v-if="!isDeleted"
+                        :message="message"
+                        :mine="mine"
+                    />
                 </div>
             </div>
         </div>
+
+        <!-- Swipe reply indicator -->
+        <div
+            v-if="Math.abs(swipeOffsetX) > 10"
+            class="absolute top-1/2 -translate-y-1/2 transition-opacity"
+            :class="mine ? 'right-2' : 'left-2'"
+            :style="{ opacity: Math.min(1, Math.abs(swipeOffsetX) / SWIPE_THRESHOLD) }"
+        >
+            <LucideIcons name="reply" class="h-5 w-5 text-primary" />
+        </div>
+
+        <!-- Seen avatars (hidden for deleted messages) -->
+        <MessageSeen v-if="!isDeleted" :message="message" :seenAvatars="seenAvatars" :mine="mine" />
     </div>
 </template>

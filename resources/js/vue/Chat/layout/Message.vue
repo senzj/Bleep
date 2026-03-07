@@ -123,6 +123,10 @@ const handleDeleteMessage = async (messageId) => {
 	await store.deleteMessage(messageId);
 };
 
+const handleReplyMessage = (message) => {
+	store.setReplyTo(message);
+};
+
 watch(() => store.state.activeConversationId, async (conversationId) => {
 	if (!conversationId) return;
 	await store.markConversationRead(conversationId);
@@ -174,6 +178,7 @@ watch(() => store.state.activeConversationId, async (conversationId) => {
             @load-older="handleLoadOlderMessages"
             @edit-message="handleEditMessage"
             @delete-message="handleDeleteMessage"
+            @reply-message="handleReplyMessage"
 	    />
 
         <div class="bg-base-100 shrink-0">

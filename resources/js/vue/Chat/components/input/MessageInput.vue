@@ -67,9 +67,11 @@ const submitText = async () => {
 				media_type: firstMedia?.media_type || null,
 				media_kind: firstMedia?.media_kind || 'media',
 				media_items: uploadedItems,
+				reply_to_id: store.state.replyToMessage?.id || null,
 			});
 			clearPendingMedia();
 			text.value = '';
+			store.clearReplyTo();
 		} catch {
 			window.alert('Failed to send message.');
 		} finally {
@@ -78,8 +80,10 @@ const submitText = async () => {
 		}
 	} else {
 		// Text-only: optimistic update is instant, fire HTTP in background
+		const replyId = store.state.replyToMessage?.id || null;
 		text.value = '';
-		store.sendMessage({ body }).catch(() => {
+		store.clearReplyTo();
+		store.sendMessage({ body, reply_to_id: replyId }).catch(() => {
 			// Silently ignore — the store already removes the optimistic message on failure
 		});
 	}
@@ -168,6 +172,21 @@ const toggleInputMode = () => {
 
 <template>
 	<div class="border-base-300 bg-base-100 border-t p-3">
+		<!-- Reply preview bar -->
+		<div v-if="store.state.replyToMessage" class="mb-2 flex items-center gap-2 rounded-lg border-l-3 border-primary bg-base-200 px-3 py-2">
+			<div class="min-w-0 flex-1">
+				<p class="text-xs font-semibold text-primary">
+					Replying to {{ store.state.replyToMessage.sender?.dname || store.state.replyToMessage.sender?.username || 'User' }}
+				</p>
+				<p class="text-xs opacity-60 truncate">
+					{{ store.state.replyToMessage.body || '(media)' }}
+				</p>
+			</div>
+			<button type="button" class="btn btn-ghost btn-xs btn-circle shrink-0" @click="store.clearReplyTo()">
+				<LucideIcons name="x" class="h-3.5 w-3.5" />
+			</button>
+		</div>
+
 		<div v-if="hasPendingMedia" class="mb-2">
 			<div class="grid grid-cols-2 gap-2 md:grid-cols-3">
 				<div

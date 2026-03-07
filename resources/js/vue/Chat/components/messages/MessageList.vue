@@ -37,7 +37,7 @@ const props = defineProps({
 	},
 });
 
-const emit = defineEmits(['load-older', 'edit-message', 'delete-message']);
+const emit = defineEmits(['load-older', 'edit-message', 'delete-message', 'reply-message']);
 
 const onEditMessage = (payload) => {
 	emit('edit-message', payload);
@@ -45,6 +45,25 @@ const onEditMessage = (payload) => {
 
 const onDeleteMessage = (messageId) => {
 	emit('delete-message', messageId);
+};
+
+const onReplyMessage = (message) => {
+	emit('reply-message', message);
+};
+
+const highlightedMessageId = ref(null);
+let highlightTimeout = null;
+
+const scrollToMessage = (messageId) => {
+	const el = listRef.value;
+	if (!el) return;
+	const target = el.querySelector(`[data-message-id="${messageId}"]`);
+	if (target) {
+		target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		highlightedMessageId.value = messageId;
+		clearTimeout(highlightTimeout);
+		highlightTimeout = setTimeout(() => { highlightedMessageId.value = null; }, 2000);
+	}
 };
 
 const listRef = ref(null);
@@ -80,15 +99,14 @@ const dateKeyFromMessage = (message) => {
 const seenAvatarsByMessageId = computed(() => {
 	const result = new Map(); // msgId -> person[]
 
-	const otherParticipants = (props.participants || []).filter(
-		(p) => Number(p.id) !== Number(props.currentUserId),
-	);
+	const participants = props.participants || [];
 
 	const messageList = props.messages || [];
 
-	otherParticipants.forEach((participant) => {
+	participants.forEach((participant) => {
 		const uid = Number(participant.id);
 		let latestReadMessage = null;
+		let latestReadAt = participant.last_read_at || null;
 
 		// Source 1: last_read_at timestamp on the participant
 		if (participant.last_read_at) {
@@ -109,17 +127,23 @@ const seenAvatarsByMessageId = computed(() => {
 		for (let i = messageList.length - 1; i >= 0; i--) {
 			const msg = messageList[i];
 			if (!Array.isArray(msg.seen_by)) continue;
-			const found = msg.seen_by.some((s) => Number(s.id) === uid);
-			if (found) {
+			const seenEntry = msg.seen_by.find((s) => Number(s.id) === uid);
+			if (seenEntry) {
 				// If this message is later than what last_read_at found, use it instead
 				if (!latestReadMessage || Number(msg.id) > Number(latestReadMessage.id)) {
 					latestReadMessage = msg;
+					latestReadAt = seenEntry.read_at || seenEntry.last_read_at || latestReadAt;
 				}
 				break; // seen_by is populated on messages up to the read point; highest ID wins
 			}
 		}
 
 		if (latestReadMessage) {
+			// A sender should not appear in seen receipts for their own message.
+			if (Number(latestReadMessage.sender_id) === uid) {
+				return;
+			}
+
 			if (!result.has(latestReadMessage.id)) {
 				result.set(latestReadMessage.id, []);
 			}
@@ -128,7 +152,7 @@ const seenAvatarsByMessageId = computed(() => {
 				profile_picture_url: participant.profile_picture_url,
 				dname: participant.dname,
 				username: participant.username,
-                last_read_at: participant.last_read_at
+				last_read_at: latestReadAt
 			});
 		}
 	});
@@ -267,12 +291,16 @@ const showEmptyState = computed(() => props.loaded && !props.loading && !props.m
 				<MessageBubble
 					v-for="(message, index) in group.messages"
 					:key="message.id"
+					:data-message-id="message.id"
 					:message="message"
 					:mine="Number(message.sender_id) === Number(currentUserId)"
 					:show-avatar="index === group.messages.length - 1 || Number(group.messages[index + 1]?.sender_id) !== Number(message.sender_id)"
 					:seen-avatars="seenAvatarsByMessageId.get(message.id) || []"
+					:highlighted="highlightedMessageId === message.id"
 					@edit-message="onEditMessage"
 					@delete-message="onDeleteMessage"
+					@reply="onReplyMessage"
+					@scroll-to-message="scrollToMessage"
 				/>
 			</template>
 		</div>

@@ -49,6 +49,7 @@ const state = reactive({
     onlineUsersByConversation: {},
     channelRefs: {},
     userChannelRef: null,
+    replyToMessage: null,
 });
 
 const typingTimeouts = {};
@@ -183,6 +184,16 @@ const subscribeConversation = (conversationId) => {
     privateChannel.listen('.message.deleted', (event) => {
         if (!event?.message) return;
         upsertMessage(conversationId, event.message);
+    });
+
+    privateChannel.listen('.message.reacted', (event) => {
+        if (!event?.message_id) return;
+        ensureConversationArrays(conversationId);
+        const list = state.messagesByConversation[conversationId] || [];
+        const msg = list.find((m) => Number(m.id) === Number(event.message_id));
+        if (msg) {
+            msg.reactions = event.reactions || [];
+        }
     });
 
     const presenceChannel = window.Echo.join(`conversation-online.${conversationId}`)
@@ -477,6 +488,7 @@ const sendMessage = async (payload) => {
             media_kind: payload.media_kind || 'none',
             media_duration: payload.media_duration || null,
             media_items: Array.isArray(payload.media_items) ? payload.media_items : [],
+            reply_to_id: payload.reply_to_id || null,
             client_uuid: clientUuid,
         });
 
@@ -539,6 +551,28 @@ const deleteMessage = async (messageId) => {
     }
 
     return deleted;
+};
+
+const toggleReaction = async (messageId, emoji) => {
+    const response = await window.axios.post(`/messages/${messageId}/reactions`, { emoji });
+    const data = response.data?.data;
+    if (data?.conversation_id && data?.message_id) {
+        ensureConversationArrays(Number(data.conversation_id));
+        const list = state.messagesByConversation[Number(data.conversation_id)] || [];
+        const msg = list.find((m) => Number(m.id) === Number(data.message_id));
+        if (msg) {
+            msg.reactions = data.reactions || [];
+        }
+    }
+    return data;
+};
+
+const setReplyTo = (message) => {
+    state.replyToMessage = message || null;
+};
+
+const clearReplyTo = () => {
+    state.replyToMessage = null;
 };
 
 const uploadMedia = async (file, mediaKind = 'media', onProgress = null) => {
@@ -743,5 +777,8 @@ export const useMessageStore = () => {
         createGroupConversation,
         sendTyping,
         markConversationRead,
+        toggleReaction,
+        setReplyTo,
+        clearReplyTo,
     };
 };

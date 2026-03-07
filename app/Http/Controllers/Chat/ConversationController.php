@@ -206,7 +206,7 @@ class ConversationController extends Controller
 
         abort_unless($conversation->participants()->where('users.id', $user->id)->exists(), 403);
 
-        $limit = max(1, min(100, (int) $request->query('limit', 40)));
+        $limit = max(1, min(100, (int) $request->query('limit', 20)));
         $beforeId = (int) $request->query('before_id', 0);
 
         $query = $conversation->messages()

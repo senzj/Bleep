@@ -13,6 +13,13 @@ class ChatMessageFormatter
             'conversation.participants:id,username,dname',
             'deliveries.user:id,username,dname,profile_picture',
             'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
+            'reactions.user:id,username,dname,profile_picture',
+            'replyTo' => function ($query) {
+                $query->withTrashed()->with([
+                    'sender:id,username,dname,profile_picture',
+                    'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
+                ]);
+            },
         ]);
 
         $isDeleted = $message->trashed();
@@ -29,6 +36,59 @@ class ChatMessageFormatter
             ->values();
 
         $primaryMedia = $mediaItems->first();
+
+        $reactions = $message->reactions
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'user_id' => $r->user_id,
+                'emoji' => $r->emoji,
+                'user' => [
+                    'id' => $r->user?->id,
+                    'username' => $r->user?->username,
+                    'dname' => $r->user?->dname,
+                    'profile_picture_url' => $r->user?->profile_picture_url,
+                ],
+            ])
+            ->values();
+
+        $replyTo = null;
+        if ($message->replyTo) {
+            $replyToMsg = $message->replyTo;
+            $replyToDeleted = $replyToMsg->trashed();
+
+            $replyMediaItems = $replyToMsg->mediaItems
+                ->map(fn ($item) => [
+                    'id' => $item->id,
+                    'media_path' => $item->media_path,
+                    'media_url' => asset('storage/' . ltrim($item->media_path, '/')),
+                    'media_type' => $item->media_type,
+                    'media_kind' => $item->media_kind,
+                    'media_duration' => $item->media_duration,
+                ])
+                ->values();
+
+            $replyPrimaryMedia = $replyMediaItems->first();
+
+            $replyTo = [
+                'id' => $replyToMsg->id,
+                'sender_id' => $replyToMsg->sender_id,
+                'sender' => [
+                    'id' => $replyToMsg->sender?->id,
+                    'username' => $replyToMsg->sender?->username,
+                    'dname' => $replyToMsg->sender?->dname,
+                    'profile_picture_url' => $replyToMsg->sender?->profile_picture_url,
+                ],
+                'body' => $replyToDeleted ? null : $replyToMsg->body,
+                'is_deleted' => $replyToDeleted,
+                // Keep these single-media fields for backward compatibility in older clients.
+                'media_path' => ($replyToDeleted || ! $replyPrimaryMedia) ? null : ($replyPrimaryMedia['media_path'] ?? null),
+                'media_url' => ($replyToDeleted || ! $replyPrimaryMedia) ? null : ($replyPrimaryMedia['media_url'] ?? null),
+                'media_type' => $replyPrimaryMedia['media_type'] ?? null,
+                'media_kind' => $replyPrimaryMedia['media_kind'] ?? 'none',
+                'media_duration' => $replyPrimaryMedia['media_duration'] ?? null,
+                'media_items' => $replyToDeleted ? [] : $replyMediaItems,
+            ];
+        }
 
         $participantCount = $message->conversation->participants->count();
         $deliveryCount = $message->deliveries
@@ -93,6 +153,9 @@ class ChatMessageFormatter
             'seen_by' => $seenBy,
             'created_at' => optional($message->created_at)?->toIso8601String(),
             'updated_at' => optional($message->updated_at)?->toIso8601String(),
+            'reply_to_id' => $message->reply_to_id,
+            'reply_to' => $replyTo,
+            'reactions' => $reactions,
         ];
     }
 }
