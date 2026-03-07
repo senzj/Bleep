@@ -12,7 +12,23 @@ class ChatMessageFormatter
             'sender:id,username,dname,profile_picture',
             'conversation.participants:id,username,dname',
             'deliveries.user:id,username,dname,profile_picture',
+            'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
         ]);
+
+        $isDeleted = $message->trashed();
+
+        $mediaItems = $message->mediaItems
+            ->map(fn ($item) => [
+                'id' => $item->id,
+                'media_path' => $item->media_path,
+                'media_url' => asset('storage/' . ltrim($item->media_path, '/')),
+                'media_type' => $item->media_type,
+                'media_kind' => $item->media_kind,
+                'media_duration' => $item->media_duration,
+            ])
+            ->values();
+
+        $primaryMedia = $mediaItems->first();
 
         $participantCount = $message->conversation->participants->count();
         $deliveryCount = $message->deliveries
@@ -58,13 +74,19 @@ class ChatMessageFormatter
                 'dname' => $message->sender?->dname,
                 'profile_picture_url' => $message->sender?->profile_picture_url,
             ],
-            'body' => $message->body,
-            'media_path' => $message->media_path,
-            'media_url' => $message->media_path ? asset('storage/' . ltrim($message->media_path, '/')) : null,
-            'media_type' => $message->media_type,
-            'media_kind' => $message->media_kind,
-            'media_duration' => $message->media_duration,
+            'body' => $isDeleted ? null : $message->body,
+            // Keep these single-media fields for backward compatibility in older clients.
+            'media_path' => ($isDeleted || ! $primaryMedia) ? null : ($primaryMedia['media_path'] ?? null),
+            'media_url' => ($isDeleted || ! $primaryMedia) ? null : ($primaryMedia['media_url'] ?? null),
+            'media_type' => $primaryMedia['media_type'] ?? null,
+            'media_kind' => $primaryMedia['media_kind'] ?? 'none',
+            'media_duration' => $primaryMedia['media_duration'] ?? null,
+            'media_items' => $isDeleted ? [] : $mediaItems,
             'client_uuid' => $message->client_uuid,
+            'is_edited' => (bool) $message->is_edited,
+            'edited_at' => optional($message->edited_at)?->toIso8601String(),
+            'is_deleted' => $isDeleted,
+            'deleted_at' => optional($message->deleted_at)?->toIso8601String(),
             'status' => $status,
             'delivery_count' => $deliveryCount,
             'read_count' => $readCount,

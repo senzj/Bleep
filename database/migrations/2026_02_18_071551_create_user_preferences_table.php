@@ -29,7 +29,7 @@ return new class extends Migration
             $table->integer('bleeps_per_page')->default(15);
 
             // Notification and sound preferences
-            $table->string('recieve_notification_sound')->default('/sounds/effects/marimba-bloop-1.mp3');
+            $table->string('recieve_notification_sound')->default('/sounds/notifications/marimba-bloop-1.mp3');
             $table->string('send_notification_sound')->default('/sounds/effects/bloop-1.mp3');
 
             // Privacy settings

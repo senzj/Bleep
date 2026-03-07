@@ -138,6 +138,10 @@ Route::middleware('auth')->group((function () {
 
     Route::post('/messages', [MessageController::class, 'store'])
         ->name('chat.messages.store');
+    Route::patch('/messages/{message}', [MessageController::class, 'update'])
+        ->name('chat.messages.update');
+    Route::delete('/messages/{message}', [MessageController::class, 'destroy'])
+        ->name('chat.messages.destroy');
     Route::post('/chat/conversations/{conversation}/read', [MessageController::class, 'markRead'])
         ->name('chat.conversations.read');
 

@@ -93,7 +93,7 @@ const activeConversationMeta = computed(() => {
 	const conversationId = Number(store.state.activeConversationId || 0);
 	if (!conversationId) {
 		return {
-			loaded: true,
+			loaded: false,
 			hasMore: false,
 			loading: false,
 			oldestMessageId: null,
@@ -113,6 +113,14 @@ const handleLoadOlderMessages = async () => {
 	if (!conversationId) return;
 
 	await store.fetchOlderMessages(conversationId);
+};
+
+const handleEditMessage = async (payload) => {
+	await store.editMessage(payload);
+};
+
+const handleDeleteMessage = async (messageId) => {
+	await store.deleteMessage(messageId);
 };
 
 watch(() => store.state.activeConversationId, async (conversationId) => {
@@ -137,7 +145,7 @@ watch(() => store.state.activeConversationId, async (conversationId) => {
 					>
                     <span
                         v-if="showOnlineIndicator"
-                        class="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-base-100 animate-pulse"
+                        class="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-base-100"
                         :class="showOnlineIndicator ? 'bg-green-500' : 'bg-gray-500'"
                     ></span>
 				</div>
@@ -162,16 +170,18 @@ watch(() => store.state.activeConversationId, async (conversationId) => {
 			:loaded="activeConversationMeta.loaded"
 			:has-more="activeConversationMeta.hasMore"
 			:loading-older="activeConversationMeta.loading && !!activeConversationMeta.oldestMessageId"
-		:participants="store.activeConversation.value?.participants || []"
-		@load-older="handleLoadOlderMessages"
-	/>
+            :participants="store.activeConversation.value?.participants || []"
+            @load-older="handleLoadOlderMessages"
+            @edit-message="handleEditMessage"
+            @delete-message="handleDeleteMessage"
+	    />
 
-	<div class="bg-base-100 shrink-0">
-		<p v-if="typingText" class="border-base-300 border-t px-4 py-1.5 text-xs italic opacity-70">
-            <span class="loading loading-dots loading-md mr-1"></span>
-			{{ typingText }}
-		</p>
-		<MessageInput />
-	</div>
-</section>
+        <div class="bg-base-100 shrink-0">
+            <p v-if="typingText" class="border-base-300 border-t px-4 py-1.5 text-xs italic opacity-70">
+                <span class="loading loading-dots loading-md mr-1"></span>
+                {{ typingText }}
+            </p>
+            <MessageInput />
+        </div>
+    </section>
 </template>

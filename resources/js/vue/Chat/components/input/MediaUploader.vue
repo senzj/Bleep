@@ -8,19 +8,24 @@ defineProps({
 	},
 });
 
-const emit = defineEmits(['file-selected']);
+const emit = defineEmits(['files-selected']);
 
 const pickFile = () => {
 	const input = document.createElement('input');
 	input.type = 'file';
 	input.accept = 'image/*,video/*,audio/*,.pdf';
+	input.multiple = true;
 
 	input.onchange = () => {
-		const file = input.files?.[0];
-		if (!file) return;
+		const files = Array.from(input.files || []);
+		if (!files.length) return;
 
-		const mediaKind = file.type.startsWith('audio/') ? 'audio' : 'media';
-		emit('file-selected', { file, mediaKind });
+		const payload = files.map((file) => ({
+			file,
+			mediaKind: file.type.startsWith('audio/') ? 'audio' : 'media',
+		}));
+
+		emit('files-selected', payload);
 	};
 
 	input.click();

@@ -11,7 +11,7 @@ function getSendSoundPrefs() {
 // ── Named shortcuts (backwards-compat for old 'default' DB rows)
 const NAMED_SHORTCUTS = {
     'default':   '/sounds/effects/bloop-1.mp3',
-    'messenger': '/sounds/effects/marimba-bloop-1.mp3',
+    'messenger': '/sounds/notifications/marimba-bloop-1.mp3',
     'ping':      '/sounds/effects/bloop-1.mp3',
     'none':      null,
 };

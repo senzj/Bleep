@@ -11,26 +11,22 @@ const store = useMessageStore();
 const text = ref('');
 const sending = ref(false);
 const uploadProgress = ref(null); // null = idle, 0-100 = uploading
-const pendingMediaFile = ref(null);
-const pendingMediaKind = ref('media');
-const pendingMediaPreviewUrl = ref('');
+const pendingMediaItems = ref([]);
 const inputMode = ref('text');
 
-const hasPendingMedia = computed(() => Boolean(pendingMediaFile.value));
-const pendingMediaIsImage = computed(() => pendingMediaFile.value?.type?.startsWith('image/'));
-const pendingMediaIsVideo = computed(() => pendingMediaFile.value?.type?.startsWith('video/'));
+const hasPendingMedia = computed(() => pendingMediaItems.value.length > 0);
 const canTalk = computed(() => !sending.value && Boolean(store.state.activeConversationId));
 const canSendText = computed(() => Boolean(store.state.activeConversationId));
 const isVoiceMode = computed(() => inputMode.value === 'voice');
 
 const clearPendingMedia = () => {
-    if (pendingMediaPreviewUrl.value) {
-        URL.revokeObjectURL(pendingMediaPreviewUrl.value);
-    }
+	pendingMediaItems.value.forEach((item) => {
+		if (item.previewUrl) {
+			URL.revokeObjectURL(item.previewUrl);
+		}
+	});
 
-    pendingMediaFile.value = null;
-    pendingMediaKind.value = 'media';
-    pendingMediaPreviewUrl.value = '';
+	pendingMediaItems.value = [];
 };
 
 onBeforeUnmount(() => {
@@ -42,22 +38,35 @@ const submitText = async () => {
 	if ((!body && !hasPendingMedia.value) || !store.state.activeConversationId) return;
 
 	if (hasPendingMedia.value) {
-		// Media uploads must block so we can show progress
+		// Media uploads must block so we can show progress and send one message payload.
 		sending.value = true;
 		try {
-			uploadProgress.value = 0;
-			const uploaded = await store.uploadMedia(
-				pendingMediaFile.value,
-				pendingMediaKind.value,
-				(pct) => { uploadProgress.value = pct; },
-			);
+			const uploadedItems = [];
+			const total = pendingMediaItems.value.length;
+
+			for (let i = 0; i < total; i++) {
+				const item = pendingMediaItems.value[i];
+				const uploaded = await store.uploadMedia(
+					item.file,
+					item.mediaKind,
+					(pct) => {
+						const overall = Math.round(((i + pct / 100) / total) * 100);
+						uploadProgress.value = overall;
+					},
+				);
+
+				uploadedItems.push(uploaded);
+			}
+
 			uploadProgress.value = null;
+			const firstMedia = uploadedItems[0] || null;
 			await store.sendMessage({
 				body: body || null,
-				media_path: uploaded.media_path,
-				media_url: uploaded.media_url,
-				media_type: uploaded.media_type,
-				media_kind: uploaded.media_kind,
+				media_path: firstMedia?.media_path || null,
+				media_url: firstMedia?.media_url || null,
+				media_type: firstMedia?.media_type || null,
+				media_kind: firstMedia?.media_kind || 'media',
+				media_items: uploadedItems,
 			});
 			clearPendingMedia();
 			text.value = '';
@@ -76,13 +85,60 @@ const submitText = async () => {
 	}
 };
 
-const onMediaSelected = async ({ file, mediaKind }) => {
-	if (!file || !store.state.activeConversationId) return;
+const removePendingMediaAt = (index) => {
+	const item = pendingMediaItems.value[index];
+	if (!item) return;
 
-	clearPendingMedia();
-	pendingMediaFile.value = file;
-	pendingMediaKind.value = mediaKind;
-	pendingMediaPreviewUrl.value = URL.createObjectURL(file);
+	if (item.previewUrl) {
+		URL.revokeObjectURL(item.previewUrl);
+	}
+
+	pendingMediaItems.value = pendingMediaItems.value.filter((_, i) => i !== index);
+};
+
+const onMediaSelected = async (filesPayload) => {
+	if (!Array.isArray(filesPayload) || !filesPayload.length || !store.state.activeConversationId) return;
+
+	const MAX_IMAGES = 10;
+	const MAX_VIDEOS = 5;
+
+	const nextItems = filesPayload.map(({ file, mediaKind }) => ({
+		file,
+		mediaKind,
+		previewUrl: URL.createObjectURL(file),
+	}));
+
+	const combined = [...pendingMediaItems.value, ...nextItems];
+
+	// Count existing images and videos
+	const currentImages = combined.filter((item) => item.file?.type?.startsWith('image/')).length;
+	const currentVideos = combined.filter((item) => item.file?.type?.startsWith('video/')).length;
+
+	// Check limits
+	if (currentImages > MAX_IMAGES) {
+		window.alert(`Maximum ${MAX_IMAGES} images per message allowed. Excess images removed.`);
+		combined = combined.filter((item) => !item.file?.type?.startsWith('image/')).concat(
+			combined.filter((item) => item.file?.type?.startsWith('image/')).slice(0, MAX_IMAGES)
+		);
+	}
+
+	if (currentVideos > MAX_VIDEOS) {
+		window.alert(`Maximum ${MAX_VIDEOS} videos per message allowed. Excess videos removed.`);
+		combined = combined.filter((item) => !item.file?.type?.startsWith('video/')).concat(
+			combined.filter((item) => item.file?.type?.startsWith('video/')).slice(0, MAX_VIDEOS)
+		);
+	}
+
+	// Clean up dropped items
+	const kept = combined;
+	const dropped = filesPayload.filter((payload) => !kept.find((k) => k.file?.name === payload.file?.name));
+	dropped.forEach((item) => {
+		if (item.previewUrl) {
+			URL.revokeObjectURL(item.previewUrl);
+		}
+	});
+
+	pendingMediaItems.value = kept;
 };
 
 const onVoiceRecorded = async (blob, durationSeconds) => {
@@ -113,34 +169,45 @@ const toggleInputMode = () => {
 <template>
 	<div class="border-base-300 bg-base-100 border-t p-3">
 		<div v-if="hasPendingMedia" class="mb-2">
-			<div class="relative inline-block overflow-hidden rounded-lg border border-base-300 bg-base-200 p-1">
-				<img
-					v-if="pendingMediaIsImage"
-					:src="pendingMediaPreviewUrl"
-					alt="Selected media preview"
-					class="max-h-40 rounded object-cover"
+			<div class="grid grid-cols-2 gap-2 md:grid-cols-3">
+				<div
+					v-for="(item, index) in pendingMediaItems"
+					:key="`${item.file.name}-${index}`"
+					class="relative overflow-hidden rounded-lg border border-base-300 bg-base-200 p-1"
 				>
-				<video v-else-if="pendingMediaIsVideo" :src="pendingMediaPreviewUrl" class="max-h-40 rounded" controls />
-				<div v-else class="px-3 py-2 text-xs">{{ pendingMediaFile?.name }}</div>
+					<img
+						v-if="item.file?.type?.startsWith('image/')"
+						:src="item.previewUrl"
+						alt="Selected media preview"
+						class="h-24 w-full rounded object-cover"
+					>
+					<video
+						v-else-if="item.file?.type?.startsWith('video/')"
+						:src="item.previewUrl"
+						class="h-24 w-full rounded object-cover"
+						controls
+					/>
+					<div v-else class="line-clamp-2 px-2 py-2 text-xs">{{ item.file?.name }}</div>
+
+					<button
+						v-if="uploadProgress === null"
+						class="btn btn-xs btn-circle btn-error absolute right-1 top-1"
+						type="button"
+						:disabled="sending"
+						@click="removePendingMediaAt(index)"
+					>
+						<LucideIcons name="x" class="h-3 w-3" />
+					</button>
+				</div>
 
 				<!-- Upload progress overlay -->
 				<div
 					v-if="uploadProgress !== null"
-					class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded bg-base-100/80 px-4"
+					class="col-span-full flex flex-col items-center justify-center gap-1.5 rounded bg-base-100/80 px-4 py-2"
 				>
 					<progress class="progress progress-primary w-full" :value="uploadProgress" max="100" />
 					<span class="text-xs font-medium">{{ uploadProgress }}%</span>
 				</div>
-
-				<button
-					v-if="uploadProgress === null"
-					class="btn btn-xs btn-circle btn-error absolute right-1 top-1"
-					type="button"
-					:disabled="sending"
-					@click="clearPendingMedia"
-				>
-					<LucideIcons name="x" class="h-3 w-3" />
-				</button>
 			</div>
 		</div>
 
@@ -156,7 +223,7 @@ const toggleInputMode = () => {
 				<MediaUploader
 					v-if="!isVoiceMode"
 					:disabled="sending || !store.state.activeConversationId"
-					@file-selected="onMediaSelected"
+					@files-selected="onMediaSelected"
 				/>
 
 				<button

@@ -115,7 +115,7 @@ class ConversationController extends Controller
         $conversations = $user->conversations()
             ->with([
                 'participants:id,username,dname,profile_picture',
-                'messages' => fn ($query) => $query->latest()->limit(1)->with(['sender:id,username,dname,profile_picture', 'deliveries.user:id,username,dname', 'conversation.participants:id,username,dname']),
+                'messages' => fn ($query) => $query->withTrashed()->latest()->limit(1)->with(['sender:id,username,dname,profile_picture', 'deliveries.user:id,username,dname', 'conversation.participants:id,username,dname', 'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration']),
             ])
             ->orderByDesc('conversation_user.is_pinned')
             ->orderByDesc('last_message_at')
@@ -210,10 +210,12 @@ class ConversationController extends Controller
         $beforeId = (int) $request->query('before_id', 0);
 
         $query = $conversation->messages()
+            ->withTrashed()
             ->with([
                 'sender:id,username,dname,profile_picture',
                 'deliveries.user:id,username,dname',
                 'conversation.participants:id,username,dname',
+                'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
             ])
             ->orderByDesc('id');
 

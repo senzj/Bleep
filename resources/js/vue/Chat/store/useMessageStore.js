@@ -175,6 +175,16 @@ const subscribeConversation = (conversationId) => {
         applyReadReceipt(conversationId, event.message_id, event.reader, event.read_at);
     });
 
+    privateChannel.listen('.message.updated', (event) => {
+        if (!event?.message) return;
+        upsertMessage(conversationId, event.message);
+    });
+
+    privateChannel.listen('.message.deleted', (event) => {
+        if (!event?.message) return;
+        upsertMessage(conversationId, event.message);
+    });
+
     const presenceChannel = window.Echo.join(`conversation-online.${conversationId}`)
         .here((users) => {
             ensureConversationArrays(conversationId);
@@ -445,6 +455,11 @@ const sendMessage = async (payload) => {
         media_type: payload.media_type || null,
         media_kind: payload.media_kind || 'none',
         media_duration: payload.media_duration || null,
+        media_items: Array.isArray(payload.media_items) ? payload.media_items : [],
+        is_edited: false,
+        edited_at: null,
+        is_deleted: false,
+        deleted_at: null,
         status: 'sending',
         seen_by: [],
         created_at: new Date().toISOString(),
@@ -461,6 +476,7 @@ const sendMessage = async (payload) => {
             media_type: payload.media_type || null,
             media_kind: payload.media_kind || 'none',
             media_duration: payload.media_duration || null,
+            media_items: Array.isArray(payload.media_items) ? payload.media_items : [],
             client_uuid: clientUuid,
         });
 
@@ -475,6 +491,54 @@ const sendMessage = async (payload) => {
 
         throw error;
     }
+};
+
+const editMessage = async (payloadOrMessageId, maybeBody = null) => {
+    const isObjectPayload = payloadOrMessageId && typeof payloadOrMessageId === 'object';
+    const messageId = Number(isObjectPayload ? payloadOrMessageId.messageId : payloadOrMessageId);
+
+    if (!messageId) {
+        throw new Error('Invalid message id.');
+    }
+
+    const rawBody = isObjectPayload ? payloadOrMessageId.body : maybeBody;
+    const trimmedBody = rawBody === null || rawBody === undefined
+        ? null
+        : String(rawBody).trim();
+
+    const retainedMediaIds = isObjectPayload && Array.isArray(payloadOrMessageId.retainedMediaIds)
+        ? payloadOrMessageId.retainedMediaIds
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id) && id > 0)
+        : null;
+
+    const mediaItems = isObjectPayload && Array.isArray(payloadOrMessageId.newMediaItems)
+        ? payloadOrMessageId.newMediaItems
+        : [];
+
+    const response = await window.axios.patch(`/messages/${messageId}`, {
+        body: trimmedBody,
+        retained_media_ids: retainedMediaIds,
+        media_items: mediaItems,
+    });
+
+    const updated = response.data?.data;
+    if (updated?.conversation_id) {
+        upsertMessage(Number(updated.conversation_id), updated);
+    }
+
+    return updated;
+};
+
+const deleteMessage = async (messageId) => {
+    const response = await window.axios.delete(`/messages/${messageId}`);
+
+    const deleted = response.data?.data;
+    if (deleted?.conversation_id) {
+        upsertMessage(Number(deleted.conversation_id), deleted);
+    }
+
+    return deleted;
 };
 
 const uploadMedia = async (file, mediaKind = 'media', onProgress = null) => {
@@ -671,6 +735,8 @@ export const useMessageStore = () => {
         selectConversation,
         fetchOlderMessages,
         sendMessage,
+        editMessage,
+        deleteMessage,
         uploadMedia,
         sendVoiceMessage,
         createDirectConversation,

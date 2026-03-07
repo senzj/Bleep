@@ -57,10 +57,6 @@ return new class extends Migration
                 ->onDelete('cascade');
 
             $table->text('body')->nullable();
-            $table->string('media_path')->nullable();
-            $table->string('media_type')->nullable();
-            $table->string('media_kind')->default('none');
-            $table->unsignedInteger('media_duration')->nullable();
 
             $table->foreignId('reply_to_id')
                 ->nullable()
@@ -68,6 +64,7 @@ return new class extends Migration
                 ->nullOnDelete();
 
             $table->boolean('is_edited')->default(false);
+            $table->timestamp('edited_at')->nullable();
             $table->string('client_uuid', 64)->nullable();
 
             $table->softDeletes();
@@ -86,6 +83,24 @@ return new class extends Migration
 
             $table->unique(['message_id', 'user_id']);
             $table->index(['user_id', 'read_at']);
+        });
+
+        Schema::create('message_edits', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('message_id')->constrained()->onDelete('cascade');
+            $table->foreignId('editor_id')->constrained('users')->onDelete('cascade');
+            $table->text('old_body')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('message_media', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('message_id')->constrained()->onDelete('cascade');
+            $table->string('media_path');
+            $table->string('media_type');
+            $table->string('media_kind')->default('none');
+            $table->unsignedInteger('media_duration')->nullable();
+            $table->timestamps();
         });
 
         Schema::create('message_reactions', function (Blueprint $table) {
@@ -125,8 +140,10 @@ return new class extends Migration
     {
         Schema::dropIfExists('message_mentions');
         Schema::dropIfExists('message_reactions');
-        Schema::dropIfExists('messages');
+        Schema::dropIfExists('message_media');
+        Schema::dropIfExists('message_edits');
         Schema::dropIfExists('message_deliveries');
+        Schema::dropIfExists('messages');
         Schema::dropIfExists('conversation_user');
         Schema::dropIfExists('conversations');
     }

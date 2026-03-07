@@ -37,7 +37,15 @@ const props = defineProps({
 	},
 });
 
-const emit = defineEmits(['load-older']);
+const emit = defineEmits(['load-older', 'edit-message', 'delete-message']);
+
+const onEditMessage = (payload) => {
+	emit('edit-message', payload);
+};
+
+const onDeleteMessage = (messageId) => {
+	emit('delete-message', messageId);
+};
 
 const listRef = ref(null);
 const contentRef = ref(null);
@@ -237,7 +245,7 @@ const showEmptyState = computed(() => props.loaded && !props.loading && !props.m
 
 		<!-- Loaders sit outside contentRef so they can flex-fill the scroll container -->
 		<div v-if="showInitialLoader" class="flex flex-1 items-center justify-center gap-2 text-sm text-base-content/70">
-			<span class="loading loading-spinner loading-sm loading-primary"></span>
+			<span class="loading loading-infinity loading-md loading-primary"></span>
 			<span>Fetching messages</span>
 		</div>
 
@@ -257,11 +265,14 @@ const showEmptyState = computed(() => props.loaded && !props.loading && !props.m
 				</div>
 
 				<MessageBubble
-					v-for="message in group.messages"
+					v-for="(message, index) in group.messages"
 					:key="message.id"
 					:message="message"
 					:mine="Number(message.sender_id) === Number(currentUserId)"
+					:show-avatar="index === group.messages.length - 1 || Number(group.messages[index + 1]?.sender_id) !== Number(message.sender_id)"
 					:seen-avatars="seenAvatarsByMessageId.get(message.id) || []"
+					@edit-message="onEditMessage"
+					@delete-message="onDeleteMessage"
 				/>
 			</template>
 		</div>

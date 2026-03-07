@@ -70,14 +70,13 @@ class UserPreferences extends Model
             'bleeps_per_page' => 15,
 
             // notifications
-            'recieve_notification_sound' => '/sounds/effects/marimba-bloop-1.mp3',
+            'recieve_notification_sound' => '/sounds/notifications/marimba-bloop-1.mp3',
             'send_notification_sound' => '/sounds/effects/bloop-1.mp3',
 
             // Privacy settings
             'private_profile' => false,
             'block_new_followers' => false,
             'hide_online_status' => false,
-            'hide_activity' => false,
         ];
     }
 

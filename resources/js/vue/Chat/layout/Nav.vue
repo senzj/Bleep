@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import SearchBar from '../components/sidebar/SearchBar.vue';
 import { useMessageStore } from '../store/useMessageStore';
+import LucideIcons from '../../LucideIcons.vue';
 
 const store = useMessageStore();
 const query = ref('');
@@ -228,7 +229,7 @@ const startDirectMessage = async (userId) => {
 								<span
 									v-if="getConversationOnlineState(item.conversation) !== null"
 									class="absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-base-100"
-									:class="getConversationOnlineState(item.conversation) ? 'bg-success' : 'bg-gray-500'"
+									:class="getConversationOnlineState(item.conversation) ? 'bg-green-500' : 'bg-gray-500'"
 								/>
 							</template>
 						</div>
@@ -286,7 +287,7 @@ const startDirectMessage = async (userId) => {
 								>
 								<span
 									class="absolute -right-0.5 -bottom-0.5 h-4 w-4 rounded-full border-2 border-base-100"
-									:class="getUserOnlineState(item.user) ? 'bg-success' : 'bg-gray-500'"
+									:class="getUserOnlineState(item.user) ? 'bg-green-500' : 'bg-gray-500'"
 								/>
 							</div>
 							<div class="min-w-0">
@@ -299,8 +300,15 @@ const startDirectMessage = async (userId) => {
 				</button>
 			</template>
 
-			<p v-if="store.state.loadingUsers" class="text-base-content/70 p-2 text-xs">Loading...</p>
-			<p v-else-if="!mergedList.length" class="text-base-content/70 p-2 text-xs">No chats or users found.</p>
+			<span v-if="store.state.loadingUsers" class="text-base-content/70 p-2 text-xs justify-center flex items-center gap-2">
+                <span class="loading loading-spinner loading-sm loading-primary"></span>
+                <p>Fetching users</p>
+            </span>
+
+			<span v-else-if="!mergedList.length" class="text-base-content/70 p-2 text-xs justify-center flex items-center gap-2">
+                <LucideIcons name="users" class="h-5 w-5" />
+                <p>No chats or users found.</p>
+            </span>
 		</div>
 	</aside>
 </template>
