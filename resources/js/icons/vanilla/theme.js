@@ -22,5 +22,8 @@ export {
     Snowflake,
     Dessert,
     Gpu,
-
+    Square,
+    Bug,
+    Paintbrush,
+    SunDim,
 } from 'lucide';

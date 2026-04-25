@@ -3,45 +3,138 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserPreferences;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class UserPreferencesController extends Controller
 {
-    /**
-     * Get current user's preferences + all available sound files.
-     *
-     * Response shape:
-     * {
-     *   preferences: { ...columns },
-     *   sounds: {
-     *     system:   [ { source, category, name, filename, path, ext }, ... ],
-     *     uploaded: [ { source, category, name, filename, path, ext }, ... ],
-     *   }
-     * }
-     *
-     * System sounds  → public/sounds/effects/ and public/sounds/notifications/
-     *                  served at /sounds/{category}/{filename} (no symlink needed)
-     *
-     * Uploaded sounds → storage/app/public/sounds/user_{random}.{ext}
-     *                   served at /storage/sounds/{filename} (via storage symlink)
-     *                   accessible to all authenticated users
-     */
-    public function index()
+    private const VALID_KEYS = [
+        'nav_layout',
+        'theme',
+        'show_nsfw',
+        'blur_nsfw_media',
+        'show_reposts_in_feed',
+        'show_anonymous_bleeps',
+        'default_feed_sort',
+        'bleeps_per_page',
+        'recieve_notification_sound',
+        'send_notification_sound',
+        'private_profile',
+        'block_new_followers',
+        'hide_online_status',
+        'hide_activity',
+    ];
+
+    private const BOOLEAN_KEYS = [
+        'show_nsfw',
+        'blur_nsfw_media',
+        'show_reposts_in_feed',
+        'show_anonymous_bleeps',
+        'private_profile',
+        'block_new_followers',
+        'hide_online_status',
+        'hide_activity',
+    ];
+
+    private const SOUND_KEYS = [
+        'recieve_notification_sound',
+        'send_notification_sound',
+    ];
+
+    private const AUDIO_EXTENSIONS = ['mp3', 'wav', 'ogg', 'webm', 'm4a'];
+
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    public function index(): JsonResponse
     {
-        $user        = Auth::user();
-        $preferences = $user->getPreferences();
+        $user = Auth::user();
 
         return response()->json([
-            'preferences' => $preferences,
+            'preferences' => $user->getPreferences(),
             'sounds'      => self::availableSounds(),
         ]);
     }
 
-    // ── Sound scanning ────────────────────────────────────────────────────────
+    public function update(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'key'   => ['required', 'string', 'in:' . implode(',', self::VALID_KEYS)],
+            'value' => ['required'],
+        ]);
+
+        $key   = $validated['key'];
+        $value = $validated['value'];
+
+        $error = $this->validateValue($key, $value);
+        if ($error) {
+            return response()->json(['success' => false, 'error' => $error], 422);
+        }
+
+        $preferences = $this->userPreferences();
+        $preferences->update([$key => $this->castValue($key, $value)]);
+
+        return response()->json([
+            'success' => true,
+            'key'     => $key,
+            'value'   => $preferences->fresh()->{$key},
+        ]);
+    }
+
+    public function batchUpdate(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'preferences'                            => ['required', 'array'],
+            'preferences.nav_layout'                 => ['sometimes', 'string', 'in:horizontal,vertical'],
+            'preferences.theme'                      => ['sometimes', 'string', 'max:50'],
+            'preferences.show_nsfw'                  => ['sometimes', 'boolean'],
+            'preferences.blur_nsfw_media'            => ['sometimes', 'boolean'],
+            'preferences.show_reposts_in_feed'       => ['sometimes', 'boolean'],
+            'preferences.show_anonymous_bleeps'      => ['sometimes', 'boolean'],
+            'preferences.default_feed_sort'          => ['sometimes', 'string', 'in:newest,popular,following'],
+            'preferences.bleeps_per_page'            => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'preferences.recieve_notification_sound' => ['sometimes', 'string', 'max:255'],
+            'preferences.send_notification_sound'    => ['sometimes', 'string', 'max:255'],
+            'preferences.private_profile'            => ['sometimes', 'boolean'],
+            'preferences.block_new_followers'        => ['sometimes', 'boolean'],
+            'preferences.hide_online_status'         => ['sometimes', 'boolean'],
+            'preferences.hide_activity'              => ['sometimes', 'boolean'],
+        ]);
+
+        $preferences = $this->userPreferences();
+        $preferences->update($validated['preferences']);
+
+        return response()->json([
+            'success'     => true,
+            'preferences' => $preferences->fresh(),
+        ]);
+    }
+
+    public function uploadSound(Request $request): JsonResponse
+    {
+        $request->validate([
+            'sound' => ['required', 'file', 'mimes:mp3,wav,ogg,webm,m4a', 'max:5120'],
+        ]);
+
+        $file     = $request->file('sound');
+        $ext      = strtolower($file->getClientOriginalExtension());
+        $filename = 'user_' . Str::random(12) . '.' . $ext;
+        $path     = $file->storeAs('sounds', $filename, 'public');
+
+        return response()->json([
+            'success'  => true,
+            'filename' => $filename,
+            'path'     => '/storage/' . $path,
+            'name'     => self::humaniseName(pathinfo($filename, PATHINFO_FILENAME)),
+            'source'   => 'uploaded',
+            'category' => 'custom',
+            'ext'      => $ext,
+        ], 201);
+    }
+
+    // ── Sound helpers ─────────────────────────────────────────────────────────
 
     public static function availableSounds(): array
     {
@@ -51,19 +144,13 @@ class UserPreferencesController extends Controller
         ];
     }
 
-    /**
-     * Scan public/sounds/effects and public/sounds/notifications.
-     * These are bundled with the app and served directly without storage symlink.
-     */
     public static function scanSystemSounds(): array
     {
-        $sounds     = [];
-        $categories = [
-            'effects'       => public_path('sounds/effects'),
-            'notifications' => public_path('sounds/notifications'),
-        ];
+        $sounds = [];
 
-        foreach ($categories as $category => $dir) {
+        foreach (['effects', 'notifications'] as $category) {
+            $dir = public_path("sounds/{$category}");
+
             if (!is_dir($dir)) {
                 continue;
             }
@@ -74,7 +161,8 @@ class UserPreferencesController extends Controller
                 }
 
                 $ext = strtolower($file->getExtension());
-                if (!in_array($ext, ['mp3', 'wav', 'ogg', 'webm', 'm4a'])) {
+
+                if (!in_array($ext, self::AUDIO_EXTENSIONS)) {
                     continue;
                 }
 
@@ -89,227 +177,105 @@ class UserPreferencesController extends Controller
             }
         }
 
-        usort($sounds, fn ($a, $b) =>
-            [$a['category'], $a['name']] <=> [$b['category'], $b['name']]
-        );
+        usort($sounds, fn ($a, $b) => [$a['category'], $a['name']] <=> [$b['category'], $b['name']]);
 
         return $sounds;
     }
 
-    /**
-     * Scan storage/app/public/sounds/ for user-uploaded files.
-     * Only lists files matching the  user_{random}.{ext}  naming convention.
-     */
     public static function scanUploadedSounds(): array
     {
-        $sounds = [];
-        $disk   = Storage::disk('public');
+        $disk = Storage::disk('public');
 
         if (!$disk->exists('sounds')) {
-            return $sounds;
+            return [];
         }
 
-        foreach ($disk->files('sounds') as $relativePath) {
-            $filename = basename($relativePath);
-            $ext      = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        return collect($disk->files('sounds'))
+            ->filter(function (string $path) {
+                $filename = basename($path);
+                $ext      = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
-            if (!in_array($ext, ['mp3', 'wav', 'ogg', 'webm', 'm4a'])) {
-                continue;
-            }
+                return in_array($ext, self::AUDIO_EXTENSIONS)
+                    && preg_match('/^user_[a-zA-Z0-9]+\.[a-z0-9]+$/', $filename);
+            })
+            ->map(function (string $path) {
+                $filename = basename($path);
+                $ext      = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
-            // Only expose files that follow our upload naming convention
-            if (!preg_match('/^user_[a-zA-Z0-9]+\.[a-z0-9]+$/', $filename)) {
-                continue;
-            }
-
-            $sounds[] = [
-                'source'   => 'uploaded',
-                'category' => 'custom',
-                'name'     => self::humaniseName(pathinfo($filename, PATHINFO_FILENAME)),
-                'filename' => $filename,
-                'path'     => '/storage/' . $relativePath,
-                'ext'      => $ext,
-            ];
-        }
-
-        return $sounds;
+                return [
+                    'source'   => 'uploaded',
+                    'category' => 'custom',
+                    'name'     => self::humaniseName(pathinfo($filename, PATHINFO_FILENAME)),
+                    'filename' => $filename,
+                    'path'     => '/storage/' . $path,
+                    'ext'      => $ext,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
-    /**
-     * "marimba-bloop-1" → "Marimba Bloop 1"
-     * "user_abc123"     → "User Abc123"  (custom uploads shown generically)
-     */
     public static function humaniseName(string $stem): string
     {
         return ucwords(str_replace(['-', '_'], ' ', $stem));
     }
 
-    /**
-     * Verify a submitted sound path actually exists on disk.
-     * Prevents arbitrary strings being stored in the preferences column.
-     */
-    protected function isValidSoundPath(string $path): bool
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    private function userPreferences(): UserPreferences
     {
-        // System: /sounds/effects/{file} or /sounds/notifications/{file}
+        $user = Auth::user();
+
+        return $user->preferences
+            ?? $user->preferences()->create(UserPreferences::defaults());
+    }
+
+    private function validateValue(string $key, mixed $value): ?string
+    {
+        return match (true) {
+            $key === 'nav_layout'
+                => in_array($value, ['horizontal', 'vertical'])
+                    ? null : 'Invalid nav layout value',
+
+            $key === 'default_feed_sort'
+                => in_array($value, ['newest', 'popular', 'following'])
+                    ? null : 'Invalid feed sort value',
+
+            $key === 'bleeps_per_page'
+                => ((int) $value >= 1 && (int) $value <= 100)
+                    ? null : 'bleeps_per_page must be between 1 and 100',
+
+            in_array($key, self::SOUND_KEYS)
+                => ($value === 'none' || $this->isValidSoundPath((string) $value))
+                    ? null : 'Invalid sound path',
+
+            default => null,
+        };
+    }
+
+    private function castValue(string $key, mixed $value): mixed
+    {
+        if (in_array($key, self::BOOLEAN_KEYS)) {
+            return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if ($key === 'bleeps_per_page') {
+            return (int) $value;
+        }
+
+        return (string) $value;
+    }
+
+    private function isValidSoundPath(string $path): bool
+    {
         if (preg_match('#^/sounds/(effects|notifications)/([^/]+)$#', $path, $m)) {
             return file_exists(public_path("sounds/{$m[1]}/{$m[2]}"));
         }
 
-        // Uploaded: /storage/sounds/user_{random}.{ext}
         if (preg_match('#^/storage/sounds/(user_[a-zA-Z0-9]+\.[a-z0-9]+)$#', $path, $m)) {
             return Storage::disk('public')->exists("sounds/{$m[1]}");
         }
 
         return false;
-    }
-
-    // ── Single preference update ──────────────────────────────────────────────
-
-    public function update(Request $request)
-    {
-        $user = Auth::user();
-
-        $validKeys = [
-            'nav_layout',
-            'theme',
-
-            'show_nsfw',
-            'blur_nsfw_media',
-            'show_reposts_in_feed',
-            'show_anonymous_bleeps',
-            'default_feed_sort',
-            'bleeps_per_page',
-
-            'recieve_notification_sound',
-            'send_notification_sound',
-
-            'private_profile',
-            'block_new_followers',
-            'hide_online_status',
-            'hide_activity',
-        ];
-
-        $validated = $request->validate([
-            'key'   => ['required', 'string', 'in:' . implode(',', $validKeys)],
-            'value' => ['required'],
-        ]);
-
-        $preferences = $user->preferences
-            ?? $user->preferences()->create(UserPreferences::defaults());
-
-        $key   = $validated['key'];
-        $value = $validated['value'];
-
-        if ($key === 'nav_layout') {
-            if (!in_array($value, ['horizontal', 'vertical'])) {
-                return response()->json(['error' => 'Invalid nav layout value'], 422);
-            }
-            $preferences->update(['nav_layout' => $value]);
-
-        } elseif ($key === 'default_feed_sort') {
-            if (!in_array($value, ['newest', 'popular', 'following'])) {
-                return response()->json(['error' => 'Invalid feed sort value'], 422);
-            }
-            $preferences->update(['default_feed_sort' => $value]);
-
-        } elseif ($key === 'bleeps_per_page') {
-            $intValue = (int) $value;
-            if ($intValue < 1 || $intValue > 100) {
-                return response()->json(['error' => 'Invalid bleeps per page value'], 422);
-            }
-            $preferences->update(['bleeps_per_page' => $intValue]);
-
-        } elseif ($key === 'theme') {
-            $preferences->update(['theme' => (string) $value]);
-
-        } elseif (in_array($key, ['recieve_notification_sound', 'send_notification_sound'])) {
-            $path = (string) $value;
-            if ($path !== 'none' && !$this->isValidSoundPath($path)) {
-                return response()->json(['error' => 'Invalid sound path'], 422);
-            }
-            $preferences->update([$key => $path]);
-
-        } else {
-            $preferences->update([$key => filter_var($value, FILTER_VALIDATE_BOOLEAN)]);
-        }
-
-        return response()->json([
-            'success'    => true,
-            'preference' => $key,
-            'value'      => $preferences->fresh()->{$key},
-        ]);
-    }
-
-    // ── Batch update ──────────────────────────────────────────────────────────
-
-    public function batchUpdate(Request $request)
-    {
-        $user = Auth::user();
-
-        $validated = $request->validate([
-            'preferences'                            => ['required', 'array'],
-            'preferences.nav_layout'                 => ['sometimes', 'string', 'in:horizontal,vertical'],
-            'preferences.theme'                      => ['sometimes', 'string', 'max:50'],
-
-            'preferences.show_nsfw'                  => ['sometimes', 'boolean'],
-            'preferences.blur_nsfw_media'            => ['sometimes', 'boolean'],
-            'preferences.show_reposts_in_feed'       => ['sometimes', 'boolean'],
-            'preferences.show_anonymous_bleeps'      => ['sometimes', 'boolean'],
-            'preferences.default_feed_sort'          => ['sometimes', 'string', 'in:newest,popular,following'],
-            'preferences.bleeps_per_page'            => ['sometimes', 'integer', 'min:1', 'max:100'],
-
-            'preferences.recieve_notification_sound' => ['sometimes', 'string', 'max:255'],
-            'preferences.send_notification_sound'    => ['sometimes', 'string', 'max:255'],
-
-            'preferences.private_profile'            => ['sometimes', 'boolean'],
-            'preferences.block_new_followers'        => ['sometimes', 'boolean'],
-            'preferences.hide_online_status'         => ['sometimes', 'boolean'],
-            'preferences.hide_activity'              => ['sometimes', 'boolean'],
-        ]);
-
-        $preferences = $user->preferences
-            ?? $user->preferences()->create(UserPreferences::defaults());
-
-        $preferences->update($validated['preferences']);
-
-        return response()->json([
-            'success'     => true,
-            'preferences' => $preferences->fresh(),
-        ]);
-    }
-
-    // ── Sound upload ──────────────────────────────────────────────────────────
-
-    /**
-     * Upload a custom sound file (max 5 MB).
-     * Stored at storage/app/public/sounds/user_{random12}.{ext}
-     * Accessible at /storage/sounds/user_{random12}.{ext} for all users.
-     *
-     * Add this route to your api.php:
-     *   Route::post('/api/preferences/sounds/upload',
-     *       [\App\Http\Controllers\UserPreferencesController::class, 'uploadSound'])
-     *       ->name('api.preferences.sounds.upload');
-     */
-    public function uploadSound(Request $request)
-    {
-        $request->validate([
-            'sound' => ['required', 'file', 'mimes:mp3,wav,ogg,webm,m4a', 'max:5120'],
-        ]);
-
-        $file     = $request->file('sound');
-        $ext      = strtolower($file->getClientOriginalExtension());
-        $filename = 'user_' . Str::random(12) . '.' . $ext;
-
-        $relativePath = $file->storeAs('sounds', $filename, 'public');
-
-        return response()->json([
-            'success'  => true,
-            'filename' => $filename,
-            'path'     => '/storage/' . $relativePath,
-            'name'     => self::humaniseName(pathinfo($filename, PATHINFO_FILENAME)),
-            'source'   => 'uploaded',
-            'category' => 'custom',
-            'ext'      => $ext,
-        ], 201);
     }
 }

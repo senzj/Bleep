@@ -27,16 +27,21 @@ document.addEventListener('DOMContentLoaded', function() {
         acid: 'flask-round',
         aqua: 'droplet',
         autumn: 'leaf',
-        black: '',
-        bumblebee: '',
+
+        black: 'square',
+        bumblebee: 'bug',
+
         business: 'briefcase',
-        cmyk: '',
+        cmyk: 'palette',
+
         coffee: 'coffee',
         corporate: 'briefcase',
         cupcake: 'dessert',
         cyberpunk: 'gpu',
-        dim: '',
-        dracula: '',
+
+        dim: 'sun-dim',
+        dracula: 'moon',
+
         emerald: 'gem',
         fantasy: 'wand',
         forest: 'tree-deciduous',
@@ -44,13 +49,17 @@ document.addEventListener('DOMContentLoaded', function() {
         halloween: 'ghost',
         lemonade: 'citrus',
         lofi: 'audio-lines',
+
         luxury: 'diamond',
         night: 'moon-star',
-        nord: '',
-        pastel: '',
+
+        nord: 'snowflake',
+        pastel: 'paintbrush',
+
         retro: 'audio-waveform',
         sunset: 'sunset',
         synthwave: 'cpu',
+
         valentine: 'heart',
         wireframe: 'frame',
         winter: 'snowflake'
@@ -139,19 +148,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function buildThemeMenus() {
         themeMenus.forEach(menu => {
-            if (menu.dataset.themeMenu !== 'auto' || menu.children.length > 0) return;
+            if (menu.dataset.themeMenu !== 'auto') return;
+            menu.innerHTML = '';
+
             const fragment = document.createDocumentFragment();
 
             themeNames.forEach(theme => {
-                const li = document.createElement('li');
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.dataset.themeName = theme;
-                btn.className = 'theme-toggle cursor-pointer flex items-center gap-3 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition';
+                const icon  = themeIcons[theme];
+                const label = toLabel(theme);
 
-                const iconName = themeIcons[theme] || 'palette';
-                btn.innerHTML = `<i data-lucide="${iconName}" class="w-5 h-5"></i><span>${toLabel(theme)}</span>`;
-                li.appendChild(btn);
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <button type="button"
+                        data-theme-name="${theme}"
+                        class="theme-toggle relative w-full rounded-xl overflow-hidden border-2 border-transparent hover:border-primary transition-all focus:outline-none hover:cursor-pointer">
+
+                        <span data-theme="${theme}" class="flex w-full h-10">
+                            <span class="flex-1 bg-primary"></span>
+                            <span class="flex-1 bg-secondary"></span>
+                            <span class="flex-1 bg-accent"></span>
+                            <span class="flex-1 bg-neutral"></span>
+                        </span>
+
+                        <span data-theme="${theme}" class="flex items-center gap-1.5 px-2 py-2 bg-base-100">
+                            ${icon ? `<i data-lucide="${icon}" class="w-3.5 h-3.5 shrink-0 text-base-content/60"></i>` : ''}
+                            <span class="text-xs font-medium text-base-content truncate">${label}</span>
+                        </span>
+
+                        <span class="theme-check hidden absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                            <i data-lucide="check" class="w-3 h-3 text-white"></i>
+                        </span>
+                    </button>
+                `;
+
                 fragment.appendChild(li);
             });
 
@@ -186,9 +215,25 @@ document.addEventListener('DOMContentLoaded', function() {
         getThemeToggles().forEach(btn => {
             const isActive = btn.dataset.themeName === selected;
             btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-            btn.classList.toggle('border', isActive);
             btn.classList.toggle('border-primary', isActive);
-            btn.classList.toggle('bg-base-200', isActive);
+            btn.classList.toggle('border-transparent', !isActive);
+            btn.querySelector('.theme-check')?.classList.toggle('hidden', !isActive);
+        });
+    }
+
+    // Sync the collapsed palette preview's data-theme so DaisyUI colors update
+    function updateCollapsedPreview(theme) {
+        const effective = resolveEffective(theme);
+        document.querySelector('.theme-palette-preview')
+            ?.setAttribute('data-theme', effective);
+    }
+
+    // Hide/show the collapsed preview based on open/closed state
+    const themeCollapseInput = document.getElementById('theme-collapse');
+    if (themeCollapseInput) {
+        themeCollapseInput.addEventListener('change', () => {
+            const preview = document.getElementById('theme-collapsed-preview');
+            if (preview) preview.style.opacity = themeCollapseInput.checked ? '0' : '1';
         });
     }
 
@@ -197,9 +242,10 @@ document.addEventListener('DOMContentLoaded', function() {
     applyTheme(savedTheme);
     updateThemeButton(savedTheme);
     updateActiveToggle(savedTheme);
+    updateCollapsedPreview(savedTheme);
     // Keep theme changes instant (no transition class added)
 
-    // clicks
+    // click listener
     themeMenus.forEach(menu => {
         menu.addEventListener('click', (e) => {
             const btn = e.target.closest('.theme-toggle');
@@ -209,9 +255,9 @@ document.addEventListener('DOMContentLoaded', function() {
             applyTheme(theme);
             updateThemeButton(theme);
             updateActiveToggle(theme);
+            updateCollapsedPreview(theme);
+            window.preferencesManager?.showToast(true, 'Theme saved!');
             window.dispatchEvent(new CustomEvent('theme:change', { detail: { selected: theme, effective: resolveEffective(theme) } }));
-
-            // Save to database if user is logged in
             saveThemeToServer(theme);
         });
     });

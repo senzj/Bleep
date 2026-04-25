@@ -85,7 +85,7 @@
                     'device_added' => 'smartphone',
                     'device_removed' => 'smartphone',
                 ];
-                $icon = $actionIcons[strtolower($log->action)] ?? 'activity';
+                $icon = $actionIcons[strtolower($log->action)] ?? 'monitor-smartphone';
 
                 $hasExtraJson = is_array($log->details) && (count($log->details) > 1 || !isset($log->details['message']));
                 $formattedJson = collect($log->details)

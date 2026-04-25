@@ -49,7 +49,7 @@
 >
 
     {{-- Wrapper --}}
-    <div class="bg-base-300 rounded-lg p-4 shadow-lg border border-gray-500/20 hover:shadow-xl transition-shadow duration-200" data-bleep-card="{{ $bleep->id }}">
+    <div class="bg-base-100 rounded-lg p-4 shadow-lg border border-gray-500/20 hover:shadow-xl transition-shadow duration-200" data-bleep-card="{{ $bleep->id }}">
         {{-- Repost Tag (if reposted by followed users) --}}
         @if($followedRepostCount > 0)
             <div class="flex items-center gap-2 mb-4 text-xs text-base-content/60">

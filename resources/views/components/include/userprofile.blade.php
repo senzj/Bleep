@@ -49,7 +49,7 @@
                 <a href="{{ route('follow.requests') }}" class="flex items-center justify-between gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
                     <div class="flex items-center gap-2">
                         <div class="relative">
-                            <i data-lucide="users" class="w-4 h-4"></i>
+                            <i data-lucide="user-plus" class="w-4 h-4"></i>
                             @if($pendingRequestsCount > 0)
                                 <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                             @endif

@@ -5,34 +5,44 @@
 @endpush
 
 <x-layout>
-    <div class="">
-        <h1 class="text-2xl font-bold mb-4">Blocked Users</h1>
-        <p class="text-base-content/70 mb-6">Manage the users you have blocked on Bleep. Blocked users cannot follow you, see your profile, or interact with your content.</p>
+    <x-slot:title>Blocked Users</x-slot:title>
 
-        {{-- Blocked Users List --}}
-        <div class="space-y-4">
-            @if($blockedUsers->isEmpty())
-                <p class="text-base-content/70">You haven't blocked any users yet.</p>
-            @else
-                @foreach($blockedUsers as $blockedUser)
-                    <div class="flex items-center gap-4 p-4 bg-base-100 rounded-md shadow-sm">
-                        <img src="{{ $blockedUser->profile_picture_url }}" alt="{{ $blockedUser->username }}'s avatar" class="w-12 h-12 rounded-full">
-                        <div>
-                            <a href="{{ route('user.profile', ['username' => $blockedUser->username]) }}" class="font-semibold text-base-content hover:underline">{{ $blockedUser->dname ?? $blockedUser->username }}</a>
-                            <p class="text-sm text-base-content/70">{{ '@' . $blockedUser->username }}</p>
+    <div class="container mx-auto px-4 max-w-5xl">
+        <div class="bg-base-100 rounded-lg shadow-lg border border-base-300 p-6">
+            <div class="flex items-center mb-6">
+                <i data-lucide="ban" class="w-6 h-6 mr-3"></i>
+                <h1 class="text-2xl font-bold">Blocked Users</h1>
+            </div>
+
+            {{-- Blocked Users List --}}
+            <div class="space-y-4">
+                @if($blockedUsers && $blockedUsers->isNotEmpty())
+                    @foreach($blockedUsers as $blockedUser)
+                        <div class="flex items-center gap-4 p-4 bg-base-100 rounded-md shadow-sm">
+                            <img src="{{ $blockedUser->profile_picture_url }}" alt="{{ $blockedUser->username }}'s avatar" class="w-12 h-12 rounded-full">
+                            <div>
+                                <a href="{{ route('user.profile', ['username' => $blockedUser->username]) }}" class="font-semibold text-base-content hover:underline">{{ $blockedUser->dname ?? $blockedUser->username }}</a>
+                                <p class="text-sm text-base-content/70">{{ '@' . $blockedUser->username }}</p>
+                            </div>
+                            <form method="POST"
+                                action="{{ route('blocked.users.unblock', ['user' => $blockedUser->id]) }}"
+                                class="ml-auto"
+                                data-block-confirm="unblock"
+                                data-username="{{ '@' . $blockedUser->username }}">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-outline rounded-lg hover:btn-error">Unblock</button>
+                            </form>
                         </div>
-                        <form method="POST"
-                            action="{{ route('blocked.users.unblock', ['user' => $blockedUser->id]) }}"
-                            class="ml-auto"
-                            data-block-confirm="unblock"
-                            data-username="{{ '@' . $blockedUser->username }}">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-outline rounded-lg hover:btn-error">Unblock</button>
-                        </form>
+                    @endforeach
+
+                @else
+                    <div class="text-center py-12">
+                        <i data-lucide="user-x" class="w-10 h-10 mx-auto mb-4"></i>
+                        <p class="text-base-content/60 mb-2">No Available Blocked Users</p>
                     </div>
-                @endforeach
-            @endif
+                @endif
+            </div>
         </div>
     </div>
 

@@ -15,7 +15,7 @@
                 <h1 class="text-2xl font-bold">Follow Requests</h1>
             </div>
 
-            @if ($requests && $requests->count() > 0)
+            @if ($requests && $requests->isNotEmpty())
                 @php
                     $viewerTimezone = Auth::user()?->timezone ?: config('app.timezone');
                     $groupedRequests = $requests->groupBy(fn ($request) => $request->created_at->copy()->timezone($viewerTimezone)->format('Y-m-d'));
@@ -158,9 +158,8 @@
                 </div>
             @else
                 <div class="text-center py-12">
-                    <i data-lucide="inbox" class="w-16 h-16 mx-auto text-base-content/30 mb-4"></i>
+                    <i data-lucide="inbox" class="w-10 h-10 mx-auto mb-4"></i>
                     <p class="text-base-content/60 mb-2">No pending follow requests</p>
-                    <p class="text-sm text-base-content/40">When someone requests to follow you, it will appear here.</p>
                 </div>
             @endif
         </div>
