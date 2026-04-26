@@ -11,7 +11,7 @@
              const spaceBelow = window.innerHeight - rect.bottom;
              $el.classList.toggle('dropdown-top', spaceBelow < 250);
          ">
-        <button tabindex="0" class="flex items-center gap-3 px-3 py-2 shadow-lg border border-base-200/90 rounded-md hover:bg-base-200 transition-colors cursor-pointer w-full">
+        <button tabindex="0" class="flex items-center gap-3 px-3 py-2 shadow-lg border border-base-200/90 rounded-md bg-base-100/70 hover:bg-base-200 transition-colors cursor-pointer w-full">
             {{-- Avatar --}}
             <div class="avatar shrink-0">
                 <x-subcomponents.avatar :user="Auth::user()" :size="10" />

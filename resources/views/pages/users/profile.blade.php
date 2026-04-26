@@ -16,18 +16,10 @@
     @vite('resources/css/profile.css')
 @endpush
 
-
-
 <x-layout>
     <x-slot:title>Profile | {{ "@" . $user->username }}</x-slot:title>
 
     <div class="container mx-auto px-4 max-w-4xl">
-
-        {{-- back to home page --}}
-        <a href="/" class="text-md link link-ghost mb-4 inline-block">
-            <i data-lucide="arrow-left" class="w-5 h-5 inline-block"></i>
-            Back
-        </a>
 
         {{-- Profile Header --}}
         <div class="bg-base-100 rounded-lg shadow-lg p-6 mb-4">
@@ -92,7 +84,7 @@
                                 Edit Profile
                             </a>
                         @else
-                            <div class="gap-1 flex items-center">
+                            <div class="gap-2 flex items-center">
                                 {{-- Blocked Button --}}
                                 @if ($isBlockedByCurrentUser)
                                     <form method="POST"
@@ -107,9 +99,7 @@
                                         </button>
                                     </form>
                                 @elseif (!$isBlockedByUser)
-                                    {{-- Follow/Unfollow + message Button --}}
-                                    <x-button.follow :user="$user" :showMessage="$canViewContent" />
-
+                                    {{-- Block User Button --}}
                                     <form method="POST"
                                         action="{{ route('blocked.users.block', ['user' => $user->id]) }}"
                                         data-block-confirm="block"
@@ -120,6 +110,9 @@
                                             Block User
                                         </button>
                                     </form>
+
+                                    {{-- Follow/Unfollow + message Button --}}
+                                    <x-button.follow :user="$user" :showMessage="$canViewContent" />
                                 @else
                                     <a href="{{ route('blocked.users') }}" class="btn btn-sm btn-outline gap-2 rounded-lg">
                                         <i data-lucide="ban" class="w-4 h-4"></i>
@@ -256,12 +249,12 @@
                             <div id="bleeps-sentinel" class="h-4"></div>
                         @else
                             <div class="text-center py-12">
-                                <i data-lucide="message-square" class="w-16 h-16 mx-auto text-base-content/30 mb-4"></i>
+                                <i data-lucide="message-square" class="w-16 h-16 mx-auto text-base-content-100 mb-4"></i>
                                 <p class="text-base-content/60">
                                     @if($isOwnProfile)
                                         You haven't posted any bleeps yet.
                                     @else
-                                        {{ "@" . $user->username }} hasn't posted any bleeps yet.
+                                        <span class="font-semibold">{{ "@" . $user->username }}</span> hasn't posted any bleeps yet.
                                     @endif
                                 </p>
                             </div>
@@ -286,12 +279,12 @@
                             <div id="reposts-sentinel" class="h-4"></div>
                         @else
                             <div class="text-center py-12">
-                                <i data-lucide="repeat" class="w-16 h-16 mx-auto text-base-content/30 mb-4"></i>
+                                <i data-lucide="repeat" class="w-16 h-16 mx-auto text-base-content-100 mb-4"></i>
                                 <p class="text-base-content/60">
                                     @if($isOwnProfile)
-                                        You haven't reposted anything yet.
+                                        You haven't reposted any bleeps yet.
                                     @else
-                                        {{ "@" . $user->username }} hasn't reposted anything yet.
+                                        <span class="font-semibold">{{ "@" . $user->username }}</span> hasn't reposted any bleeps yet.
                                     @endif
                                 </p>
                             </div>

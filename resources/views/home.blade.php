@@ -30,9 +30,7 @@
 @endpush
 
 <x-layout>
-    <x-slot:title>
-        Home
-    </x-slot:title>
+    <x-slot:title>Home</x-slot:title>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 lg:gap-3">
         {{-- Left panel - left navivation, hidden when vertical navbar --}}
@@ -167,7 +165,7 @@
                 @endauth
 
                 {{-- Bleep feed --}}
-                <div class="">
+                <div>
                     {{-- Sticky top Bleep Sort --}}
                     @auth
                         <div class="sticky top-0 z-20 mt-5 border border-base-200 px-1 py-1 bg-base-100/95 backdrop-blur rounded-lg shadow-sm">
@@ -192,8 +190,8 @@
                             <div class="hero py-12">
                                 <div class="hero-content text-center">
                                     <div>
-                                        <i data-lucide="inbox" class="w-16 h-16 mx-auto text-base-content/40"></i>
-                                        <p class="mt-4 text-base-content/60">No bleeps yet. Be the first to share!</p>
+                                        <i data-lucide="inbox" class="w-16 h-16 mx-auto text-base-content-100"></i>
+                                        <p class="mt-4 text-base-content">No bleeps yet. Be the first to share!</p>
                                     </div>
                                 </div>
                             </div>
@@ -211,8 +209,8 @@
                                 <div class="hero py-12">
                                     <div class="hero-content text-center">
                                         <div>
-                                            <i data-lucide="users" class="w-16 h-16 mx-auto text-base-content/40"></i>
-                                            <p class="mt-4 text-base-content/60">No posts from people you follow yet.</p>
+                                            <i data-lucide="users" class="w-16 h-16 mx-auto text-base-content-100"></i>
+                                            <p class="mt-4 text-base-content">No posts from people you follow yet.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -221,8 +219,8 @@
                             <div class="hero py-12">
                                 <div class="hero-content text-center">
                                     <div>
-                                        <i data-lucide="log-in" class="w-16 h-16 mx-auto text-base-content/40"></i>
-                                        <p class="mt-4 text-base-content/60">Sign in to see followed posts.</p>
+                                        <i data-lucide="log-in" class="w-16 h-16 mx-auto text-base-content-100"></i>
+                                        <p class="mt-4 text-base-content">Sign in to see followed posts.</p>
                                     </div>
                                 </div>
                             </div>
@@ -240,8 +238,8 @@
                                 <div class="hero py-12">
                                     <div class="hero-content text-center">
                                         <div>
-                                            <i data-lucide="user-check" class="w-16 h-16 mx-auto text-base-content/40"></i>
-                                            <p class="mt-4 text-base-content/60">No posts from mutuals yet.</p>
+                                            <i data-lucide="user-check" class="w-16 h-16 mx-auto text-base-content-100"></i>
+                                            <p class="mt-4 text-base-content">No posts from mutuals yet.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -250,8 +248,8 @@
                             <div class="hero py-12">
                                 <div class="hero-content text-center">
                                     <div>
-                                        <i data-lucide="log-in" class="w-16 h-16 mx-auto text-base-content/40"></i>
-                                        <p class="mt-4 text-base-content/60">Sign in to see friends posts.</p>
+                                        <i data-lucide="log-in" class="w-16 h-16 mx-auto text-base-content-100"></i>
+                                        <p class="mt-4 text-base-content">Sign in to see friends posts.</p>
                                     </div>
                                 </div>
                             </div>

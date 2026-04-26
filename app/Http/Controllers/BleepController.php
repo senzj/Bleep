@@ -260,7 +260,7 @@ class BleepController extends Controller
             ]);
         }
 
-        return redirect('/')->with('success', 'Your bleep has been updated!');
+        return back()->with('success', 'Your bleep has been updated!');
     }
 
     /**
@@ -283,7 +283,7 @@ class BleepController extends Controller
             return response()->json(['success' => true, 'message' => 'Your bleep has been deleted!']);
         }
 
-        return redirect('/')->with('success', 'Your bleep has been deleted!');
+        return back()->with('success', 'Your bleep has been deleted!');
     }
 
     /**

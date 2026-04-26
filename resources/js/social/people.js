@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const noResultsMessage = root.querySelector('.people-no-results-message');
         let searchTimeout = null;
 
+        // Cache SSR-rendered list so we can restore it when search is cleared
+        const ssrHTML = suggestionsContainer?.innerHTML ?? '';
+
         // Fetch and display users based on search query
         async function fetchUsers(query = '') {
             try {
@@ -33,6 +36,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (noResultsMessage) noResultsMessage.classList.remove('hidden');
                 if (suggestionsContainer) suggestionsContainer.innerHTML = '<div class="text-center text-error p-4">Error loading users.</div>';
             }
+        }
+
+        // Handle search input with debounce
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                const query = e.target.value.trim();
+
+                if (query === '') {
+                    if (noResultsMessage) noResultsMessage.classList.add('hidden');
+                    suggestionsContainer.innerHTML = ssrHTML;
+                    window.lucide?.createIcons?.();
+                    return;
+                }
+
+                searchTimeout = setTimeout(() => {
+                    fetchUsers(query);
+                }, 300);
+            });
+
+            // No initial fetchUsers() call — SSR handles the initial render
         }
 
         // Display users in the suggestions container
@@ -103,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             suggestionsContainer.innerHTML = users.map(user => `
-                <div class="user-item flex items-center gap-4 w-full min-w-0 flex-wrap"
+                <div class="user-item flex items-center gap-4 w-full min-w-0 flex-wrap p-4 rounded-lg hover:bg-base-100 transition"
                      data-user-id="${user.id}"
                      data-username="${user.username}"
                      data-display-name="${user.dname}"
@@ -155,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // optional: run initial fetch to refresh server-side rendered suggestions
-            fetchUsers('');
+            // fetchUsers('');
         }
     });
 

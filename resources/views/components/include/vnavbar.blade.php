@@ -10,12 +10,12 @@
     </div>
 
     {{-- Navigation Links --}}
-    <nav class="flex flex-col p-4 space-y-1 flex-1 overflow-y-auto">
+    <nav class="flex flex-col p-2 space-y-1 flex-1 overflow-y-auto">
         <x-include.navlinks />
     </nav>
 
     {{-- User profile --}}
-    <div class="p-1 border-t border-base-200">
+    <div class="p-2">
         <x-include.userprofile />
     </div>
 

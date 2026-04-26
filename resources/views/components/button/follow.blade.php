@@ -19,7 +19,7 @@
     $hasPendingRequest = Auth::check() && $authUser->hasSentRequestTo($user);
 @endphp
 
-<div class="gap-2 flex items-center">
+<div class="gap-1.5 flex items-center">
     @if(!$isOwnProfile && Auth::check())
         @if($isFollowing)
             <button type="button"

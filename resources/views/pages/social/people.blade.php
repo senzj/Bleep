@@ -6,10 +6,10 @@
 @endpush
 
 <x-layout>
-    <x-slot:title>Socials</x-slot:title>
+    <x-slot:title>People</x-slot:title>
 
     @auth
-        <div class="people-component bg-base-200 p-4 rounded-lg shadow-sm"> {{-- added class wrapper --}}
+        <div class="people-component bg-base-200 p-4 rounded-lg shadow-sm">
             <div class="flex items-center mb-4 mr-2">
                 <i data-lucide="users" class="w-6 h-6 inline-block mr-2"></i>
                 <h2 class="text-xl font-bold">People you may know</h2>
@@ -20,12 +20,12 @@
                     <input
                         type="text"
                         placeholder="Search by username or display name..."
-                        class="input input-bordered w-full people-search-input" {{-- changed id -> class --}}
+                        class="input input-bordered w-full people-search-input"
                     />
                 </div>
 
                 {{-- User suggestions --}}
-                <div class="people-user-suggestions space-y-4"> {{-- changed id -> class --}}
+                <div class="people-user-suggestions space-y-1">
                     @forelse($suggestedUsers as $user)
                         @php
                             $isFollowing = Auth::user()->following()->where('followed_id', $user->id)->exists();
@@ -38,11 +38,13 @@
                                 default => null,
                             };
                         @endphp
-                        <div class="user-item flex items-center gap-4 w-full min-w-0 flex-wrap"
-                            data-user-id="{{ $user->id }}"
-                            data-username="{{ $user->username }}"
-                            data-display-name="{{ $user->dname }}"
-                            data-is-mutual="{{ $isMutual ? '1' : '0' }}">
+
+                        <div class="user-item flex items-center gap-4 w-full min-w-0 flex-wrap p-4 rounded-lg hover:bg-base-100 transition"
+                             data-user-id="{{ $user->id }}"
+                             data-username="{{ $user->username }}"
+                             data-display-name="{{ $user->dname }}"
+                             data-is-mutual="{{ $isMutual ? '1' : '0' }}">
+
                             <a href="/bleeper/{{ $user->username }}" class="shrink-0">
                                 <img src="{{ $user->profile_picture_url }}"
                                     alt="{{ $user->dname }}'s Avatar"
