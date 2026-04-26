@@ -15,7 +15,7 @@
         data-username="{{ auth()->user()->dname ?: auth()->user()->username }}"
         data-send-sound="{{ auth()->user()->getPreferences()->send_notification_sound ?? '/sounds/effects/bloop-1.mp3' }}"
         data-receive-sound="{{ auth()->user()->getPreferences()->recieve_notification_sound ?? '/sounds/effects/marimba-bloop-1.mp3' }}"
-        class="h-[calc(100vh-6.6rem)] w-full"
+        class="h-[calc(100vh-6.7rem)] w-full"
     >
     </div>
 

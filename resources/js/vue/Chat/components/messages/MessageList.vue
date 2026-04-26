@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import MessageBubble from './MessageBubble.vue';
+import { LucideMessageCircle, LucideMessageCircleMore } from 'lucide-vue-next';
 
 const props = defineProps({
 	messages: {
@@ -274,7 +275,7 @@ const showEmptyState = computed(() => props.loaded && !props.loading && !props.m
 		</div>
 
 		<div v-else-if="showEmptyState" class="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-base-content/70">
-			<i data-lucide="message-square" class="h-10 w-10"></i>
+			<LucideMessageCircleMore class="h-10 w-10" />
 			<span>Start a conversation by sending a message!</span>
 		</div>
 

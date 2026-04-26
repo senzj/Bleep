@@ -59,35 +59,36 @@
         $autoplayAudio = $preferences?->autoplay_audio ?? false;
     @endphp
 
-    <body class="min-h-screen font-sans bg-base-300/95 text-base-content"
+    <body class="min-h-screen font-sans bg-base-300 text-base-content"
           data-nav-layout="{{ $navLayout }}"
           data-show-nsfw="{{ $showNsfw ? '1' : '0' }}"
           data-blur-nsfw="{{ $blurNsfw ? '1' : '0' }}"
           data-autoplay-videos="{{ $autoplayVideos ? '1' : '0' }}"
           data-autoplay-audio="{{ $autoplayAudio ? '1' : '0' }}">
+
+        {{-- toast --}}
+        @if (session('success'))
+            <div class="toast toast-top toast-center z-100">
+                <div class="alert alert-success animate-fade-out">
+                    <i data-lucide="check-circle" class="h-6 w-6 shrink-0 stroke-current"></i>
+                    <span>{{ session('success') }}</span>
+                </div>
+            </div>
+        @elseif (session('error'))
+            <div class="toast toast-top toast-center z-100">
+                <div class="alert alert-error animate-fade-out">
+                    <i data-lucide="circle-alert" class="h-6 w-6 shrink-0 stroke-current"></i>
+                    <span>{{ session('error') }}</span>
+                </div>
+            </div>
+        @endif
+
         @if($navLayout === 'vertical')
             {{-- Vertical nav layout: flex container with sidebar + content --}}
             <div class="flex min-h-screen">
                 @include('components.include.navbar')
 
                 <div class="flex-1 flex flex-col">
-                    {{-- success toast --}}
-                    @if (session('success'))
-                        <div class="toast toast-top toast-center z-100">
-                            <div class="alert alert-success animate-fade-out">
-                                <i data-lucide="check-circle" class="h-6 w-6 shrink-0 stroke-current"></i>
-                                <span>{{ session('success') }}</span>
-                            </div>
-                        </div>
-                    @elseif (session('error'))
-                        <div class="toast toast-top toast-center z-100">
-                            <div class="alert alert-error animate-fade-out">
-                                <i data-lucide="circle-alert" class="h-6 w-6 shrink-0 stroke-current"></i>
-                                <span>{{ session('error') }}</span>
-                            </div>
-                        </div>
-                    @endif
-
                     <main class="flex-1 container mx-auto px-1 py-4">
                         {{ $slot }}
                     </main>
@@ -96,23 +97,6 @@
         @else
             {{-- Horizontal nav layout: traditional stacked layout --}}
             @include('components.include.navbar')
-
-            {{-- success toast --}}
-            @if (session('success'))
-                <div class="toast toast-top toast-center z-100">
-                    <div class="alert alert-success animate-fade-out">
-                        <i data-lucide="check-circle" class="h-6 w-6 shrink-0 stroke-current"></i>
-                        <span>{{ session('success') }}</span>
-                    </div>
-                </div>
-            @elseif (session('error'))
-                <div class="toast toast-top toast-center z-100">
-                    <div class="alert alert-error animate-fade-out">
-                        <i data-lucide="circle-alert" class="h-6 w-6 shrink-0 stroke-current"></i>
-                        <span>{{ session('error') }}</span>
-                    </div>
-                </div>
-            @endif
 
             <main class="flex-1 container mx-auto px-1 py-4">
                 {{ $slot }}

@@ -54,10 +54,8 @@
             <div id="feed-panel">
                 {{-- Post Form --}}
                 @auth
-                    <div class="card bg-base-100 shadow mt-1">
-                        <div class="card-body">
-
-                            <h3 class="card-title text-md font-semibold font-">Welcome to Bleep!</h3>
+                    <div class="card bg-base-100">
+                        <div class="card-body rounded-lg">
 
                             <form method="POST" action="/bleeps" enctype="multipart/form-data" id="bleep-form">
                                 @csrf
@@ -165,7 +163,7 @@
                 <div>
                     {{-- Sticky top Bleep Sort --}}
                     @auth
-                        <div class="sticky top-0 z-20 mt-5 border border-base-200 px-1 py-1 bg-base-100/95 backdrop-blur rounded-lg shadow-sm">
+                        <div class="sticky {{ $navLayout === 'horizontal' ? 'top-20' : 'top-1' }} z-20 mt-3 border border-base-200 px-1 py-1 bg-base-100/95 backdrop-blur rounded-sm shadow-sm">
                             <div class="flex gap-2 w-full" role="tablist" aria-label="Main tabs">
                                 {{-- Shows For You Page --}}
                                 <button type="button" class="flex-1 btn btn-sm btn-ghost data-tab-active" data-tab="bleep" aria-controls="bleeps-container" aria-selected="true">For You</button>
@@ -269,6 +267,7 @@
                     <div id="infinite-scroll-trigger" data-page="2" data-has-more="{{ $bleeps->hasMorePages() ? 'true' : 'false' }}"></div>
                 </div>
             </div>
+
         </div>
 
         {{-- Right panel - announcement & notifications --}}
