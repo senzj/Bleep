@@ -197,7 +197,7 @@ const handleLoadMore = () => {
                 :bleep-id="bleepId"
                 :user-avatar="userAvatarUrl"
                 :isAnonymousEnabled="isAnonEnabled"
-                submit-label="Post"
+                submit-label="Send"
                 @submitted="handleCommentCreated"
             />
         </div>

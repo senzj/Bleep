@@ -47,10 +47,25 @@ const isAnonEnabled = computed(() => {
     return Boolean(props.isAnonymousEnabled);
 });
 
+// Whether this specific comment was posted anonymously (as opposed to the bleep being anonymous, which is a separate flag)
 const isCommentAnonymous = computed(() => {
     return props.comment.is_anonymous === true
         || props.comment.is_anonymous === 1
         || props.comment.is_anonymous === '1';
+});
+
+// ── NSFW helpers
+const isNSFW = computed(() => {
+    return props.comment.is_nsfw === true
+        || props.comment.is_nsfw === 1
+        || props.comment.is_nsfw === '1';
+});
+
+// NSFW status of the parent bleep, which may be relevant for styling/comments that don't have their own media but inherit NSFW status from the bleep
+const isCommentNSFW = computed(() => {
+    return props.bleep.is_nsfw === true
+        || props.bleep.is_nsfw === 1
+        || props.bleep.is_nsfw === '1';
 });
 
 // Whether the bleep itself was posted anonymously
@@ -138,6 +153,11 @@ const replies = ref([]);
 const hasMoreReplies = ref(false);
 const nextReplyPage = ref(1);
 
+// ── NSFW
+const replyIsNSFW = ref(false);
+const editIsNSFW = ref(false);
+const nsfwRevealed = ref(false);
+
 const toggleReplies = async () => {
     showReplies.value = !showReplies.value;
     if (showReplies.value && replies.value.length === 0 && depthMax) {
@@ -158,8 +178,10 @@ const loadReplies = async () => {
         replies.value = [...replies.value, ...data.replies];
         hasMoreReplies.value = data.has_more;
         nextReplyPage.value = data.next_page || nextReplyPage.value + 1;
+
     } catch (error) {
         console.error('Error loading replies:', error);
+
     } finally {
         isLoadingReplies.value = false;
     }
@@ -179,6 +201,7 @@ const handleReply = () => {
         replyMessage.value = '';
         replyMedia.value = null;
         replyIsAnonymous.value = false;
+        replyIsNSFW.value = false
     }
 };
 
@@ -215,8 +238,10 @@ const submitReply = async () => {
     replyUploadProgress.value = 0;
     try {
         const formData = new FormData();
-        if (messageText) formData.append('message', messageText);
         formData.append('is_anonymous', replyIsAnonymous.value ? '1' : '0');
+        formData.append('is_nsfw', replyIsNSFW.value ? '1' : '0');
+
+        if (messageText) formData.append('message', messageText);
         if (replyMedia.value) formData.append('media', replyMedia.value);
 
         const data = await new Promise((resolve, reject) => {
@@ -252,6 +277,7 @@ const submitReply = async () => {
 
         replyMessage.value = '';
         replyIsAnonymous.value = false;
+        replyIsNSFW.value = false;
         clearReplyMedia();
         showReplyForm.value = false;
 
@@ -295,6 +321,7 @@ const handleEdit = () => {
     isEditing.value = true;
     editMessage.value = props.comment.message || '';
     editIsAnonymous.value = Boolean(props.comment.is_anonymous);
+    editIsNSFW.value = Boolean(props.comment.is_nsfw);
     editCurrentMediaPath.value = props.comment.media || null;
     editRemoveCurrentMedia.value = false;
     editSelectedMedia.value = null;
@@ -326,6 +353,7 @@ const cancelEdit = () => {
     isEditing.value = false;
     editMessage.value = '';
     editIsAnonymous.value = false;
+    editIsNSFW.value = false;
     editCurrentMediaPath.value = null;
     editRemoveCurrentMedia.value = false;
     clearEditMedia();
@@ -342,6 +370,8 @@ const submitEdit = async () => {
         const formData = new FormData();
         formData.append('message', messageText);
         formData.append('is_anonymous', editIsAnonymous.value ? '1' : '0');
+        formData.append('is_nsfw', editIsNSFW.value ? '1' : '0');
+
         if (editSelectedMedia.value) formData.append('media', editSelectedMedia.value);
         if (editRemoveCurrentMedia.value) formData.append('remove_media', '1');
 
@@ -370,6 +400,7 @@ const submitEdit = async () => {
 
         props.comment.message = messageText;
         props.comment.is_anonymous = editIsAnonymous.value ? 1 : 0;
+        props.comment.is_nsfw = editIsNSFW.value ? 1 : 0;
 
         window.playSendSound?.();
 
@@ -592,7 +623,7 @@ onBeforeUnmount(() => {
                         v-model="editMessage"
                         :class="textSize"
                         class="textarea textarea-bordered w-full resize-none"
-                        maxlength="500"
+                        maxlength="1000"
                         rows="3"
                         placeholder="Edit your comment..."
                         :disabled="editIsSubmitting"
@@ -629,34 +660,79 @@ onBeforeUnmount(() => {
                     </div>
 
                     <!-- Edit actions -->
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <!-- Anonymous toggle — only show if anon is enabled AND the comment was originally anonymous -->
-                        <div v-if="isAnonEnabled" class="flex items-center">
+                    <div class="flex items-end">
+                        <!-- Left -->
+                        <div class="flex items-center gap-2">
+                            <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-secondary" :disabled="editIsSubmitting" @click="handleEditMediaSelect">
+                                <LucideIcon name="image" :size="iconSize" />
+                                <span v-if="!isReply">Media</span>
+                            </button>
+
+                            <!-- Anonymous toggle (edit) -->
+                            <div v-if="isAnonEnabled" class="flex items-center">
+                                <label class="relative inline-flex cursor-pointer">
+                                    <input v-model="editIsAnonymous" type="checkbox" class="sr-only" :disabled="editIsSubmitting" />
+                                    <div
+                                        class="rounded-full transition-all border"
+                                        :class="[
+                                            isReply ? 'w-11 h-6' : 'w-15 h-9',
+                                            editIsAnonymous ? 'bg-primary/20 border-primary/50' : 'bg-base-300 border-base-300'
+                                        ]"
+                                    ></div>
+                                    <div
+                                        class="absolute rounded-full transition-all duration-300 bg-base-100 flex items-center justify-center overflow-hidden"
+                                        :class="[
+                                            isReply ? 'top-0.5 left-0.5 size-5' : 'top-1 left-1 size-7',
+                                            editIsAnonymous ? (isReply ? 'translate-x-5' : 'translate-x-6') : 'translate-x-0'
+                                        ]"
+                                    >
+                                        <div
+                                            class="absolute inset-0 rounded-full bg-cover bg-center transition-opacity duration-300"
+                                            :class="editIsAnonymous ? 'opacity-0' : 'opacity-100'"
+                                            :style="{ backgroundImage: `url('${userAvatarForReply}')` }"
+                                        ></div>
+                                        <LucideIcon
+                                            name="hat-glasses"
+                                            :size="isReply ? 10 : 14"
+                                            class="relative z-10 transition-opacity duration-300"
+                                            :class="editIsAnonymous ? 'opacity-100 text-base-content/80' : 'opacity-0'"
+                                        />
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- NSFW toggle (edit) -->
                             <label class="relative inline-flex cursor-pointer">
-                                <input v-model="editIsAnonymous" type="checkbox" class="peer sr-only" :disabled="editIsSubmitting" />
-                                <div :class="isReply ? 'w-11 h-6' : 'w-12 h-7'" class="bg-base-300 peer-checked:bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
+                                <input v-model="editIsNSFW" type="checkbox" class="sr-only" :disabled="editIsSubmitting" />
                                 <div
-                                    class="absolute top-0.5 left-0.5 rounded-full transition-all duration-300 bg-cover bg-center"
-                                    :class="isReply ? 'size-5' : 'size-6'"
-                                    :style="{ backgroundImage: `url('${editIsAnonymous ? '/images/avatar/anonymous.jpg' : userAvatarForReply}')` }"
+                                    class="rounded-full transition-all border"
+                                    :class="[
+                                        isReply ? 'w-11 h-6' : 'w-15 h-9',
+                                        editIsNSFW ? 'bg-error/20 border-error/40' : 'bg-base-300 border-base-300'
+                                    ]"
                                 ></div>
+                                <div
+                                    class="absolute rounded-full transition-all duration-300 flex items-center justify-center overflow-hidden"
+                                    :class="[
+                                        isReply ? 'top-0.5 left-0.5 size-5' : 'top-1 left-1 size-7',
+                                        editIsNSFW ? (isReply ? 'translate-x-5 bg-error' : 'translate-x-6 bg-error') : 'translate-x-0 bg-base-100'
+                                    ]"
+                                >
+                                    <LucideIcon name="eye-off" :size="isReply ? 10 : 14" class="absolute transition-opacity duration-300" :class="editIsNSFW ? 'opacity-0' : 'opacity-100 text-base-content/40'" />
+                                    <span class="absolute font-bold leading-none text-white transition-opacity duration-300 select-none" :class="[editIsNSFW ? 'opacity-100' : 'opacity-0', isReply ? 'text-[7px]' : 'text-[9px]']">18+</span>
+                                </div>
                             </label>
                         </div>
 
-                        <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-secondary" :disabled="editIsSubmitting" @click="handleEditMediaSelect">
-                            <LucideIcon name="image" :size="iconSize" />
-                            <span v-if="!isReply">Media</span>
-                        </button>
-
-                        <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-ghost" :disabled="editIsSubmitting" @click="cancelEdit">
-                            Cancel
-                        </button>
-
-                        <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-primary ml-auto" :disabled="!editMessage.trim() || editIsSubmitting" @click="submitEdit">
-                            <LucideIcon v-if="!editIsSubmitting" name="check" :size="iconSize" />
-                            <span v-if="editIsSubmitting" :class="isReply ? 'loading-xs' : 'loading-sm'" class="loading loading-spinner"></span>
-                            <span v-if="!isReply">Update</span>
-                        </button>
+                        <!-- Right -->
+                        <div class="ml-auto flex items-center gap-2">
+                            <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-ghost" :disabled="editIsSubmitting" @click="cancelEdit">Cancel</button>
+                            <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-primary" :disabled="!editMessage.trim() || editIsSubmitting" @click="submitEdit">
+                                <LucideIcon v-if="!editIsSubmitting" name="check" :size="iconSize" />
+                                <span v-if="editIsSubmitting" :class="isReply ? 'loading-xs' : 'loading-sm'" class="loading loading-spinner"></span>
+                                <span v-if="!isReply">Update</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div v-if="editIsSubmitting" class="flex flex-col gap-1">
@@ -667,16 +743,48 @@ onBeforeUnmount(() => {
 
                 <!-- Display mode -->
                 <template v-else>
-                    <p v-if="comment.message" :class="textSize" class="comment-message text-base-content whitespace-pre-wrap wrap-break-words mb-2 ml-7.5 my-2">
-                        {{ comment.message }}
-                    </p>
-                    <CommentMedia
-                        v-if="comment.media"
-                        :path="comment.media"
-                        :alt="displayName"
-                        :is-reply="isReply"
-                        :comment-id="comment.id"
-                    />
+                    <div class="ml-7.5 my-1.5">
+
+                        <!-- NSFW Cover -->
+                        <div v-if="isNSFW && !nsfwRevealed" class="rounded-lg border border-error/20 bg-error/10 p-4 text-center">
+                            <p :class="textSize" class="font-semibold mb-0.5 text-error">
+                                NSFW
+                            </p>
+                            <p class="text-xs text-base-content/50 mb-3">This comment may contain sensitive content</p>
+                            <button
+                                type="button"
+                                class="btn btn-error btn-sm text-white"
+                                @click="nsfwRevealed = !nsfwRevealed"
+                            >
+                                <LucideIcon :name="nsfwRevealed ? 'eye-off' : 'eye'" :size="12" />
+                                {{ nsfwRevealed ? 'Hide' : 'View' }}
+                            </button>
+                        </div>
+
+                        <!-- Comment content (hidden behind NSFW cover unless revealed) -->
+                        <template v-if="!isNSFW || nsfwRevealed">
+                            <p v-if="comment.message" :class="textSize" class="comment-message text-base-content whitespace-pre-wrap wrap-break-words mb-1.5">
+                                {{ comment.message }}
+                            </p>
+                            <CommentMedia
+                                v-if="comment.media"
+                                :path="comment.media"
+                                :alt="displayName"
+                                :is-reply="isReply"
+                                :comment-id="comment.id"
+                            />
+                            <button
+                                v-if="isNSFW && nsfwRevealed"
+                                type="button"
+                                class="btn btn-sm btn-dash mt-1 text-base-content/50 w-full"
+                                @click="nsfwRevealed = false"
+                            >
+                                <LucideIcon name="eye-off" :size="10" />
+                                Hide
+                            </button>
+                        </template>
+
+                    </div>
                 </template>
             </div>
 
@@ -731,6 +839,7 @@ onBeforeUnmount(() => {
                     :depth="props.depth + 1"
                     :user-avatar="userAvatarForReply"
                     :isAnonymousEnabled="isAnonEnabled"
+                    :isNSFW="isNSFW"
                     :authenticatedUserId="authenticatedUserId"
                     @reply="emit('reply', $event)"
                     @edit="emit('edit', $event)"
@@ -749,6 +858,7 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
+
         <!-- Inline Reply Form -->
         <div v-if="showReplyForm && props.depth < depthMax" :class="isReply ? 'mt-3 pt-3 space-y-2 border-t border-base-300/50' : 'mt-4 pt-4 space-y-3 border-t border-base-300'">
             <!-- Reply media preview -->
@@ -763,7 +873,7 @@ onBeforeUnmount(() => {
 
             <textarea
                 v-model="replyMessage"
-                maxlength="255"
+                maxlength="1000"
                 rows="2"
                 :class="textSize"
                 class="textarea textarea-bordered w-full resize-none"
@@ -771,32 +881,78 @@ onBeforeUnmount(() => {
                 :disabled="isSubmittingReply"
             ></textarea>
 
-            <div :class="isReply ? 'gap-1 flex-wrap' : 'gap-2'" class="flex items-center">
-                <!-- Media -->
-                <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-secondary" :disabled="isSubmittingReply" @click="handleMediaSelect" aria-label="Attach media">
-                    <LucideIcon name="image" :size="iconSize" />
-                    <span v-if="!isReply">Media</span>
-                </button>
+            <!-- Reply Actions -->
+            <div :class="isReply ? 'gap-1 flex-wrap' : 'gap-2'" class="flex items-center justify-between">
+                <!-- Left -->
+                <div class="flex items-center gap-2">
+                    <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-secondary" :disabled="isSubmittingReply" @click="handleMediaSelect">
+                        <LucideIcon name="image" :size="iconSize" />
+                        <span v-if="!isReply">Media</span>
+                    </button>
 
-                <!-- Anonymous toggle -->
-                <div v-if="isAnonEnabled" class="flex items-center">
+                    <!-- Anonymous toggle (reply) — always shown when replying -->
                     <label class="relative inline-flex cursor-pointer">
-                        <input v-model="replyIsAnonymous" type="checkbox" class="peer sr-only" :disabled="isSubmittingReply" />
-                        <div :class="isReply ? 'w-11 h-6' : 'w-12 h-7'" class="bg-base-300 rounded-full peer-focus:ring-2 peer-focus:ring-primary transition-all border border-gray-300"></div>
-                        <div v-if="replyIsAnonymous" :class="isReply ? 'top-0.5 left-4 size-5' : 'top-0.5 left-5 size-6'" class="absolute rounded-full transition-all duration-300 bg-base-100 flex items-center justify-center">
-                            <LucideIcon name="hat-glasses" :size="iconSize" class="text-base-content/80" />
+                        <input v-model="replyIsAnonymous" type="checkbox" class="sr-only" :disabled="isSubmittingReply" />
+                        <div
+                            class="rounded-full transition-all border"
+                            :class="[
+                                isReply ? 'w-11 h-6' : 'w-15 h-9',
+                                replyIsAnonymous ? 'bg-primary/20 border-primary/50' : 'bg-base-300 border-base-300'
+                            ]"
+                        ></div>
+                        <div
+                            class="absolute rounded-full transition-all duration-300 bg-base-100 flex items-center justify-center overflow-hidden"
+                            :class="[
+                                isReply ? 'top-0.5 left-0.5 size-5' : 'top-1 left-1 size-7',
+                                replyIsAnonymous ? (isReply ? 'translate-x-5' : 'translate-x-6') : 'translate-x-0'
+                            ]"
+                        >
+                            <div
+                                class="absolute inset-0 rounded-full bg-cover bg-center transition-opacity duration-300"
+                                :class="replyIsAnonymous ? 'opacity-0' : 'opacity-100'"
+                                :style="{ backgroundImage: `url('${userAvatarForReply}')` }"
+                            ></div>
+                            <LucideIcon
+                                name="hat-glasses"
+                                :size="isReply ? 10 : 14"
+                                class="relative z-10 transition-opacity duration-300"
+                                :class="replyIsAnonymous ? 'opacity-100 text-base-content/80' : 'opacity-0'"
+                            />
                         </div>
-                        <div v-else :class="isReply ? 'top-0.5 left-0.5 size-5' : 'top-0.5 left-0.5 size-6'" class="absolute rounded-full transition-all duration-300 bg-cover bg-center" :style="{ backgroundImage: `url('${userAvatarForReply}')` }"></div>
+                    </label>
+
+                    <!-- NSFW toggle (reply) -->
+                    <label class="relative inline-flex cursor-pointer">
+                        <input v-model="replyIsNSFW" type="checkbox" class="sr-only" :disabled="isSubmittingReply" />
+                        <div
+                            class="rounded-full transition-all border"
+                            :class="[
+                                isReply ? 'w-11 h-6' : 'w-15 h-9',
+                                replyIsNSFW ? 'bg-error/20 border-error/40' : 'bg-base-300 border-base-300'
+                            ]"
+                        ></div>
+                        <div
+                            class="absolute rounded-full transition-all duration-300 flex items-center justify-center overflow-hidden"
+                            :class="[
+                                isReply ? 'top-0.5 left-0.5 size-5' : 'top-1 left-1 size-7',
+                                replyIsNSFW ? (isReply ? 'translate-x-5 bg-error' : 'translate-x-6 bg-error') : 'translate-x-0 bg-base-100'
+                            ]"
+                        >
+                            <LucideIcon name="eye-off" :size="isReply ? 10 : 14" class="absolute transition-opacity duration-300" :class="replyIsNSFW ? 'opacity-0' : 'opacity-100 text-base-content/40'" />
+                            <span class="absolute font-bold leading-none text-white transition-opacity duration-300 select-none" :class="[replyIsNSFW ? 'opacity-100' : 'opacity-0', isReply ? 'text-[7px]' : 'text-[9px]']">18+</span>
+                        </div>
                     </label>
                 </div>
 
-                <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-ghost" :disabled="isSubmittingReply" @click="handleReply">Cancel</button>
-
-                <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-primary ml-auto" :disabled="(!replyMessage.trim() && !replyMedia) || isSubmittingReply" @click="submitReply">
-                    <LucideIcon v-if="!isSubmittingReply" name="send" :size="iconSize" />
-                    <span v-if="isSubmittingReply" :class="isReply ? 'loading-xs' : 'loading-sm'" class="loading loading-spinner"></span>
-                    <span v-if="!isReply">{{ isSubmittingReply ? 'Sending...' : 'Send' }}</span>
-                </button>
+                <!-- Right -->
+                <div class="ml-auto flex items-center gap-2">
+                    <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-ghost" :disabled="isSubmittingReply" @click="handleReply">Cancel</button>
+                    <button type="button" :class="isReply ? 'btn-xs' : 'btn-sm'" class="btn btn-primary" :disabled="(!replyMessage.trim() && !replyMedia) || isSubmittingReply" @click="submitReply">
+                        <LucideIcon v-if="!isSubmittingReply" name="send" :size="iconSize" />
+                        <span v-if="isSubmittingReply" :class="isReply ? 'loading-xs' : 'loading-sm'" class="loading loading-spinner"></span>
+                        <span v-if="!isReply">{{ isSubmittingReply ? 'Sending...' : 'Send' }}</span>
+                    </button>
+                </div>
             </div>
 
             <div v-if="isSubmittingReply" class="flex flex-col gap-1">

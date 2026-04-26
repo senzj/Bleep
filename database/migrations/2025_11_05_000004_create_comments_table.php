@@ -18,6 +18,8 @@ return new class extends Migration
             $table->foreignId('parent_id')->nullable()->constrained('comments')->onDelete('cascade');
             $table->text('message');
             $table->string('media_path')->nullable();
+            $table->string('media_type')->nullable();
+            $table->string('media_mime')->nullable();
             $table->boolean('is_anonymous')->default(false);
             $table->boolean('is_nsfw')->default(false);
             $table->timestamps();

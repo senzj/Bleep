@@ -23,11 +23,15 @@ class Comments extends Model
         'parent_id',
         'message',
         'media_path',
+        'media_type',
+        'media_mime',
         'is_anonymous',
+        'is_nsfw',
     ];
 
     protected $casts = [
         'is_anonymous' => 'boolean',
+        'is_nsfw' => 'boolean',
     ];
 
     /*

@@ -44,6 +44,7 @@ class CommentsRepliesController extends Controller
         $data = $request->validate([
             'message'      => ['nullable', 'string', 'max:500'],
             'is_anonymous' => ['boolean'],
+            'is_nsfw'      => ['boolean'],
             'media'        => [
                 'nullable',
                 'file',
@@ -64,6 +65,7 @@ class CommentsRepliesController extends Controller
             'parent_id'    => $comment->id,
             'message'      => $data['message'],
             'is_anonymous' => $request->boolean('is_anonymous'),
+            'is_nsfw'      => $request->boolean('is_nsfw'),
         ]);
 
         if ($request->hasFile('media')) {
@@ -140,20 +142,21 @@ class CommentsRepliesController extends Controller
             : (optional($user)->dname ?? 'Unknown');
 
         return [
-            'id' => $comment->id,
-            'parent_id' => $comment->parent_id,
-            'message' => $comment->message,
-            'created_at' => optional($comment->created_at)->toDateTimeString(),
+            'id'             => $comment->id,
+            'parent_id'      => $comment->parent_id,
+            'message'        => $comment->message,
+            'created_at'     => optional($comment->created_at)->toDateTimeString(),
             'created_at_iso' => optional($comment->created_at)->toIso8601String(),
-            'diffTimestamp' => optional($comment->created_at)->diffForHumans(),
-            'is_anonymous' => (bool) $comment->is_anonymous,
-            'display_name' => $displayName,
-            'canEdit' => Auth::check() && Auth::id() === $comment->user_id,
-            'canDelete' => Auth::check() && Auth::id() === $comment->user_id,
-            'media' => $comment->media_path,
-            'likes_count' => $comment->likes()->count(),
-            'liked' => Auth::check() ? $comment->likes()->where('user_id', Auth::id())->exists() : false,
-            'replies_count' => $comment->replies()->count(),
+            'diffTimestamp'  => optional($comment->created_at)->diffForHumans(),
+            'is_anonymous'   => (bool) $comment->is_anonymous,
+            'is_nsfw'        => (bool) $comment->is_nsfw,
+            'display_name'   => $displayName,
+            'canEdit'        => Auth::check() && Auth::id() === $comment->user_id,
+            'canDelete'      => Auth::check() && Auth::id() === $comment->user_id,
+            'media'          => $comment->media_path,
+            'likes_count'    => $comment->likes()->count(),
+            'liked'          => Auth::check() ? $comment->likes()->where('user_id', Auth::id())->exists() : false,
+            'replies_count'  => $comment->replies()->count(),
             'user' => [
                 'id' => $comment->is_anonymous ? null : optional($user)->id,
                 'username' => $comment->is_anonymous ? null : optional($user)->username,

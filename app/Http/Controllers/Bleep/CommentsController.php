@@ -11,7 +11,6 @@ use App\Services\MediaUploadService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class CommentsController extends Controller
 {
@@ -44,6 +43,7 @@ class CommentsController extends Controller
         $validated = $request->validate([
             'message'      => ['nullable', 'string', 'max:500'],
             'is_anonymous' => ['boolean'],
+            'is_nsfw'      => ['boolean'],
             'media'        => [
                 'nullable',
                 'file',
@@ -66,6 +66,7 @@ class CommentsController extends Controller
             'user_id'      => Auth::id(),
             'message'      => $validated['message'],
             'is_anonymous' => $request->boolean('is_anonymous'),
+            'is_nsfw'      => $request->boolean('is_nsfw'),
         ]);
 
         // Handle media upload with comment ID
@@ -119,6 +120,7 @@ class CommentsController extends Controller
         $request->validate([
             'message'      => 'required|string|max:500',
             'is_anonymous' => 'boolean',
+            'is_nsfw'      => 'boolean',
             'media'        => [
                 'nullable',
                 'file',
@@ -170,6 +172,7 @@ class CommentsController extends Controller
         $comment->update([
             'message'      => $request->message,
             'is_anonymous' => $request->boolean('is_anonymous'),
+            'is_nsfw'      => $request->boolean('is_nsfw'),
         ]);
 
         $comment->load('user');
@@ -263,21 +266,22 @@ class CommentsController extends Controller
             : (optional($user)->dname ?? 'Unknown');
 
         return [
-            'id' => $comment->id,
-            'parent_id' => $comment->parent_id,
-            'message' => $comment->message,
-            'created_at' => optional($comment->created_at)->toDateTimeString(),
+            'id'             => $comment->id,
+            'parent_id'      => $comment->parent_id,
+            'message'        => $comment->message,
+            'created_at'     => optional($comment->created_at)->toDateTimeString(),
             'created_at_iso' => optional($comment->created_at)->toIso8601String(),
-            'diffTimestamp' => optional($comment->created_at)->diffForHumans(),
-            'is_anonymous' => (bool) $comment->is_anonymous,
-            'display_name' => $displayName,
-            'canEdit' => Auth::check() && Auth::id() === $comment->user_id,
-            'canDelete' => Auth::check() && Auth::id() === $comment->user_id,
-            'media' => $comment->media_path,
-            'likes_count' => $comment->likes()->count(),
-            'liked' => Auth::check() ? $comment->likes()->where('user_id', Auth::id())->exists() : false,
-            'replies_count' => $comment->replies()->count(),
-            'isOP' => Auth::check() && $comment->user_id === $bleep->user_id,
+            'diffTimestamp'  => optional($comment->created_at)->diffForHumans(),
+            'is_anonymous'   => (bool) $comment->is_anonymous,
+            'is_nsfw'        => (bool) $comment->is_nsfw,
+            'display_name'   => $displayName,
+            'canEdit'        => Auth::check() && Auth::id() === $comment->user_id,
+            'canDelete'      => Auth::check() && Auth::id() === $comment->user_id,
+            'media'          => $comment->media_path,
+            'likes_count'    => $comment->likes()->count(),
+            'liked'          => Auth::check() ? $comment->likes()->where('user_id', Auth::id())->exists() : false,
+            'replies_count'  => $comment->replies()->count(),
+            'isOP'           => Auth::check() && $comment->user_id === $bleep->user_id,
             'user' => [
                 'id' => $comment->is_anonymous ? null : optional($user)->id,
                 'username' => $comment->is_anonymous ? null : optional($user)->username,

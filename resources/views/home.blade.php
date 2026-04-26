@@ -81,10 +81,6 @@
                                     accept="image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/mp3"
                                 />
 
-                                {{-- validation errors --}}
-                                @error('media') <div class="text-error text-xs mt-1">{{ $message }}</div> @enderror
-                                @error('media.*') <div class="text-error text-xs mt-1">{{ $message }}</div> @enderror
-
                                 {{-- preview grid --}}
                                 <div id="bleep-media-preview" class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
 
@@ -102,6 +98,7 @@
                                     {{-- Left buttons (keep as first column on desktop, but render inline controls on mobile) --}}
                                     <div class="flex w-full sm:w-auto items-center justify-end sm:space-y-5 gap-3">
                                         <div class="flex items-center gap-8">
+
                                             {{-- Anonymous: icon/label + toggle --}}
                                             @if (config('app.anonymity', true))
                                                 <div class="flex items-center gap-1">
@@ -122,7 +119,7 @@
                                             {{-- NSFW: icon/label + toggle --}}
                                             <div class="flex items-center gap-1">
                                                 <label for="post-nsfw-toggle" class="flex items-center gap-2 cursor-pointer select-none">
-                                                    <span id="post-nsfw-icon" class="p-2 rounded-full bg-base-400 transition-colors duration-150" title="Mark as NSFW" aria-hidden="true">
+                                                    <span id="post-nsfw-icon" class="p-2 rounded-full bg-base-400 transition-colors duration-150" title="Marked as NSFW" aria-hidden="true">
                                                         <i data-lucide="eye-off" class="w-5 h-5"></i>
                                                     </span>
                                                 </label>

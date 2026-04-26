@@ -15,4 +15,6 @@ export {
     Mic,
     Square,
     X,
+    EyeOff,
+    
 } from 'lucide-vue-next';
