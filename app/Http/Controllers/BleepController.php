@@ -73,7 +73,7 @@ class BleepController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'message'    => 'string|max:255|required_without:media',
+            'message'    => 'max:255|required_without:media',
             'is_anonymous' => 'nullable|boolean',
             'is_nsfw'    => 'nullable|boolean',
             'media'      => 'nullable|array|max:4|required_without:message',

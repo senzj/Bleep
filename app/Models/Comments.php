@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\HasAnonymousName;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Comments extends Model
 {
-    use HasAnonymousName, SoftDeletes;
+    use HasAnonymousName, HasFactory, SoftDeletes;
 
     protected $table = 'comments';
 

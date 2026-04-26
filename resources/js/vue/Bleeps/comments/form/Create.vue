@@ -260,6 +260,9 @@ const handleCancel = () => {
                     Media
                 </button>
 
+                <!-- NSFW Toggle -->
+
+
                 <!-- Anonymous Toggle -->
                 <div v-if="isAnonymousEnabled" class="flex items-center gap-2 shrink-0">
                     <label class="relative inline-flex cursor-pointer">
@@ -271,6 +274,7 @@ const handleCancel = () => {
                         <div v-if="isAnonymous" class="absolute top-1 left-7 size-7 rounded-full transition-all duration-500 bg-base-100 flex items-center justify-center">
                             <LucideIcon name="hat-glasses" size="16" class="text-base-content/80" />
                         </div>
+
                         <!-- User Avatar -->
                         <div v-else class="absolute top-1 left-1 size-7 rounded-full transition-all duration-300 bg-cover bg-center"
                             :style="{ backgroundImage: `url('${userAvatarUrl}')` }"
@@ -289,10 +293,10 @@ const handleCancel = () => {
                 </button>
             </div>
 
-              <div v-if="isSubmitting" class="flex flex-col gap-1">
+            <div v-if="isSubmitting" class="flex flex-col gap-1">
                 <progress class="progress progress-primary w-full" :value="uploadProgress" max="100"></progress>
                 <div class="text-xs text-base-content/60 text-right">Uploading {{ uploadProgress }}%</div>
-              </div>
+            </div>
 
             <!-- Cancel Button (for replies) -->
             <button

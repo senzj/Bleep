@@ -189,7 +189,7 @@ const handleLoadMore = () => {
 </script>
 
 <template>
-    <div class="comments-layout space-y-4 border border-base-200 rounded-lg p-4 bg-base-300/90 shadow-lg">
+    <div class="comments-layout space-y-4 border border-base-200 rounded-lg p-4 bg-base-200 shadow-lg">
 
         <!-- Comment Form (Top) -->
         <div v-if="isAuthenticated" class="bg-base-100 rounded-lg p-4 border border-base-200 shadow">

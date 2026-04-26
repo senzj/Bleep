@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import LucideIcon from '../../../LucideIcons.vue';
 import CommentMedia from './Media.vue';
 import { formatRelativeTime } from '../../../../utils/relativeTime.js';
@@ -103,8 +103,6 @@ const formattedDate = computed(() => {
         || Intl.DateTimeFormat().resolvedOptions().timeZone
         || 'UTC';
 
-    console.log('Comment created_at:', props.comment.created_at);
-
     return formatRelativeTime(props.comment.created_at, userTimezone);
 });
 
@@ -126,7 +124,7 @@ const isReply = computed(() => props.depth > 0);
 const avatarSize = computed(() => isReply.value ? 'w-8 h-8' : 'w-10 h-10');
 const textSize = computed(() => isReply.value ? 'text-xs' : 'text-sm');
 const iconSize = computed(() => isReply.value ? 12 : 14);
-const componentClass = computed(() => isReply.value ? 'bg-base-100' : 'bg-base-200');
+const componentClass = computed(() => isReply.value ? 'bg-base' : 'bg-base-100');
 const borderClass = computed(() => isReply.value ? 'border-base-300/50' : 'border-base-300');
 
 // ── Likes
@@ -449,6 +447,24 @@ const handleReplyDeleted = (replyId) => {
 };
 
 const handleLoadMoreReplies = () => loadReplies();
+
+// ── Dropdown options state
+// ── Dropdown options state
+const dropdownOpen = ref(false);
+const dropdownAnchor = ref(null); // template ref instead of class selector
+
+const closeDropdown = (e) => {
+    if (dropdownAnchor.value && !dropdownAnchor.value.contains(e.target)) {
+        dropdownOpen.value = false;
+    }
+};
+
+onMounted(() => document.addEventListener('click', closeDropdown, { passive: true }));
+onBeforeUnmount(() => {
+    dropdownOpen.value = false;
+    document.removeEventListener('click', closeDropdown);
+});
+
 </script>
 
 <template>
@@ -456,7 +472,7 @@ const handleLoadMoreReplies = () => loadReplies();
         :class="[
             showReplyForm ? 'border-2 border-primary' : `border ${borderClass}`,
             componentClass,
-            isReply ? 'p-3' : 'p-2'
+            isReply ? 'p-3.5' : 'p-3.5'
         ]"
         :data-comment-id="comment.id"
         :data-comment-depth="props.depth"
@@ -490,13 +506,14 @@ const handleLoadMoreReplies = () => loadReplies();
                             />
                         </div>
 
-                        <!-- OP badge — non-anon only; anon comments never show OP -->
+                        <!-- OP badge -->
                         <span
                             v-if="isOP && !isCommentAnonymous && !isBleepAnonymous"
                             :class="isReply ? 'px-1 py-0 text-[7px]' : 'px-1.5 py-0.5 text-[8px]'"
                             class="font-extrabold rounded bg-green-500/20 text-green-500 border border-green-600/20"
                         >OP</span>
 
+                        <!-- Anonymous OP badge -->
                         <span
                             v-if="isOP && isBleepAnonymous && isOwner"
                             :class="isReply ? 'px-1 py-0 text-[7px]' : 'px-1.5 py-0.5 text-[8px]'"
@@ -504,8 +521,7 @@ const handleLoadMoreReplies = () => loadReplies();
                             title="You posted this bleep"
                         >OP</span>
 
-                        <!-- "You" badge — always shown if you own the comment (anon or not).
-                             When anonymous this is the ONLY badge shown. -->
+                        <!-- Owner badge -->
                         <span
                             v-if="isOwner"
                             :class="isReply ? 'px-1 py-0 text-[7px]' : 'px-1.5 py-0.5 text-[8px]'"
@@ -529,33 +545,39 @@ const handleLoadMoreReplies = () => loadReplies();
                         {{ formattedDate }}
                     </div>
 
-                    <div class="dropdown dropdown-end">
-                        <button type="button" class="btn btn-ghost btn-xs rounded" title="More options">
+                    <!-- More Options Dropdown -->
+                    <div class="relative" ref="dropdownAnchor">
+                        <button
+                            type="button"
+                            class="btn btn-ghost btn-xs rounded"
+                            title="More options"
+                            @click.stop="dropdownOpen = !dropdownOpen"
+                        >
                             <LucideIcon name="ellipsis-vertical" :size="isReply ? 12 : 16" />
                         </button>
 
-                        <ul :class="[isReply ? 'w-40 p-1 text-xs' : 'w-52 p-2', 'flex flex-row gap-2']"
-                            class="dropdown-content menu bg-base-100/80 rounded-box z-1 shadow-lg border border-gray-300/50">
-                            <!-- Edit — shown when canEdit, works for anon and non-anon -->
+                        <ul
+                            v-if="dropdownOpen"
+                            :class="isReply ? 'p-1 text-xs' : 'p-2'"
+                            class="absolute right-0 top-full mt-1 menu bg-base-100 rounded-box z-50 shadow-lg border border-base-300/50 flex flex-col w-max"
+                        >
                             <li v-if="isOwner">
-                                <button @click="handleEdit" class="flex flex-col items-center">
+                                <button @click="dropdownOpen = false; handleEdit()" class="flex items-center gap-1.5 whitespace-nowrap">
                                     <LucideIcon name="pencil" :size="iconSize" />
                                     <span>Edit</span>
                                 </button>
                             </li>
-                            <!-- Delete — shown when canDelete, works for anon and non-anon -->
                             <li v-if="canDelete">
-                                <button @click="handleDelete" class="text-error flex flex-col items-center">
+                                <button @click="dropdownOpen = false; handleDelete()" class="flex items-center gap-1.5 whitespace-nowrap text-error">
                                     <LucideIcon name="trash-2" :size="iconSize" />
                                     <span>Delete</span>
                                 </button>
                             </li>
-                            <!-- Report — shown to non-owners only -->
                             <li v-if="!isOwner">
-                                <a class="text-warning flex flex-col items-center">
+                                <button @click="dropdownOpen = false" class="flex items-center gap-1.5 whitespace-nowrap text-warning">
                                     <LucideIcon name="flag" :size="iconSize" />
                                     <span>Report</span>
-                                </a>
+                                </button>
                             </li>
                         </ul>
                     </div>
@@ -645,7 +667,7 @@ const handleLoadMoreReplies = () => loadReplies();
 
                 <!-- Display mode -->
                 <template v-else>
-                    <p v-if="comment.message" :class="textSize" class="comment-message text-base-content whitespace-pre-wrap wrap-break-words mb-2">
+                    <p v-if="comment.message" :class="textSize" class="comment-message text-base-content whitespace-pre-wrap wrap-break-words mb-2 ml-7.5 my-2">
                         {{ comment.message }}
                     </p>
                     <CommentMedia
@@ -696,7 +718,7 @@ const handleLoadMoreReplies = () => loadReplies();
             </div>
 
             <!-- Replies -->
-            <div v-if="comment.replies_count > 0 && props.depth < depthMax && showReplies" class="mt-2 border-l-2 border-gray-300 space-y-3">
+            <div v-if="comment.replies_count > 0 && props.depth < depthMax && showReplies" class="mt-2 border-l-2 border-primary space-y-3">
                 <div v-if="isLoadingReplies" class="flex justify-center py-3">
                     <span class="loading loading-spinner loading-sm"></span>
                 </div>
@@ -714,6 +736,7 @@ const handleLoadMoreReplies = () => loadReplies();
                     @edit="emit('edit', $event)"
                     @delete="handleReplyDeleted"
                     @like="emit('like', $event)"
+                    class="ml-2"
                 />
 
                 <button

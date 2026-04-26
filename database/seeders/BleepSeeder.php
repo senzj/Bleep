@@ -16,6 +16,10 @@ class BleepSeeder extends Seeder
         // Get all users
         $users = User::all();
 
+        // Get all bleeps
+        $bleeps = Bleep::all();
+
+        // If there are no users, we cannot create bleeps, so we should warn the user and exit
         if ($users->isEmpty()) {
             $this->command->warn('No users found. Please run UserSeeder first.');
             return;
@@ -41,12 +45,36 @@ class BleepSeeder extends Seeder
             ->recycle($users)
             ->create();
 
-        // Create some anonymous bleeps
+        // Create some NSFW bleeps
         Bleep::factory()
-            ->count(15)
-            ->anonymous()
+            ->count(10)
+            ->nsfw()
             ->recycle($users)
             ->create();
+
+        // Create some anonymous bleeps
+        if (config('app.anonymity') === true) {
+            Bleep::factory()
+                ->count(15)
+                ->anonymous()
+                ->recycle($users)
+                ->create();
+        }
+
+        /**
+         * Create bleep comments
+         * by randomly selecting some bleeps and adding comments to them
+         * with random comments counts on each bleep
+         * and also randomly selecting users to comment on those bleeps
+         */
+
+        // Check if bleep exists before trying to create comments for it
+        if ($bleeps->isEmpty()) {
+            $this->command->warn('No bleeps found. Please run BleepSeeder first.');
+            return;
+        }
+
+        $this->call(CommentSeeder::class);
 
         $this->command->info('Created ' . Bleep::count() . ' bleeps for ' . $users->count() . ' users.');
     }
