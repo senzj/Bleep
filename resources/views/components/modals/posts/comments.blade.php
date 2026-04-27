@@ -8,7 +8,7 @@
         x-show="open"
         style="display:none"
         @click.stop
-        class="fixed z-50 bg-base-300 shadow-2xl border border-base-300/50 flex flex-col overflow-hidden max-w-full overflow-x-hidden will-change-transform overflow-y-auto"
+        class="fixed z-50 bg-base-300 shadow-2xl border border-base-300/50 flex flex-col overflow-hidden max-w-full overflow-x-hidden will-change-transform"
         :class="isMobile
             ? 'left-0 right-0 bottom-0 mx-auto rounded-t-2xl'
             : 'top-1/2 right-4 -translate-y-1/2 rounded-2xl'"
@@ -30,6 +30,19 @@
         {{-- Content --}}
         <div class="flex-1 min-h-0">
             <x-subcomponents.comments.layout :layoutmode="'modal'" />
+        </div>
+
+        {{-- Loading Curtain (persistent layer; toggled from app.js) --}}
+        <div
+            id="comments-modal-loading-curtain"
+            class="absolute inset-0 z-20 hidden bg-base-100/70 backdrop-blur-[1px] pointer-events-none"
+            aria-hidden="true"
+        >
+            <div class="h-full w-full flex items-center justify-center">
+                <div class="flex flex-col items-center justify-center text-base-content/70">
+                    <span class="loading loading-spinner loading-md mb-2"></span>
+                </div>
+            </div>
         </div>
     </div>
 

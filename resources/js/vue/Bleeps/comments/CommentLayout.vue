@@ -35,6 +35,18 @@ const props = defineProps({
         type: [Boolean, String],
         default: false,
     },
+    initialComments: {
+        type: Array,
+        default: () => [],
+    },
+    initialCurrentPage: {
+        type: Number,
+        default: 1,
+    },
+    initialHasMore: {
+        type: Boolean,
+        default: false,
+    },
 
 });
 
@@ -62,6 +74,9 @@ const emit = defineEmits(['close']);
         :user-avatar="userAvatar"
         :is-authenticated="isAuthenticated"
         :is-anonymous-enabled="isAnonymousEnabled"
+        :initial-comments="initialComments"
+        :initial-current-page="initialCurrentPage"
+        :initial-has-more="initialHasMore"
         @close="emit('close')"
     />
 </template>

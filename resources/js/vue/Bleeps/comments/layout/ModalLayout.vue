@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import Card from '../component/Card.vue';
 import Create from '../form/Create.vue';
 import LucideIcon from '../../../LucideIcons.vue';
@@ -37,6 +37,18 @@ const props = defineProps({
         type: [Boolean, String],
         default: false,
     },
+    initialComments: {
+        type: Array,
+        default: () => [],
+    },
+    initialCurrentPage: {
+        type: Number,
+        default: 1,
+    },
+    initialHasMore: {
+        type: Boolean,
+        default: false,
+    },
 
 });
 
@@ -65,6 +77,7 @@ const commentGroups = ref([]);
 const editingComment = ref(null);
 const scrollContainer = ref(null);
 const hasLoadedOnce = ref(false);
+let scrollListener = null;
 
 const authenticatedUserId = computed(() => {
     return props.authUser?.id || null;
@@ -75,9 +88,26 @@ onMounted(async () => {
     hasLoadedOnce.value = false;
 
     if (props.bleepId) {
-        await loadComments(true);
+        if (props.initialComments.length > 0) {
+            comments.value = [...props.initialComments];
+            currentPage.value = Number(props.initialCurrentPage || 1) + 1;
+            hasMorePages.value = Boolean(props.initialHasMore);
+            groupCommentsByDate();
+            hasLoadedOnce.value = true;
+            isLoading.value = false;
+            await nextTick();
+        } else {
+            await loadComments(true);
+        }
         setupScrollListener();
     }
+});
+
+onBeforeUnmount(() => {
+    if (scrollContainer.value && scrollListener) {
+        scrollContainer.value.removeEventListener('scroll', scrollListener);
+    }
+    scrollListener = null;
 });
 
 const loadComments = async (force = false) => {
@@ -109,12 +139,18 @@ const loadComments = async (force = false) => {
 const setupScrollListener = () => {
     if (!scrollContainer.value) return;
 
-    scrollContainer.value.addEventListener('scroll', () => {
+    if (scrollListener) {
+        scrollContainer.value.removeEventListener('scroll', scrollListener);
+    }
+
+    scrollListener = () => {
         const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value;
         if (scrollTop + clientHeight >= scrollHeight - 200 && hasMorePages.value && !isLoading.value) {
-        loadComments();
+            loadComments();
         }
-    });
+    };
+
+    scrollContainer.value.addEventListener('scroll', scrollListener, { passive: true });
 };
 
 const handleCommentCreated = async (newComment) => {
@@ -206,7 +242,7 @@ const groupCommentsByDate = () => {
 </script>
 
 <template>
-    <div class="modal-layout flex flex-col h-full overflow-hidden">
+    <div class="modal-layout flex flex-col h-full">
 
         <!-- Header -->
         <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-base-200 bg-base-100/95 backdrop-blur-sm">
@@ -220,7 +256,7 @@ const groupCommentsByDate = () => {
         </div>
 
         <!-- Scroll Area Container -->
-        <div ref="scrollContainer" class="flex-1 min-h-0 overflow-y-auto px-4 py-3 bg-base-300/80">
+        <div ref="scrollContainer" class="flex-1 min-h-0 overflow-y-scroll [scrollbar-gutter:stable] px-4 py-3 bg-base-300/80">
 
             <!-- Wrapper -->
              <div class="flex flex-col min-h-full">

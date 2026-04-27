@@ -34,6 +34,12 @@ class AdminController extends Controller
         $bannedUsers = User::where('is_banned', true)
             ->count();
 
+        $totalBleeps = Bleep::count();
+        $bleepsToday = Bleep::whereDate('created_at', now()->toDateString())
+            ->count();
+
+        $totalEngagement = Likes::count() + Comments::count() + Share::count() + Repost::count();
+
         $totalSessions = DB::table('sessions')
             ->count();
 
@@ -47,9 +53,11 @@ class AdminController extends Controller
         try {
             $reportsPending = DB::table('reports')->where('status', 'pending')->count();
             $reportsOngoing = DB::table('reports')->whereIn('status', ['ongoing','open','in_progress'])->count();
+            $reportsResolved = DB::table('reports')->where('status', 'resolved')->count();
         } catch (Throwable $e) {
             $reportsPending = 0;
             $reportsOngoing = 0;
+            $reportsResolved = 0;
             Log::error($e);
         }
 
@@ -59,8 +67,12 @@ class AdminController extends Controller
             'bannedUsers',
             'totalSessions',
             'activeSessions',
+            'totalBleeps',
+            'bleepsToday',
+            'totalEngagement',
             'reportsPending',
-            'reportsOngoing'
+            'reportsOngoing',
+            'reportsResolved'
         ));
     }
 
@@ -69,43 +81,90 @@ class AdminController extends Controller
         $range = $request->get('range', 'daily');
 
         try {
-            $payload = Cache::remember("admin:stats:dashboard:{$range}", 30, function () use ($range) {
+            $payload = Cache::remember("admin:stats:dashboard:{$range}", 30, function () use ($range)
+            {
                 $now = now();
 
                 switch ($range) {
                     case 'weekly':
-                        $start = $now->copy()->subWeeks(12)->startOfWeek();
+                        $start = $now->copy()->subWeeks(11)->startOfWeek();
                         $interval = 'week';
-                        $format = 'Y-m-d';
+                        $format = 'o-\\WW';
+                        $dateFormat = '%x-W%v';
                         break;
+
                     case 'monthly':
-                        $start = $now->copy()->subMonths(12)->startOfMonth();
+                        $start = $now->copy()->subMonths(11)->startOfMonth();
                         $interval = 'month';
                         $format = 'Y-m';
+                        $dateFormat = '%Y-%m';
                         break;
+
                     case 'yearly':
-                        $start = $now->copy()->subYears(5)->startOfYear();
+                        $start = $now->copy()->subYears(4)->startOfYear();
                         $interval = 'year';
                         $format = 'Y';
+                        $dateFormat = '%Y';
                         break;
+
                     case 'daily':
                     default:
-                        $start = $now->copy()->subDays(30)->startOfDay();
+                        $start = $now->copy()->subDays(29)->startOfDay();
                         $interval = 'day';
                         $format = 'Y-m-d';
+                        $dateFormat = '%Y-%m-%d';
                         break;
                 }
                 $end = $now;
 
-                // Users time series
-                $dateFormat = $interval === 'month' ? '%Y-%m' : ($interval === 'year' ? '%Y' : '%Y-%m-%d');
-                $usersTimeSeries = DB::table('users')
-                    ->select(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}') as period"), DB::raw('COUNT(*) as total'))
-                    ->whereBetween('created_at', [$start, $end])
-                    ->groupBy('period')
-                    ->orderBy('period')
-                    ->pluck('total', 'period')
-                    ->toArray();
+                // Build labels for selected range.
+                if ($interval === 'day') {
+                    $step = CarbonInterval::day();
+
+                } elseif ($interval === 'week') {
+                    $step = CarbonInterval::week();
+
+                } elseif ($interval === 'month') {
+                    $step = CarbonInterval::month();
+
+                } else {
+                    $step = CarbonInterval::year();
+                }
+
+                $period = CarbonPeriod::create($start, $step, $end);
+                $labels = [];
+
+                foreach ($period as $dt) {
+                    $labels[] = $dt->format($format);
+                }
+
+                $seriesFromCreatedAt = static function (string $table, string $dateFormat, $start, $end): array {
+                    return DB::table($table)
+                        ->select(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}') as period"), DB::raw('COUNT(*) as total'))
+                        ->whereBetween('created_at', [$start, $end])
+                        ->groupBy('period')
+                        ->orderBy('period')
+                        ->pluck('total', 'period')
+                        ->toArray();
+                };
+
+                $seriesFromUnixActivity = static function (string $table, string $dateFormat, $start, $end): array {
+                    return DB::table($table)
+                        ->select(DB::raw("DATE_FORMAT(FROM_UNIXTIME(last_activity), '{$dateFormat}') as period"), DB::raw('COUNT(*) as total'))
+                        ->whereBetween('last_activity', [$start->timestamp, $end->timestamp])
+                        ->groupBy('period')
+                        ->orderBy('period')
+                        ->pluck('total', 'period')
+                        ->toArray();
+                };
+
+                $usersTimeSeries = $seriesFromCreatedAt('users', $dateFormat, $start, $end);
+                $bleepTimeSeries = $seriesFromCreatedAt('bleeps', $dateFormat, $start, $end);
+                $likesTimeSeries = $seriesFromCreatedAt('likes', $dateFormat, $start, $end);
+                $commentsTimeSeries = $seriesFromCreatedAt('comments', $dateFormat, $start, $end);
+                $sharesTimeSeries = $seriesFromCreatedAt('shares', $dateFormat, $start, $end);
+                $repostsTimeSeries = $seriesFromCreatedAt('reposts', $dateFormat, $start, $end);
+                $sessionsTimeSeries = $seriesFromUnixActivity('sessions', $dateFormat, $start, $end);
 
                 $totalUsers = DB::table('users')->count();
                 $activeUsers = DB::table('sessions')->where('last_activity', '>=', now()->subMinutes(5)->timestamp)->distinct()->count('user_id');
@@ -159,46 +218,165 @@ class AdminController extends Controller
                     ]);
 
                 // Reports
-                $reportsCounts = DB::table('reports')
-                    ->select(DB::raw("DATE_FORMAT(created_at, '%Y-%m-%d') as day"), DB::raw("COUNT(*) as total"))
-                    ->whereBetween('created_at', [now()->subDays(90), now()])
-                    ->groupBy('day')->pluck('total', 'day')->toArray();
+                $reportsCounts = [];
+                $reportsByCategory = [];
+                $pending = 0;
+                $ongoingCount = 0;
+                $resolved = 0;
 
-                $reportsByCategory = DB::table('reports')
-                    ->select('category', DB::raw('COUNT(*) as total'))
-                    ->groupBy('category')->pluck('total', 'category')->toArray();
+                try {
+                    $reportsCounts = DB::table('reports')
+                        ->select(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}') as period"), DB::raw('COUNT(*) as total'))
+                        ->whereBetween('created_at', [$start, $end])
+                        ->groupBy('period')
+                        ->orderBy('period')
+                        ->pluck('total', 'period')
+                        ->toArray();
 
-                $pending = DB::table('reports')->where('status', 'pending')->count();
-                $ongoingCount = DB::table('reports')->whereIn('status', ['ongoing', 'open', 'in_progress'])->count();
-                $resolved = DB::table('reports')->where('status', 'resolved')->count();
+                    $reportsByCategory = DB::table('reports')
+                        ->select(DB::raw("COALESCE(category, 'Uncategorized') as category"), DB::raw('COUNT(*) as total'))
+                        ->groupBy('category')
+                        ->pluck('total', 'category')
+                        ->toArray();
 
-                // Build labels for series using CarbonInterval
-                if ($interval === 'day') {
-                    $step = CarbonInterval::day();
+                    $pending = DB::table('reports')
+                        ->where('status', 'pending')
+                        ->count();
 
-                } elseif ($interval === 'week') {
-                    $step = CarbonInterval::week();
+                    $ongoingCount = DB::table('reports')
+                        ->whereIn('status', ['ongoing', 'open', 'in_progress'])
+                        ->count();
 
-                } elseif ($interval === 'month') {
-                    $step = CarbonInterval::month();
+                    $resolved = DB::table('reports')
+                        ->where('status', 'resolved')
+                        ->count();
 
-                } else {
-                    $step = CarbonInterval::year();
+                } catch (Throwable $e) {
+                    Log::warning('admin.dashboard.chart-data reports block failed: ' . $e->getMessage());
+
+                    return back()->withErrors('Failed to load reports data. Please check logs for details.');
                 }
-                $period = CarbonPeriod::create($start, $step, $end);
-                $labels = [];
-                foreach ($period as $dt) {
-                    $labels[] = $dt->format($format);
-                }
+
                 $userSeries = array_map(fn($l) => (int)($usersTimeSeries[$l] ?? 0), $labels);
+                $bleepSeries = array_map(fn($l) => (int)($bleepTimeSeries[$l] ?? 0), $labels);
+                $likesSeries = array_map(fn($l) => (int)($likesTimeSeries[$l] ?? 0), $labels);
+                $commentsSeries = array_map(fn($l) => (int)($commentsTimeSeries[$l] ?? 0), $labels);
+                $sharesSeries = array_map(fn($l) => (int)($sharesTimeSeries[$l] ?? 0), $labels);
+                $repostsSeries = array_map(fn($l) => (int)($repostsTimeSeries[$l] ?? 0), $labels);
+                $sessionSeries = array_map(fn($l) => (int)($sessionsTimeSeries[$l] ?? 0), $labels);
+                $reportSeries = array_map(fn($l) => (int)($reportsCounts[$l] ?? 0), $labels);
+
+                $bleepsToday = DB::table('bleeps')
+                    ->whereDate('created_at', now()->toDateString())
+                    ->count();
+
+                $engagementToday =
+                    DB::table('likes')
+                        ->whereDate('created_at', now()
+                        ->toDateString())
+                        ->count() +
+                    DB::table('comments')
+                        ->whereDate('created_at', now()
+                        ->toDateString())
+                        ->count() +
+                    DB::table('shares')
+                        ->whereDate('created_at', now()
+                        ->toDateString())
+                        ->count() +
+                    DB::table('reposts')
+                        ->whereDate('created_at', now()
+                        ->toDateString())
+                        ->count();
+
+                // Anonymous + nsfw bleeps
+                $anonymousBleeps = Bleep::where('is_anonymous', true)
+                    ->count();
+                $nsfwBleeps = Bleep::where('is_nsfw', true)
+                    ->count();
+
+                // Anonymous + nsfw comments
+                $anonymousComments = Comments::where('is_anonymous', true)
+                    ->count();
+                $nsfwComments = Comments::where('is_nsfw', true)
+                    ->count();
+
+                // User roles
+                $rolesCounts = User::select('role', DB::raw('COUNT(*) as total'))
+                    ->groupBy('role')
+                    ->pluck('total', 'role')
+                    ->toArray();
+
+                // Banned users count
+                $bannedCount = User::where('is_banned', true)->count();
 
                 return [
-                    'meta' => ['range' => $range, 'start' => $start->toDateString(), 'end' => $end->toDateString()],
-                    'users' => ['total' => $totalUsers, 'active' => $activeUsers, 'labels' => $labels, 'series' => [$userSeries]],
-                    'devices' => ['os' => $osCounts, 'browser' => $browserCounts, 'deviceType' => $deviceTypeCounts],
-                    'sessions' => ['activeSessions' => $activeSessions, 'hourly' => $hourlyRows, 'peakHour' => $peakHour, 'peakDay' => $peakDay],
-                    'bleeps' => ['total' => $totalBleeps, 'likes' => $likesCount, 'shares' => $sharesCount, 'reposts' => $repostCount, 'comments' => $commentsCount, 'engagementRate' => $engagementRate, 'top' => $topBleeps],
-                    'reports' => ['pending' => $pending, 'ongoing' => $ongoingCount, 'resolved' => $resolved, 'byCategory' => $reportsByCategory, 'labels' => array_keys($reportsCounts), 'series' => [array_values($reportsCounts)]],
+                    'meta' => [
+                        'range' => $range,
+                        'start' => $start->toDateString(),
+                        'end' => $end->toDateString(),
+                        'labels' => $labels
+                    ],
+
+                    'users' => [
+                        'total'   => $totalUsers,
+                        'active'  => $activeUsers,
+                        'banned'  => $bannedCount,
+                        'labels'  => $labels,
+                        'series'  => [$userSeries],
+                        'roles'   => $rolesCounts,
+                    ],
+
+                    'devices' => [
+                        'os' => $osCounts,
+                        'browser' => $browserCounts,
+                        'deviceType' => $deviceTypeCounts
+                    ],
+
+                    'sessions' => [
+                        'activeSessions' => $activeSessions,
+                        'hourly' => $hourlyRows,
+                        'peakHour' => $peakHour,
+                        'peakDay' => $peakDay,
+                        'labels' => $labels,
+                        'series' => [$sessionSeries]
+                    ],
+
+                    'bleeps' => [
+                        'total'          => $totalBleeps,
+                        'today'          => $bleepsToday,
+                        'likes'          => $likesCount,
+                        'shares'         => $sharesCount,
+                        'reposts'        => $repostCount,
+                        'comments'       => $commentsCount,
+                        'engagementRate' => $engagementRate,
+                        'engagementToday'=> $engagementToday,
+                        'anonymous'      => $anonymousBleeps,
+                        'nsfw'           => $nsfwBleeps,
+                        'labels'         => $labels,
+                        'series'         => [$bleepSeries],
+                        'interactions'   => [
+                            'likes'    => $likesSeries,
+                            'comments' => $commentsSeries,
+                            'shares'   => $sharesSeries,
+                            'reposts'  => $repostsSeries,
+                        ],
+                        'top' => $topBleeps,
+                    ],
+
+                    'comments' => [
+                        'total'     => $commentsCount,
+                        'anonymous' => $anonymousComments,
+                        'nsfw'      => $nsfwComments,
+                    ],
+
+                    'reports' => [
+                        'pending' => $pending,
+                        'ongoing' => $ongoingCount,
+                        'resolved' => $resolved,
+                        'byCategory' => $reportsByCategory,
+                        'labels' => $labels,
+                        'series' => [$reportSeries]
+                    ],
                 ];
             });
 

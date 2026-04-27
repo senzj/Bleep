@@ -29,17 +29,27 @@ export default function commentSheet() {
             document.addEventListener('touchend', this._onTouchEnd);
 
             this.$watch('open', value => {
-                document.body.style.overflow = value ? 'hidden' : '';
                 if (!value) this.sheetY = 0;
             });
 
             this._onCloseRequest = () => this.close();
             window.addEventListener('request-close-comments', this._onCloseRequest);
+
+            // External close (e.g. post scrolled out) should also hide the sheet shell.
+            this._onExternalClose = () => {
+                if (!this.open) return;
+                this.open = false;
+                this.sheetY = 0;
+                this.fullscreen = false;
+                document.body.style.overflow = '';
+            };
+            window.addEventListener('close-comments', this._onExternalClose);
         },
 
         destroy() {
             window.removeEventListener('resize', this._onResize);
             window.removeEventListener('request-close-comments', this._onCloseRequest);
+            window.removeEventListener('close-comments', this._onExternalClose);
             document.removeEventListener('mousemove', this._onMouseMove);
             document.removeEventListener('mouseup', this._onMouseUp);
             document.removeEventListener('touchmove', this._onTouchMove);
@@ -107,9 +117,14 @@ export default function commentSheet() {
         },
 
         openSheet(id) {
+            const incomingId = String(id ?? '').trim();
+            if (this.open && String(this.bleepId ?? '') === incomingId) {
+                return;
+            }
+
             this.fullscreen = false;
             this.sheetY = 0;
-            this.bleepId = id;
+            this.bleepId = incomingId;
             this.open = true;
 
             // Show the spinner when the sheet opens (it's hidden by default in

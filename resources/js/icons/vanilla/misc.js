@@ -15,4 +15,5 @@ export {
     Sparkle,
     X,
     Ban,
+    Activity,
 } from 'lucide';

@@ -43,7 +43,7 @@ if (document.getElementById('chat-app')) {
 
 
 // Comments Layout
-const mountCommentLayout = (containerId) => {
+const mountCommentLayout = (containerId, initialPayload = null) => {
     const container = document.getElementById(containerId);
     if (!container) return null;
 
@@ -86,6 +86,9 @@ const mountCommentLayout = (containerId) => {
         userAvatar: userAvatarStr,
         isAuthenticated: isAuthStr,
         isAnonymousEnabled: isAnon,
+        initialComments: initialPayload?.comments || [],
+        initialCurrentPage: Number(initialPayload?.currentPage || 1),
+        initialHasMore: Boolean(initialPayload?.hasMore),
     });
 
 	app.directive('lucide', lucideDirective);
@@ -104,6 +107,17 @@ const mountCommentLayout = (containerId) => {
     return app;
 };
 
+function setModalLoadingCurtain(visible, title = 'Loading comments...') {
+    const curtain = document.getElementById('comments-modal-loading-curtain');
+    const titleEl = document.getElementById('comments-modal-loading-title');
+    if (!curtain) return;
+
+    curtain.classList.toggle('hidden', !visible);
+    if (titleEl) {
+        titleEl.textContent = title;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // Post page — mount immediately as usual
@@ -113,44 +127,129 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal — same mountCommentLayout function, just triggered on click instead of page load
     let modalApp = null;
+    let modalIsLoading = false;
+    let activeModalBleepId = null;
+    let modalRequestSeq = 0;
+    let modalAbortController = null;
 
     window.addEventListener('open-comments', async (e) => {
         const bleepId = String(e.detail.bleepId ?? '').trim();
         if (!bleepId) return;
 
+        // Anti-spam: if the same modal is already open or loading, ignore repeated clicks.
+        if ((modalApp || modalIsLoading) && String(activeModalBleepId) === bleepId) {
+            return;
+        }
+
         const container = document.getElementById('comments-container-layout-modal');
         if (!container) return;
 
+        // Keep current modal content in place and cover with loading curtain.
+        setModalLoadingCurtain(true);
+
+        const requestId = ++modalRequestSeq;
+        modalIsLoading = true;
+        activeModalBleepId = bleepId;
+
+        if (modalAbortController) {
+            modalAbortController.abort();
+        }
+        modalAbortController = new AbortController();
+        const { signal } = modalAbortController;
+
         if (modalApp) {
             modalApp.unmount();
             modalApp = null;
-            container.innerHTML = '';
         }
 
-        // Fetch fresh bleep data before mounting
+        // Fetch bleep + first comments page in parallel so modal renders with real data immediately.
         let bleep = { id: bleepId, user: { id: null, username: null } };
+        let initialComments = [];
+        let initialCurrentPage = 1;
+        let initialHasMore = false;
+
         try {
-            const res = await fetch(`/bleeps/${bleepId}/data`, {
-                headers: { 'Accept': 'application/json' }
+            const [bleepRes, commentsRes] = await Promise.allSettled([
+                fetch(`/bleeps/${bleepId}/data`, {
+                    headers: { 'Accept': 'application/json' },
+                    signal,
+                }),
+                fetch(`/bleeps/comments/${bleepId}/comments?page=1`, {
+                    headers: { 'Accept': 'application/json' },
+                    signal,
+                })
+            ]);
+
+            if (requestId !== modalRequestSeq) {
+                return;
+            }
+
+            if (bleepRes.status === 'fulfilled' && bleepRes.value.ok) {
+                bleep = await bleepRes.value.json();
+            }
+
+            if (commentsRes.status === 'fulfilled' && commentsRes.value.ok) {
+                const commentsJson = await commentsRes.value.json();
+                initialComments = Array.isArray(commentsJson.comments) ? commentsJson.comments : [];
+                initialCurrentPage = Number(commentsJson.current_page || 1);
+                initialHasMore = Boolean(commentsJson.has_more);
+            }
+
+            // Set both attributes before mounting
+            container.setAttribute('data-bleep-id', bleepId);
+            container.setAttribute('data-bleep', JSON.stringify(bleep));
+
+            if (requestId !== modalRequestSeq) {
+                return;
+            }
+
+            modalApp = mountCommentLayout('comments-container-layout-modal', {
+                comments: initialComments,
+                currentPage: initialCurrentPage,
+                hasMore: initialHasMore,
             });
-            if (res.ok) bleep = await res.json();
-        } catch {
-            console.warn('Bleep fetch failed, using fallback');
+            setModalLoadingCurtain(false);
+        } catch (error) {
+            if (error?.name === 'AbortError') {
+                return;
+            }
+            console.warn('Comments modal prefetch failed, using fallback payload.');
+
+            container.setAttribute('data-bleep-id', bleepId);
+            container.setAttribute('data-bleep', JSON.stringify(bleep));
+
+            if (requestId !== modalRequestSeq) {
+                return;
+            }
+
+            modalApp = mountCommentLayout('comments-container-layout-modal', {
+                comments: initialComments,
+                currentPage: initialCurrentPage,
+                hasMore: initialHasMore,
+            });
+            setModalLoadingCurtain(false);
+        } finally {
+            if (requestId === modalRequestSeq) {
+                modalIsLoading = false;
+                modalAbortController = null;
+            }
         }
-
-        // Set both attributes before mounting
-        container.setAttribute('data-bleep-id', bleepId);
-        container.setAttribute('data-bleep', JSON.stringify(bleep));
-
-        modalApp = mountCommentLayout('comments-container-layout-modal');
     });
 
     window.addEventListener('close-comments', () => {
+        modalRequestSeq += 1;
+        modalIsLoading = false;
+        activeModalBleepId = null;
+        if (modalAbortController) {
+            modalAbortController.abort();
+            modalAbortController = null;
+        }
+
         if (modalApp) {
             modalApp.unmount();
             modalApp = null;
-            const container = document.getElementById('comments-container-layout-modal');
-            if (container) container.innerHTML = '';
         }
+
+        setModalLoadingCurtain(false);
     });
 });
