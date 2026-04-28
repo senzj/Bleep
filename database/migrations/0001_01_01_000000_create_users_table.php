@@ -24,6 +24,9 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->boolean('is_verified')->default(false);
             $table->boolean('is_banned')->default(false);
+            $table->unsignedTinyInteger('report_strikes')->default(0);
+            $table->timestamp('last_strike_at')->nullable();
+            $table->unsignedTinyInteger('suspension_count')->default(0);
             $table->timestamp('banned_until')->nullable();
             $table->text('ban_reason')->nullable();
             $table->rememberToken();

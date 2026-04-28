@@ -84,6 +84,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // CLICK HANDLERS FOR ALL BUTTONS
     document.addEventListener('click', async e => {
+        const toggleBtn = e.target.closest('[data-toggle-actions]');
+        if (toggleBtn) {
+            const reportId = toggleBtn.getAttribute('data-toggle-actions');
+            const panel = document.querySelector(`[data-actions-panel-mobile="${reportId}"]`);
+            if (panel) {
+                panel.classList.toggle('hidden');
+                panel.classList.toggle('flex');
+            }
+            return;
+        }
+
         const markReviewedBtn = e.target.closest('.mark-reviewed-btn');
         const deleteBtn = e.target.closest('.delete-bleep-btn');
         const banOpBtn = e.target.closest('.ban-op-btn');
@@ -189,6 +200,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch {
                 toast('error','Network error.');
+            }
+        }
+
+        // Delete Comment
+        const deleteCommentBtn = e.target.closest('.delete-comment-btn');
+        if (deleteCommentBtn) {
+            e.preventDefault();
+            const reportId  = deleteCommentBtn.dataset.reportId;
+            const commentId = deleteCommentBtn.dataset.commentId;
+            if (!confirm('Delete this comment?')) return;
+            const notes = prompt('Optional notes:');
+
+            try {
+                const res = await fetch(`/admin/reports/${reportId}/delete-comment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify({ comment_id: commentId, notes }),
+                });
+                if (res.ok) {
+                    toast('success', 'Comment deleted.');
+                    setTimeout(() => location.reload(), 600);
+                } else {
+                    toast('error', 'Failed to delete comment.');
+                }
+            } catch {
+                toast('error', 'Network error.');
             }
         }
     });

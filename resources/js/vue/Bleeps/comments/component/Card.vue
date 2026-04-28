@@ -496,6 +496,14 @@ onBeforeUnmount(() => {
     document.removeEventListener('click', closeDropdown);
 });
 
+// report modal
+const reportComment = () => {
+    const preview = (props.comment.message || '').slice(0, 60);
+    window.dispatchEvent(new CustomEvent('open-comment-report', {
+        detail: { commentId: props.comment.id, preview }
+    }));
+};
+
 </script>
 
 <template>
@@ -604,8 +612,11 @@ onBeforeUnmount(() => {
                                     <span>Delete</span>
                                 </button>
                             </li>
-                            <li v-if="!isOwner">
-                                <button @click="dropdownOpen = false" class="flex items-center gap-1.5 whitespace-nowrap text-warning">
+                            <li v-if="!isOwner && authenticatedUserId">
+                                <button
+                                    @click="dropdownOpen = false; reportComment()"
+                                    class="flex items-center gap-1.5 whitespace-nowrap text-warning"
+                                >
                                     <LucideIcon name="flag" :size="iconSize" />
                                     <span>Report</span>
                                 </button>

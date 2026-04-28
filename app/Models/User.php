@@ -30,9 +30,16 @@ class User extends Authenticatable
         'timezone',
         'is_verified',
         'is_banned',
-        'banned_until',
         'ban_reason',
         'profile_picture',
+        'last_strike_at',
+    ];
+
+    protected $casts = [
+        'last_strike_at' => 'datetime',
+        'banned_until' => 'datetime',
+        'is_verified' => 'boolean',
+        'is_banned' => 'boolean',
     ];
 
     /**

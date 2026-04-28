@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Reports extends Model
 {
     protected $fillable = [
-        'bleep_id',
+        'reportable_id',
+        'reportable_type',
         'reporter_id',
         'reason',
         'category',
@@ -23,9 +25,9 @@ class Reports extends Model
         'reviewed_at' => 'datetime',
     ];
 
-    public function bleep(): BelongsTo
+    public function reportable(): MorphTo
     {
-        return $this->belongsTo(Bleep::class);
+        return $this->morphTo();
     }
 
     public function reporter(): BelongsTo

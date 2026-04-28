@@ -72,6 +72,12 @@ class Comments extends Model
         return $this->hasMany(Commentslikes::class, 'comments_id');
     }
 
+    // reports
+    public function reports()
+    {
+        return $this->morphMany(Reports::class, 'reportable');
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Helpers

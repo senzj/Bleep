@@ -15,4 +15,5 @@ export {
     Mic,
     Users,
     Expand,
+    Link,
 } from 'lucide';

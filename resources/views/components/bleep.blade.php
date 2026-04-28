@@ -438,7 +438,6 @@
             'resources/js/bleep/posts/share.js',
             'resources/js/bleep/users/follow.js',
             'resources/js/bleep/modals/mediamodal.js',
-            'resources/js/bleep/modals/posts/reports.js',
         ])
         <script>
             document.addEventListener('DOMContentLoaded', () => {

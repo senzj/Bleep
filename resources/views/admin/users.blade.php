@@ -74,91 +74,100 @@
 
     </div>
 
-
     {{-- Users grid --}}
     <div class="bg-base-100 border border-base-300 rounded-xl overflow-x-auto md:overflow-hidden">
 
         {{-- Header (desktop only) --}}
-        <div class="hidden md:grid gap-4 px-5 py-3 bg-base-200/70 text-[11px] uppercase tracking-wide font-semibold user-table-row">
-            <div class="text-center">User</div>
-            <div class="text-center">Email</div>
+        <div class="hidden md:grid grid-cols-[60px_1fr_1fr_100px_90px_1fr_100px] gap-4 px-5 py-3 bg-base-200/70 text-xs uppercase tracking-wide font-semibold">
+            <div class="text-center">ID</div>
+            <div>User</div>
+            <div>Email</div>
             <div class="text-center">Role</div>
             <div class="text-center">Status</div>
-            <div class="text-center">Remarks</div>
+            <div>Remarks</div>
             <div class="text-center">Actions</div>
         </div>
 
         @forelse($users as $u)
-            <div class="grid grid-cols-1 gap-2 md:gap-4 px-5 py-4 border-t border-base-300 hover:bg-base-200/40 transition user-table-row">
+            <div class="grid grid-cols-1 md:grid-cols-[60px_1fr_1fr_100px_90px_1fr_100px] gap-2 md:gap-4 px-5 py-4 border-t border-base-300 hover:bg-base-200/40 transition items-center">
+
+                {{-- ID --}}
+                <div class="flex items-center gap-2 md:justify-center">
+                    <span class="md:hidden text-[11px] uppercase font-semibold text-base-content/50 w-20 shrink-0">ID</span>
+                    <span class="text-sm text-base-content/60">{{ $u->id }}</span>
+                </div>
 
                 {{-- USER --}}
-                <div class="flex flex-col md:flex-col justify-start items-start mt-1 md:mt-0">
-                    <span class="md:hidden text-[11px] uppercase font-semibold mb-2 text-base-content/70">User</span>
-                    <div class="flex items-center gap-3">
-                        <img src="{{ $u->profile_picture_url }}" alt="Avatar" class="w-10 h-10 rounded-full object-cover shrink-0"/>
+                <div class="flex items-center gap-2">
+                    <span class="md:hidden text-[11px] uppercase font-semibold text-base-content/50 w-20 shrink-0">User</span>
+                    <div class="flex items-center gap-3 min-w-0">
+                        <img src="{{ $u->profile_picture_url }}" alt="Avatar"
+                            class="w-9 h-9 rounded-full object-cover shrink-0"/>
                         <div class="min-w-0 leading-tight">
                             <div class="font-semibold text-sm truncate flex items-center gap-1">
                                 {{ $u->dname }}
                                 @if($u->is_verified)
-                                    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+                                    <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-500 shrink-0"></i>
                                 @endif
                             </div>
-                            <div class="text-xs opacity-70 truncate">{{ '@'.$u->username }}</div>
+                            <div class="text-xs text-base-content/50 truncate">{{ '@'.$u->username }}</div>
                         </div>
                     </div>
                 </div>
 
                 {{-- EMAIL --}}
-                <div class="flex flex-col md:flex-col md:justify-center md:items-center mt-1 md:mt-0">
-                    <span class="md:hidden text-[11px] uppercase font-semibold mb-1 text-base-content/70">Email</span>
-                    <div class="text-sm truncate md:text-center">{{ $u->email }}</div>
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="md:hidden text-[11px] uppercase font-semibold text-base-content/50 w-20 shrink-0">Email</span>
+                    <span class="text-sm truncate text-base-content/70">{{ $u->email }}</span>
                 </div>
 
                 {{-- ROLE --}}
-                <div class="flex flex-col md:flex-col md:justify-center md:items-center mt-1 md:mt-0">
-                    <span class="md:hidden text-[11px] uppercase font-semibold mb-1 text-base-content/70">Role</span>
+                <div class="flex items-center gap-2 md:justify-center">
+                    <span class="md:hidden text-[11px] uppercase font-semibold text-base-content/50 w-20 shrink-0">Role</span>
                     @php
                         [$roleText, $roleClasses] = match($u->role) {
-                            'admin' => ['ADMIN', 'px-1 py-0.5 text-xs font-extrabold rounded bg-blue-500/20 text-blue-500 border border-blue-600/20'],
-                            'moderator' => ['MODERATOR', 'px-1 py-0.5 text-xs font-extrabold rounded bg-violet-500/20 text-violet-500 border border-violet-600/20'],
-                            default => ['USER', 'px-1 py-0.5 text-xs font-extrabold rounded bg-slate-500/20 text-slate-500 border border-slate-600/20'],
+                            'admin'     => ['Admin',     'bg-blue-500/10 text-blue-600 border-blue-500/30'],
+                            'moderator' => ['Moderator', 'bg-violet-500/10 text-violet-600 border-violet-500/30'],
+                            default     => ['User',      'bg-base-300/50 text-base-content/60 border-base-300'],
                         };
                     @endphp
-                    <span class="{{ $roleClasses }} w-fit">{{ $roleText }}</span>
+                    <span class="badge badge-sm border {{ $roleClasses }} font-semibold">{{ $roleText }}</span>
                 </div>
 
                 {{-- STATUS --}}
-                <div class="flex flex-col md:flex-col md:justify-center md:items-center mt-1 md:mt-0">
-                    <span class="md:hidden text-[11px] uppercase font-semibold mb-1 text-base-content/70">Status</span>
+                <div class="flex items-center gap-2 md:justify-center">
+                    <span class="md:hidden text-[11px] uppercase font-semibold text-base-content/50 w-20 shrink-0">Status</span>
                     @if($u->is_banned)
-                        <span class="px-1 py-0.5 text-xs font-extrabold rounded bg-rose-500/20 text-rose-500 border border-rose-600/20 w-fit">BANNED</span>
+                        <span class="badge badge-sm badge-error badge-outline font-semibold">Banned</span>
                     @else
-                        <span class="px-1 py-0.5 text-xs font-extrabold rounded bg-emerald-500/20 text-emerald-500 border border-emerald-600/20 w-fit">ACTIVE</span>
+                        <span class="badge badge-sm badge-success badge-outline font-semibold">Active</span>
                     @endif
                 </div>
 
                 {{-- REMARKS --}}
-                <div class="mt-1 md:mt-0">
-                    <span class="md:hidden text-[11px] uppercase font-semibold mb-2 text-base-content/70 block">Remarks</span>
+                <div class="flex items-start gap-2 min-w-0">
+                    <span class="md:hidden text-[11px] uppercase font-semibold text-base-content/50 w-20 shrink-0 mt-0.5">Remarks</span>
                     @if($u->is_banned)
-                        @if($u->ban_reason)
-                            <div class="text-sm font-medium line-clamp-2 text-base-400">{{ $u->ban_reason }}</div>
-                        @endif
-                        <div class="text-xs text-base-content/60 mt-1">
-                            Until:
-                            <span data-unban data-utc="{{ optional($u->banned_until)->toIso8601String() }}">
-                                {{ $u->banned_until ? $u->banned_until->format('M d, Y | H:i:s') : '—' }}
-                            </span>
+                        <div class="min-w-0">
+                            @if($u->ban_reason)
+                                <p class="text-sm line-clamp-2 text-base-content/80">{{ $u->ban_reason }}</p>
+                            @endif
+                            <p class="text-xs text-base-content/50 mt-0.5">
+                                Until:
+                                <span data-unban data-utc="{{ optional($u->banned_until)->toIso8601String() }}">
+                                    {{ $u->banned_until ? $u->banned_until->format('M d, Y · H:i') : 'Permanent' }}
+                                </span>
+                            </p>
                         </div>
                     @else
-                        <div class="text-sm opacity-60">-No remarks-</div>
+                        <span class="text-sm text-base-content/40 italic">—</span>
                     @endif
                 </div>
 
                 {{-- ACTIONS --}}
-                <div class="flex flex-col md:flex-col md:justify-center md:items-center mt-1 md:mt-0">
-                    <span class="md:hidden text-[11px] uppercase font-semibold text-base-content/70 mb-1">Actions</span>
-                    <button class="btn btn-sm btn-neutral edit-user-btn w-full md:w-auto"
+                <div class="flex items-center gap-2 md:justify-center">
+                    <span class="md:hidden text-[11px] uppercase font-semibold text-base-content/50 w-20 shrink-0">Actions</span>
+                    <button class="btn btn-sm btn-outline w-full md:w-auto edit-user-btn"
                         data-user-id="{{ $u->id }}"
                         data-username="{{ e($u->username) }}"
                         data-email="{{ e($u->email) }}"
@@ -167,13 +176,17 @@
                         data-is-banned="{{ $u->is_banned ? '1' : '0' }}"
                         data-ban-reason="{{ e($u->ban_reason) }}"
                         data-banned-until="{{ optional($u->banned_until)->toIso8601String() }}">
+                        <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                         Edit
                     </button>
                 </div>
 
             </div>
         @empty
-            <div class="px-5 py-6 text-sm opacity-70">No users found.</div>
+            <div class="px-5 py-10 text-center text-sm text-base-content/50">
+                <i data-lucide="users" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+                No users found.
+            </div>
         @endforelse
 
     </div>

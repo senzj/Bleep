@@ -33,40 +33,34 @@ class Bleep extends Model
     ];
 
     /**
-     * Relation to User model
+     * Relationships
      */
+
+    // Relation to User model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Relation to Likes model
-     */
+    // Relation to Likes model
     public function likes(): HasMany
     {
         return $this->hasMany(Likes::class);
     }
 
-    /**
-     * Relation to Comments model
-     */
+    // Relation to Comments model
     public function comments(): HasMany
     {
         return $this->hasMany(Comments::class);
     }
 
-    /**
-     * Relation to Shares model
-     */
+    // Relation to Shares model
     public function shares(): HasMany
     {
         return $this->hasMany(Share::class);
     }
 
-    /**
-     * Relation to Reposts model
-     */
+    // Relation to Reposts model
     public function reposts(): HasMany
     {
         return $this->hasMany(Repost::class);
@@ -83,6 +77,16 @@ class Bleep extends Model
     {
         return $this->hasMany(BleepViews::class);
     }
+
+    // reports relation
+    public function reports()
+    {
+        return $this->morphMany(Reports::class, 'reportable');
+    }
+
+    /**
+     * Helpers
+     */
 
     // Helper to get view count (with caching)
     public function viewCount(): int

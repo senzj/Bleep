@@ -281,6 +281,9 @@ Route::middleware('auth')->group((function () {
         Route::post('/admin/reports/{report}/dismiss', [ReportsController::class, 'dismiss'])
             ->name('admin.reports.dismiss');
 
+        Route::post('/admin/reports/{report}/delete-comment', [ReportsController::class, 'deleteComment'])
+            ->name('admin.reports.deleteComment');
+
 
         // Users Management
         Route::get('/admin/users', [AdminController::class, 'users'])

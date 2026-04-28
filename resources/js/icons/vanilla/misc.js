@@ -16,4 +16,9 @@ export {
     X,
     Ban,
     Activity,
+    Zap,
+    ShieldAlert,
+    Scale,
+    MoreHorizontal,
+    XCircle,
 } from 'lucide';

@@ -63,6 +63,9 @@
 
 </div>
 
+{{-- report modal for comments --}}
+<x-modals.posts.report />
+
 @push('scripts')
     @vite(['resources/js/bleep/comments/commentSheet.js'])
 @endpush

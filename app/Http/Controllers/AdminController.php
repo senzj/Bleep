@@ -24,6 +24,9 @@ use Illuminate\Support\Facades\Cache;
 
 class AdminController extends Controller
 {
+    /**
+     * Dashboard page
+     */
     public function index(Request $request)
     {
         $totalUsers = User::count();
@@ -388,6 +391,9 @@ class AdminController extends Controller
         }
     }
 
+    /**
+     * Users management page
+     */
     public function users(Request $request)
     {
         // Basic stats
@@ -459,6 +465,9 @@ class AdminController extends Controller
         return response()->json(['message' => 'User updated.']);
     }
 
+    /**
+     * Devices & Sessions management page
+     */
     public function devices(Request $request)
     {
         $search = $request->get('q', null);
@@ -637,7 +646,6 @@ class AdminController extends Controller
             'dateTo' => $request->get('date_to'),
         ]);
     }
-
 
     /**
      * Visits page
