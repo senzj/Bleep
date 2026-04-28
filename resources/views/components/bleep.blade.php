@@ -363,9 +363,9 @@
         {{-- Engagement Footer --}}
         <div>
             @php
-                $cols = 2; // Likes + Share (always visible)
+                $cols = 2; // Likes + Share always
                 $cols += $showCommentsButton ? 1 : 0;
-                $cols += Auth::check() ? 1 : 0;
+                $cols += Auth::check() ? 1 : 0; // Repost only for auth users
                 $gridClass = match($cols) {
                     2 => 'grid-cols-2',
                     3 => 'grid-cols-3',
@@ -392,6 +392,9 @@
     {{-- Report Modal --}}
     <x-modals.posts.report />
 
+    {{-- Share Bleep Modal --}}
+    <x-modals.posts.share />
+
     @push('scripts')
         @vite([
             'resources/js/bleep/posts/like.js',
@@ -406,6 +409,9 @@
             document.addEventListener('DOMContentLoaded', () => {
                 let activeObserver = null;
                 let selectedCard = null;
+
+                // lucide icon
+                if (window.lucide) window.lucide.createIcons();
 
                 // Listen for comment open
                 window.addEventListener('open-comments', (e) => {

@@ -1,10 +1,4 @@
-document.addEventListener('click', (e) => {
-    const trigger = e.target.closest('.share-btn');
-    if (!trigger) return;
-
-    const bleepId = trigger.dataset.bleepId;
-    if (!bleepId) return;
-
+const openShareModal = (bleepId) => {
     const modal = document.getElementById('share-modal');
     const overlay = document.getElementById('share-modal-overlay');
     const input = document.getElementById('share-url-input');
@@ -177,10 +171,17 @@ document.addEventListener('click', (e) => {
     urlDisplay.setAttribute('title', fallbackUrl);
 
     // Show modal
+    modal.removeAttribute('x-cloak');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 
     requestAnimationFrame(() => {
         linkCard.focus({ preventScroll: true });
     });
+};
+
+window.addEventListener('open-share-modal', (event) => {
+    const bleepId = String(event.detail?.bleepId || '');
+    if (!bleepId) return;
+    openShareModal(bleepId);
 });

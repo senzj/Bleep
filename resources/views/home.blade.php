@@ -292,7 +292,4 @@
 
     {{-- Comments Bleep Modal --}}
     <x-modals.posts.comments />
-
-    {{-- Share Bleep Modal --}}
-    <x-modals.posts.share />
 @endonce

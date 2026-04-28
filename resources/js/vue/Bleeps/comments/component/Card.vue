@@ -197,6 +197,11 @@ const isSubmittingReply = ref(false);
 const replyUploadProgress = ref(0);
 
 const handleReply = () => {
+    if (!props.authenticatedUserId) {
+        window.location.href = '/login';
+        return;
+    }
+
     showReplyForm.value = !showReplyForm.value;
     if (!showReplyForm.value) {
         replyMessage.value = '';
@@ -459,6 +464,10 @@ const handleLike = async () => {
                 'X-Requested-With': 'XMLHttpRequest',
             },
         });
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
         if (!response.ok) throw new Error('Failed to like comment');
         const data = await response.json();
         props.comment.liked = data.liked;

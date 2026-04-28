@@ -1,4 +1,4 @@
-<div id="share-modal" class="hidden fixed inset-0 z-50 items-center justify-center">
+<div id="share-modal" x-cloak class="hidden fixed inset-0 z-50 items-center justify-center">
 
     <div id="share-modal-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
 
