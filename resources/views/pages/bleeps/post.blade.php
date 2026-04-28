@@ -38,7 +38,9 @@
 <x-layout>
 
     @php
+
         $viewerSeed = Auth::check() ? Auth::id() : request()->session()->getId();
+
         $displayName = $bleep->is_anonymous
             ? $bleep->anonymousDisplayNameFor($viewerSeed)
             : ($bleep->user->dname ?? 'Unknown');
@@ -53,9 +55,20 @@
                 $UserAvatarUrl = asset('images/avatar/default.jpg');
             }
         }
+
+        $isAnonymous = (bool) $bleep->is_anonymous;
+
+        if ($isAnonymous) {
+            $viewerSeed = auth()->check() ? auth()->id() : request()->session()->getId();
+            $displayName = $bleep->anonymousDisplayNameFor($viewerSeed);
+            $username = '@anonymous';
+        } else {
+            $displayName = $bleep->user->dname ?? 'Unknown';
+            $username = "@" . ($bleep->user->username ?? 'Unknown');
+        }
     @endphp
 
-    <x-slot:title>{{ $usr->username }}'s Bleep | {{ $bleep->message ?? '' }}</x-slot:title>
+    <x-slot:title>{{ $displayName ?? 'Unknown' }}'s Bleep | {{ $bleep->message ?? '' }}</x-slot:title>
 
     {{-- Bleep Posts Page Content --}}
     <div class="max-w-4xl mx-auto">
