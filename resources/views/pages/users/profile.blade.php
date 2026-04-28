@@ -7,6 +7,7 @@
         'resources/js/bleep/users/profile-lazyload.js',
         'resources/js/bleep/users/profile.js',
         'resources/js/bleep/users/follow.js',
+        'resources/js/social/follow-relationships.js',
         'resources/js/bleep/modals/mediamodal.js',
         'resources/js/social/blockuser.js'
         ])
@@ -42,6 +43,8 @@
                 {{-- User Info --}}
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
+
+                        {{-- User Info --}}
                         <div>
                             {{-- Name Row --}}
                             <div class="flex items-center gap-1.5 flex-wrap {{ $canViewContent ? '' : 'mt-2' }}">
@@ -132,14 +135,14 @@
                                     <div class="text-xl font-bold">{{ $bleeps->total() }}</div>
                                     <div class="text-xs text-base-content/60">Bleeps</div>
                                 </div>
-                                <div class="text-center cursor-pointer hover:text-primary">
+                                <button type="button" class="text-center cursor-pointer hover:text-primary bg-transparent p-0 border-0" data-relationship-trigger="followers" data-username="{{ $user->username }}" data-display-name="{{ $user->dname ?? $user->username }}">
                                     <div class="text-xl font-bold">{{ $followersCount }}</div>
                                     <div class="text-xs text-base-content/60">Followers</div>
-                                </div>
-                                <div class="text-center cursor-pointer hover:text-primary">
+                                </button>
+                                <button type="button" class="text-center cursor-pointer hover:text-primary bg-transparent p-0 border-0" data-relationship-trigger="following" data-username="{{ $user->username }}" data-display-name="{{ $user->dname ?? $user->username }}">
                                     <div class="text-xl font-bold">{{ $followingCount }}</div>
                                     <div class="text-xs text-base-content/60">Following</div>
-                                </div>
+                                </button>
                             </div>
 
                             {{-- Right: Account info --}}
@@ -301,6 +304,7 @@
     <x-modals.posts.comments />
     <x-modals.posts.edit />
     <x-modals.posts.share />
+    <x-modals.profile.follow-relationships />
 
     {{-- Block/Unblock Confirmation Modal --}}
     <input type="checkbox" id="block_confirm_modal_toggle" class="modal-toggle" />

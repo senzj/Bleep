@@ -27,7 +27,7 @@ const triggerIconRender = () => {
     }
 };
 
-onMounted(() => {
+onMounted(async () => {
     const root = document.getElementById('chat-app');
     const currentUserId = Number(root?.dataset.userId || 0);
     const currentUsername = root?.dataset.username || 'You';
@@ -35,12 +35,56 @@ onMounted(() => {
     const receiveSound = root?.dataset.receiveSound || null;
 
     if (currentUserId) {
-        store.init({ currentUserId, currentUsername, sendSound, receiveSound });
+        await store.init({ currentUserId, currentUsername, sendSound, receiveSound });
     }
+
+    // Handle URL-based conversation selection
+    await handleUrlNavigation();
+
+    // Listen for browser back/forward navigation
+    window.addEventListener('popstate', handleUrlNavigation);
 
     // Render icons after initial mount
     triggerIconRender();
 });
+
+// Extract conversation ID from URL path or user_id from query parameter
+const handleUrlNavigation = async () => {
+    const path = window.location.pathname;
+    const searchParams = new URLSearchParams(window.location.search);
+
+    // Check for direct conversation ID in URL path (/chat/123)
+    const pathMatch = path.match(/\/chat\/(\d+)$/);
+    if (pathMatch && pathMatch[1]) {
+        const conversationId = Number(pathMatch[1]);
+        await store.selectConversation(conversationId);
+        mobileView.value = 'chat';
+        return;
+    }
+
+    // Check for user_id query parameter (/chat?user_id=123)
+    const userId = searchParams.get('user_id');
+    if (userId) {
+        try {
+            await store.createDirectConversation(Number(userId));
+            mobileView.value = 'chat';
+            // Clean up the query parameter from URL
+            window.history.replaceState({}, '', '/chat');
+        } catch (error) {
+            console.error('Failed to create conversation:', error);
+        }
+        return;
+    }
+
+    // Default: restore from localStorage or select first conversation
+    const storedId = Number(localStorage.getItem('chat_active_conversation_id') || 0);
+    if (storedId && store.state.conversations.length > 0) {
+        const conversationExists = store.state.conversations.some(c => Number(c.id) === storedId);
+        if (conversationExists) {
+            await store.selectConversation(storedId);
+        }
+    }
+};
 </script>
 
 <template>

@@ -60,10 +60,10 @@
         @endif
 
         @if($showMessage && $isFriend)
-            <a href="#"
+            <a href="{{ route('messages') }}?user_id={{ $user->id }}"
                 class="btn btn-sm btn-outline gap-2 rounded-lg">
                 <i data-lucide="message-square" class="w-4 h-4"></i>
-                Message
+                Chat
             </a>
         @endif
     @endif

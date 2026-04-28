@@ -104,6 +104,8 @@ Route::get('/bleeper/{username}', [ProfileController::class, 'index'])
 // Lazy fragments (AJAX)
 Route::get('/users/{username}/bleeps', [ProfileController::class, 'bleeps'])->name('user.bleeps');
 Route::get('/users/{username}/reposts', [ProfileController::class, 'reposts'])->name('user.reposts');
+Route::get('/bleeper/{username}/relationships/{type}', [SocialController::class, 'relationships'])
+    ->name('user.relationships');
 
 
 // Banned User Page (must be outside auth group)
@@ -122,6 +124,11 @@ Route::middleware('auth')->group((function () {
     Route::get('/chat', function () {
         return view('chat');
     })->name('messages');
+
+    // Handle specific conversation routes (e.g., /chat/2)
+    Route::get('/chat/{conversationId}', function () {
+        return view('chat');
+    })->where('conversationId', '[0-9]+')->name('chat.conversation');
 
     Route::get('/chat/conversations', [ConversationController::class, 'index'])
         ->name('chat.conversations.index');

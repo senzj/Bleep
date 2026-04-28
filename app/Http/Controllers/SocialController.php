@@ -20,7 +20,11 @@ class SocialController extends Controller
 
         $user = Auth::user();
         $graph = $this->getRelationshipGraph($user);
-        $suggestedUsers = $this->getSuggestedUsers($user, $graph, 10);
+        $suggestedUsers = $this->decorateUsers(
+            $this->getSuggestedUsers($user, $graph, 10),
+            $graph,
+            $user
+        );
 
         return view('pages.social.people', [
             'suggestedUsers' => $suggestedUsers,
@@ -33,7 +37,12 @@ class SocialController extends Controller
         $limit = 20;
 
         if (! Auth::check()) {
-            return response()->json([]);
+            return response()->json([
+                'html' => view('components.card.users', [
+                    'users' => collect(),
+                    'emptyMessage' => 'No suggestions available at the moment.',
+                ])->render(),
+            ]);
         }
 
         $user = Auth::user();
@@ -42,10 +51,19 @@ class SocialController extends Controller
         $graph = $this->getRelationshipGraph($user);
 
         if ($query === '') {
-            $suggestedUsers = $this->getSuggestedUsers($user, $graph, $limit);
+            $suggestedUsers = $this->decorateUsers(
+                $this->getSuggestedUsers($user, $graph, $limit),
+                $graph,
+                $user
+            );
 
             return response()->json(
-                $this->serializeUsers($suggestedUsers, $graph)
+                [
+                    'html' => view('components.card.users', [
+                        'users' => $suggestedUsers,
+                        'emptyMessage' => 'No suggestions available at the moment.',
+                    ])->render(),
+                ]
             );
         }
 
@@ -73,9 +91,64 @@ class SocialController extends Controller
             })
             ->take($limit);
 
+        $sorted = $this->decorateUsers($sorted, $graph, $user);
+
         return response()->json(
-            $this->serializeUsers($sorted, $graph)
+            [
+                'html' => view('components.card.users', [
+                    'users' => $sorted,
+                    'emptyMessage' => 'No users found. Try a different search term.',
+                ])->render(),
+            ]
         );
+    }
+
+    public function relationships(Request $request, string $username, string $type)
+    {
+        $profileUser = User::where('username', $username)->with('preferences')->firstOrFail();
+        $authUser = Auth::user();
+
+        $isOwnProfile = Auth::check() && Auth::id() === $profileUser->id;
+        $isFollowing = Auth::check() ? $authUser->isFollowing($profileUser) : false;
+        $isPrivate = !$isOwnProfile && ($profileUser->preferences?->private_profile ?? false);
+        $hasBlockingRelationship = Auth::check() && $authUser->isBlockedOrHasBlocked($profileUser);
+
+        abort_if($hasBlockingRelationship || ($isPrivate && !$isFollowing && !$isOwnProfile), 403);
+
+        if (! in_array($type, ['followers', 'following'], true)) {
+            abort(404);
+        }
+
+        $query = trim($request->get('q', ''));
+        $relationshipQuery = $type === 'followers'
+            ? $profileUser->followers()
+            : $profileUser->following();
+
+        $users = $relationshipQuery
+            ->with('preferences')
+            ->when($query !== '', function ($builder) use ($query) {
+                $builder->where(function ($searchQuery) use ($query) {
+                    $searchQuery->where('username', 'like', "%{$query}%")
+                        ->orWhere('dname', 'like', "%{$query}%");
+                });
+            })
+            ->orderByDesc('followings.created_at')
+            ->get();
+
+        $title = $type === 'followers' ? 'Followers' : 'Following';
+        $emptyMessage = $query === ''
+            ? "No {$type} found yet."
+            : "No {$type} match your search.";
+
+        return response()->json([
+            'title' => $title,
+            'count' => $users->count(),
+            'html' => view('components.card.users', [
+                'users' => $users,
+                'emptyMessage' => $emptyMessage,
+                'showMessage' => true,
+            ])->render(),
+        ]);
     }
 
     protected function getSuggestedUsers(User $user, array $graph, int $limit): Collection
@@ -167,10 +240,8 @@ class SocialController extends Controller
         ];
     }
 
-    protected function serializeUsers(Collection $users, array $graph): Collection
+    protected function decorateUsers(Collection $users, array $graph, User $authUser): Collection
     {
-        $authUser = Auth::user();
-
         return $users->map(function ($candidate) use ($graph, $authUser) {
             $isDirectMutual = in_array($candidate->id, $graph['direct'], true);
             $isSecondDegree = in_array($candidate->id, $graph['second'], true);
@@ -187,19 +258,15 @@ class SocialController extends Controller
                 $mutualType = 'friend-of-friend-of-friend';
             }
 
-            return [
-                'id' => $candidate->id,
-                'username' => $candidate->username,
-                'dname' => $candidate->dname,
-                'profile_picture_url' => $candidate->profile_picture_url ?? '/images/default-avatar.png',
-                'is_mutual' => $isDirectMutual || $isSecondDegree || $isThirdDegree,
-                'mutual_type' => $mutualType,
-                'is_following' => $isFollowing,
-                'is_private' => (bool) ($candidate->preferences?->private_profile ?? false),
-                'has_pending_request' => $authUser ? Auth::user()->hasSentRequestTo($candidate) : false,
-                'is_friend' => $isFriend,
-                'followers_count' => $candidate->followers_count ?? 0,
-            ];
+            $candidate->is_mutual = $isDirectMutual || $isSecondDegree || $isThirdDegree;
+            $candidate->mutual_type = $mutualType;
+            $candidate->is_following = $isFollowing;
+            $candidate->is_private = (bool) ($candidate->preferences?->private_profile ?? false);
+            $candidate->has_pending_request = $authUser ? $authUser->hasSentRequestTo($candidate) : false;
+            $candidate->is_friend = $isFriend;
+            $candidate->followers_count = $candidate->followers_count ?? 0;
+
+            return $candidate;
         })->values();
     }
 }

@@ -416,6 +416,14 @@ const markConversationRead = async (conversationId) => {
 const selectConversation = async (conversationId) => {
     state.activeConversationId = Number(conversationId);
     localStorage.setItem(ACTIVE_CONV_KEY, String(conversationId));
+
+    // Update browser URL to reflect the active conversation
+    window.history.pushState(
+        { conversationId: Number(conversationId) },
+        '',
+        `/chat/${conversationId}`
+    );
+
     ensureConversationArrays(conversationId);
     const meta = state.messageMetaByConversation[conversationId];
 

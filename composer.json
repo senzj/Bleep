@@ -54,7 +54,7 @@
         ],
         "prod": [
             "npm run build",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74,#86efac\" \"php artisan serve --host=0.0.0.0 --port=8000\" \"php artisan queue:work --tries=1 --env=production\" \"php artisan reverb:start --env=production\" --names='server,queue,reverb'"
+            "npx concurrently -c \"#67cafd,#93c5fd,#c4b5fd,#fdba74,#86efac\" \"npm run build\" \"php artisan serve --host=0.0.0.0 --port=8000\" \"php artisan queue:work --tries=1 --env=production\" \"php artisan reverb:start --env=production\" --names='server,queue,reverb'"
         ],
         "test": [
             "@php artisan config:clear --ansi",
