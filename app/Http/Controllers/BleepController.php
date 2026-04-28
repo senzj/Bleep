@@ -300,10 +300,10 @@ class BleepController extends Controller
 
         dispatch(fn() => $this->recordBleepsViews($bleeps))->afterResponse();
 
-        Log::info('lazyLoad timing', [
-            'fetchBleeps' => round(($t2 - $t1) * 1000) . 'ms',
-            'renderView'  => round(($t3 - $t2) * 1000) . 'ms',
-        ]);
+        // Log::info('lazyLoad timing', [
+        //     'fetchBleeps' => round(($t2 - $t1) * 1000) . 'ms',
+        //     'renderView'  => round(($t3 - $t2) * 1000) . 'ms',
+        // ]);
 
         return response()->json([
             'success'      => true,
