@@ -1,7 +1,8 @@
-{{-- resources/views/components/modals/posts/edit.blade.php --}}
-@push('scripts')
-    @vite('resources/js/bleep/modals/posts/edit.js')
-@endpush
+@once
+    @push('scripts')
+        @vite('resources/js/bleep/modals/posts/edit.js')
+    @endpush
+@endonce
 
 <div id="edit-bleep-modal" class="hidden fixed inset-0 z-50 items-center justify-center">
     <div id="edit-bleep-modal-overlay" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>

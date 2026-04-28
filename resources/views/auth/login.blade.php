@@ -26,8 +26,6 @@
     </script>
 @endpush
 
-{{-- @vite(['resources/js/auth/login.js']) --}}
-
 <x-layout>
     <x-slot:title>
         Sign In

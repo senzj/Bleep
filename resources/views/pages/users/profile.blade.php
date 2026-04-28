@@ -1,21 +1,23 @@
-@push('scripts')
-    <script>
-        // Pass backend config to frontend (keep anonymity feature hidden if disabled)
-        window.isAnonymousEnabled = {{ env('ANONYMITY', true) ? 'true' : 'false' }};
-    </script>
-    @vite([
-        'resources/js/bleep/users/profile-lazyload.js',
-        'resources/js/bleep/users/profile.js',
-        'resources/js/bleep/users/follow.js',
-        'resources/js/social/follow-relationships.js',
-        'resources/js/bleep/modals/mediamodal.js',
-        'resources/js/social/blockuser.js'
-        ])
-@endpush
+@once
+    @push('scripts')
+        <script>
+            // Pass backend config to frontend (keep anonymity feature hidden if disabled)
+            window.isAnonymousEnabled = {{ env('ANONYMITY', true) ? 'true' : 'false' }};
+        </script>
+        @vite([
+            'resources/js/bleep/users/profile-lazyload.js',
+            'resources/js/bleep/users/profile.js',
+            'resources/js/bleep/users/follow.js',
+            'resources/js/social/follow-relationships.js',
+            'resources/js/bleep/modals/mediamodal.js',
+            'resources/js/social/blockuser.js'
+            ])
+    @endpush
 
-@push('styles')
-    @vite('resources/css/profile.css')
-@endpush
+    @push('styles')
+        @vite('resources/css/profile.css')
+    @endpush
+@endonce
 
 <x-layout>
     <x-slot:title>Profile | {{ "@" . $user->username }}</x-slot:title>
@@ -299,13 +301,6 @@
 
     </div>
 
-    {{-- Global Modals (available for all bleeps on the page) --}}
-    <x-subcomponents.bleeps.mediamodal />
-    <x-modals.posts.comments />
-    <x-modals.posts.edit />
-    <x-modals.posts.share />
-    <x-modals.profile.follow-relationships />
-
     {{-- Block/Unblock Confirmation Modal --}}
     <input type="checkbox" id="block_confirm_modal_toggle" class="modal-toggle" />
     <div class="modal">
@@ -321,5 +316,15 @@
             </div>
         </div>
     </div>
+
+    {{-- Load modal once --}}
+    @once
+        {{-- Global Modals (available for all bleeps on the page) --}}
+        <x-subcomponents.bleeps.mediamodal />
+        <x-modals.posts.comments />
+        <x-modals.posts.edit />
+        <x-modals.posts.share />
+        <x-modals.profile.follow-relationships />
+    @endonce
 
 </x-layout>

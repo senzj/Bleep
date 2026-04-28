@@ -1,6 +1,8 @@
-@push('scripts')
-    @vite('resources/js/admin/visits.js')
-@endpush
+@once
+    @push('scripts')
+        @vite('resources/js/admin/visits.js')
+    @endpush
+@endonce
 
 <x-admin.layout>
     <div class="space-y-6">

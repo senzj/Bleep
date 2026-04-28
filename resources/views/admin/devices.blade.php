@@ -1,11 +1,12 @@
-@push('scripts')
-    @vite('resources/js/admin/devices.js')
-@endpush
+@once
+    @push('scripts')
+        @vite('resources/js/admin/devices.js')
+    @endpush
 
-@php
-    use App\Helpers\UserAgentParser;
-@endphp
-
+    @php
+        use App\Helpers\UserAgentParser;
+    @endphp
+@endonce
 <x-admin.layout>
 
     {{-- Header + Stats --}}

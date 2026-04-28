@@ -1,4 +1,5 @@
 <input type="checkbox" id="ban_modal" class="modal-toggle" />
+
 <div class="modal">
     <div class="modal-box max-w-md p-6 relative rounded-xl">
         <label for="ban_modal" class="btn btn-sm btn-circle absolute right-3 top-3">✕</label>

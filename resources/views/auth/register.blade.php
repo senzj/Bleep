@@ -1,6 +1,8 @@
-@vite([
-    'resources/js/auth/register.js'
-])
+@once
+    @vite([
+        'resources/js/auth/register.js'
+    ])
+@endonce
 
 <x-layout>
     <x-slot:title>

@@ -1,10 +1,12 @@
-@push('meta')
-    <meta name="admin-dashboard-url" content="{{ route('admin.dashboard.chart-data') }}">
-@endpush
+@once
+    @push('meta')
+        <meta name="admin-dashboard-url" content="{{ route('admin.dashboard.chart-data') }}">
+    @endpush
 
-@push('scripts')
-    @vite('resources/js/admin/dashboard.js')
-@endpush
+    @push('scripts')
+        @vite('resources/js/admin/dashboard.js')
+    @endpush
+@endonce
 
 <x-admin.layout>
 <div class="mb-8 space-y-6">

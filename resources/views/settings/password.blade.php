@@ -1,6 +1,8 @@
-@push('scripts')
-    @vite(['resources/js/settings/password.js'])
-@endpush
+@once
+    @push('scripts')
+        @vite(['resources/js/profile/profile-crop.js'])
+    @endpush
+@endonce
 
 <x-settings.layout>
     <h1 class="text-xl font-semibold mb-6">Change Password</h1>

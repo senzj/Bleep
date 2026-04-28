@@ -1,7 +1,8 @@
-@php
-    use App\Helpers\UserAgentParser;
-@endphp
-
+@once
+    @php
+        use App\Helpers\UserAgentParser;
+    @endphp
+@endonce
 <x-admin.layout>
     <div class="mb-8">
         <h1 class="text-2xl font-bold mb-2">System Logs</h1>

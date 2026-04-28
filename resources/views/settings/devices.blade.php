@@ -186,13 +186,16 @@
         <div class="mt-4">{{ $devices->links() }}</div>
     </div>
 
-    <div id="confirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 hidden">
-        <div class="bg-base-100 rounded-lg shadow-lg p-6 w-full max-w-sm">
-            <div class="mb-4 font-semibold" id="confirmModalText">Are you sure you want to log out this session?</div>
-            <div class="flex justify-end gap-2">
-                <button id="confirmModalCancel" class="btn btn-sm">Cancel</button>
-                <button id="confirmModalConfirm" class="btn btn-sm btn-error">Confirm</button>
+    {{-- load modal once --}}
+    @once
+        <div id="confirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 hidden">
+            <div class="bg-base-100 rounded-lg shadow-lg p-6 w-full max-w-sm">
+                <div class="mb-4 font-semibold" id="confirmModalText">Are you sure you want to log out this session?</div>
+                <div class="flex justify-end gap-2">
+                    <button id="confirmModalCancel" class="btn btn-sm">Cancel</button>
+                    <button id="confirmModalConfirm" class="btn btn-sm btn-error">Confirm</button>
+                </div>
             </div>
         </div>
-    </div>
+    @endonce
 </x-settings.layout>

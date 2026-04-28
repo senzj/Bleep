@@ -34,11 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         isLoading = true;
         loadingIndicator.classList.remove('hidden');
-
-        // Hide load more button if it exists
-        if (loadMoreBtn) {
-            loadMoreBtn.classList.add('hidden');
-        }
+        if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
 
         try {
             const response = await fetch(`/bleeps/lazy-load?page=${currentPage}&tab=bleep`, {
@@ -48,62 +44,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch bleeps');
-            }
+            if (!response.ok) throw new Error('Failed to fetch bleeps');
 
             const data = await response.json();
 
             if (data.success && data.html) {
-                // Parse new HTML into a detached container
+                // Parse HTML off the critical path
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = data.html;
 
-                // Collect element nodes and set up fade-in animation
                 const newElements = Array.from(tempDiv.children);
+
+                // Set initial hidden state before insert
                 newElements.forEach(child => {
                     child.style.opacity = '0';
                     child.style.transform = 'translateY(12px)';
                     child.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
                 });
 
-                // Initialize media ONLY on new elements (scoped to tempDiv)
-                // Done BEFORE inserting into visible DOM — prevents reprocessing existing bleeps
-                if (window.loadNewMedia) {
-                    window.loadNewMedia(tempDiv);
-                }
-                if (window.initVideoPlayers) {
-                    window.initVideoPlayers(tempDiv);
-                }
+                // Init media/nsfw BEFORE inserting (same as before)
+                if (window.loadNewMedia) window.loadNewMedia(tempDiv);
+                if (window.initVideoPlayers) window.initVideoPlayers(tempDiv);
+                if (window.initializeNsfwWrappers) window.initializeNsfwWrappers(tempDiv);
 
-                // Initialize NSFW handlers for new content
-                if (window.initializeNsfwWrappers) {
-                    window.initializeNsfwWrappers(tempDiv);
-                }
-
-                // Lock current scroll position before DOM change
+                // Single DOM insertion
                 const scrollBefore = window.scrollY;
-
-                // Move all nodes into a fragment for single DOM insertion
                 const fragment = document.createDocumentFragment();
-                while (tempDiv.firstChild) {
-                    fragment.appendChild(tempDiv.firstChild);
-                }
+                while (tempDiv.firstChild) fragment.appendChild(tempDiv.firstChild);
                 bleepsContainer.appendChild(fragment);
-
-                // Restore scroll position to prevent any jump
                 window.scrollTo(0, scrollBefore);
 
-                // Render lucide icons ONLY in newly added elements (AFTER DOM insertion)
-                // Must be done after insertion — lucide replaces <i> with <svg> and
-                // needs elements in the live DOM to work correctly
-                newElements.forEach(el => {
-                    if (window.createLucideIcons) {
-                        window.createLucideIcons(el);
-                    }
-                });
-
-                // Fade in new elements with stagger
+                // Fade in immediately — don't wait for icons
                 requestAnimationFrame(() => {
                     newElements.forEach((el, i) => {
                         setTimeout(() => {
@@ -113,6 +84,37 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 });
 
+                // ── Render Lucide icons in small chunks during idle time ──
+                // Prevents blocking the main thread for 300ms+ all at once
+                if (window.createLucideIcons) {
+                    const chunkSize = 3; // process 3 cards at a time
+                    let index = 0;
+
+                    function processNextChunk(deadline) {
+                        while (index < newElements.length) {
+                            // Stop if browser needs the main thread back
+                            if (deadline && deadline.timeRemaining() < 5) {
+                                requestIdleCallback(processNextChunk);
+                                return;
+                            }
+                            const end = Math.min(index + chunkSize, newElements.length);
+                            for (let i = index; i < end; i++) {
+                                window.createLucideIcons(newElements[i]);
+                            }
+                            index = end;
+                        }
+                    }
+
+                    if ('requestIdleCallback' in window) {
+                        requestIdleCallback(processNextChunk, { timeout: 2000 });
+                    } else {
+                        // Safari fallback — small setTimeout yields to browser
+                        setTimeout(() => {
+                            newElements.forEach(el => window.createLucideIcons(el));
+                        }, 100);
+                    }
+                }
+
                 hasMore = data.has_more;
                 currentPage = data.next_page;
                 trigger.dataset.page = currentPage;
@@ -121,17 +123,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!hasMore) {
                     endOfContent.classList.remove('hidden');
                     triggerObserver.disconnect();
-                    // Remove load more button when reaching end
-                    if (loadMoreBtn) {
-                        loadMoreBtn.remove();
-                        loadMoreBtn = null;
-                    }
+                    if (loadMoreBtn) { loadMoreBtn.remove(); loadMoreBtn = null; }
                 }
             }
         } catch (error) {
             console.error('Error loading more bleeps:', error);
 
-            // Show error message
             const errorDiv = document.createElement('div');
             errorDiv.className = 'alert alert-error shadow-lg my-4';
             errorDiv.innerHTML = `
@@ -143,28 +140,18 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             bleepsContainer.appendChild(errorDiv);
 
-            if (window.lucide) {
-                window.lucide.createIcons();
-            }
-
-            // Show "Load More" button on error as fallback
             if (!loadMoreBtn && hasMore) {
                 loadMoreBtn = document.createElement('button');
                 loadMoreBtn.id = 'load-more-btn';
                 loadMoreBtn.className = 'btn btn-primary btn-block mt-4';
                 loadMoreBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-5 h-5 mr-2"></i> Try Again';
-                loadMoreBtn.addEventListener('click', () => {
-                    loadMoreBleeps();
-                });
+                loadMoreBtn.addEventListener('click', () => loadMoreBleeps());
                 trigger.parentElement.insertBefore(loadMoreBtn, trigger);
-
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
             } else if (loadMoreBtn && hasMore) {
-                // Show existing button if hidden
                 loadMoreBtn.classList.remove('hidden');
             }
+
+            if (window.lucide) window.lucide.createIcons();
         } finally {
             isLoading = false;
             loadingIndicator.classList.add('hidden');

@@ -1,9 +1,10 @@
-@push('scripts')
-    @vite([
-        'resources/js/profile/profile-crop.js',
-        'resources/css/profile-crop.css',
-    ])
-@endpush
+@once
+    @push('scripts')
+        @vite([
+            'resources/js/bleep/posts/media/lazyload.js',
+        ])
+    @endpush
+@endonce
 
 {{-- Crop modal --}}
 <input type="checkbox" id="cropper_modal" class="modal-toggle" />

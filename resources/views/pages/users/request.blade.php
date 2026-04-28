@@ -1,9 +1,11 @@
-@push('scripts')
-    @vite([
-        'resources/js/bleep/users/follow-requests.js',
-        'resources/js/bleep/users/follow.js',
-    ])
-@endpush
+@once
+    @push('scripts')
+        @vite([
+            'resources/js/bleep/users/follow-requests.js',
+            'resources/js/bleep/users/follow.js',
+        ])
+    @endpush
+@endonce
 
 <x-layout>
     <x-slot:title>Follow Requests</x-slot:title>

@@ -1,9 +1,11 @@
-@push('scripts')
-    @vite([
-        'resources/js/admin/reports.js',
-        'resources/js/bleep/modals/mediamodal.js',
-    ])
-@endpush
+@once
+    @push('scripts')
+        @vite([
+            'resources/js/admin/reports.js',
+            'resources/js/bleep/modals/mediamodal.js',
+        ])
+    @endpush
+@endonce
 
 <x-admin.layout>
 
@@ -441,5 +443,7 @@
 
 </x-admin.layout>
 
-<x-modals.admin.ban />
-<x-subcomponents.bleeps.mediamodal />
+@once
+    <x-modals.admin.ban />
+    <x-subcomponents.bleeps.mediamodal />
+@endonce

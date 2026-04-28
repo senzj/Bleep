@@ -1,24 +1,39 @@
-@push('scripts')
-    @vite([
-        'resources/js/app.js'
-    ])
-@endpush
+{{-- load once --}}
+@once
+    @push('scripts')
+        @vite([
+            'resources/js/app.js'
+        ])
+    @endpush
 
-@push('meta')
-    <meta name="auth" content="{{ Auth::check() ? 'true' : 'false' }}" />
-    <meta name="anonymity-enabled" content="{{ env('ANONYMITY', true) ? 'true' : 'false' }}" />
-    @if (Auth::check())
-        @php
-            $userAvatar = '/images/avatar/default.jpg';
-            $usr = Auth::user();
-            $avatarPath = $usr->profile_picture ?? null;
-            if ($avatarPath) {
-                $userAvatar = asset('storage/' . $avatarPath);
-            }
-        @endphp
-        <meta name="user-avatar" content="{{ $userAvatar }}" />
-    @endif
-@endpush
+    @push('meta')
+        <meta name="auth" content="{{ Auth::check() ? 'true' : 'false' }}" />
+        <meta name="anonymity-enabled" content="{{ env('ANONYMITY', true) ? 'true' : 'false' }}" />
+        @if (Auth::check())
+            @php
+                $userAvatar = '/images/avatar/default.jpg';
+                $usr = Auth::user();
+                $avatarPath = $usr->profile_picture ?? null;
+                if ($avatarPath) {
+                    $userAvatar = asset('storage/' . $avatarPath);
+                }
+            @endphp
+            <meta name="user-avatar" content="{{ $userAvatar }}" />
+        @endif
+    @endpush
+
+    {{-- Report Bleep Modal --}}
+    <x-modals.posts.report />
+
+    {{-- Edit Bleep Modal --}}
+    <x-modals.posts.edit />
+
+    {{-- Share Bleep Modal --}}
+    <x-modals.posts.share />
+
+    {{-- Media Bleep Modal --}}
+    <x-subcomponents.bleeps.mediamodal />
+@endonce
 
 <x-layout>
 
@@ -58,15 +73,4 @@
         <x-subcomponents.comments.layout :bleepid="$bleep->id" :layoutmode="'post'" />
     </div>
 
-    {{-- Report Bleep Modal --}}
-    <x-modals.posts.report />
-
-    {{-- Edit Bleep Modal --}}
-    <x-modals.posts.edit />
-
-    {{-- Share Bleep Modal --}}
-    <x-modals.posts.share />
-
-    {{-- Media Bleep Modal --}}
-    <x-subcomponents.bleeps.mediamodal />
 </x-layout>

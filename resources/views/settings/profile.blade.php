@@ -1,7 +1,8 @@
-@push('scripts')
-    @vite(['resources/js/profile/profile-crop.js'])
-@endpush
-
+@once
+    @push('scripts')
+        @vite(['resources/js/profile/profile-crop.js'])
+    @endpush
+@endonce
 <x-settings.layout>
     <h1 class="text-xl font-semibold mb-6">Edit Profile</h1>
 
@@ -136,6 +137,9 @@
         </div>
     </form>
 
-    <x-modals.profile.crop />
+    {{-- load modal once --}}
+    @once
+        <x-modals.profile.crop />
+    @endonce
 </x-settings.layout>
 

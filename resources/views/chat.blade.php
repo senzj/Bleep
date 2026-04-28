@@ -19,7 +19,10 @@
     >
     </div>
 
-    {{-- Media Modal for images and videos --}}
-    <x-subcomponents.bleeps.mediamodal />
+    {{-- load modal once --}}
+    @once
+        {{-- Media Modal for images and videos --}}
+        <x-subcomponents.bleeps.mediamodal />
+    @endonce
 
 </x-layout>

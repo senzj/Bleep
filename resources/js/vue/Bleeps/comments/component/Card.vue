@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import LucideIcon from '../../../LucideIcons.vue';
+import DropdownMenu from '../../../components/DropdownMenu.vue';
 import CommentMedia from './Media.vue';
 import { formatRelativeTime } from '../../../../utils/relativeTime.js';
 
@@ -479,23 +480,6 @@ const handleReplyDeleted = (replyId) => {
 
 const handleLoadMoreReplies = () => loadReplies();
 
-// ── Dropdown options state
-// ── Dropdown options state
-const dropdownOpen = ref(false);
-const dropdownAnchor = ref(null); // template ref instead of class selector
-
-const closeDropdown = (e) => {
-    if (dropdownAnchor.value && !dropdownAnchor.value.contains(e.target)) {
-        dropdownOpen.value = false;
-    }
-};
-
-onMounted(() => document.addEventListener('click', closeDropdown, { passive: true }));
-onBeforeUnmount(() => {
-    dropdownOpen.value = false;
-    document.removeEventListener('click', closeDropdown);
-});
-
 // report modal
 const reportComment = () => {
     const preview = (props.comment.message || '').slice(0, 60);
@@ -585,44 +569,38 @@ const reportComment = () => {
                     </div>
 
                     <!-- More Options Dropdown -->
-                    <div class="relative" ref="dropdownAnchor">
-                        <button
-                            type="button"
-                            class="btn btn-ghost btn-xs rounded"
-                            title="More options"
-                            @click.stop="dropdownOpen = !dropdownOpen"
-                        >
-                            <LucideIcon name="ellipsis-vertical" :size="isReply ? 12 : 16" />
-                        </button>
-
-                        <ul
-                            v-if="dropdownOpen"
-                            :class="isReply ? 'p-1 text-xs' : 'p-2'"
-                            class="absolute right-0 top-full mt-1 menu bg-base-100 rounded-box z-50 shadow-lg border border-base-300/50 flex flex-col w-max"
-                        >
+                    <DropdownMenu
+                        :button-title="'More options'"
+                        :button-class="'btn btn-ghost btn-xs rounded'"
+                        :button-icon-size="isReply ? 12 : 16"
+                        :menu-class="isReply
+                            ? 'absolute right-0 top-full mt-1 menu bg-base-100 rounded-box z-50 shadow-lg border border-base-300/50 flex flex-col w-max p-1 text-xs'
+                            : 'absolute right-0 top-full mt-1 menu bg-base-100 rounded-box z-50 shadow-lg border border-base-300/50 flex flex-col w-max p-2'"
+                    >
+                        <template #default="{ close }">
                             <li v-if="isOwner">
-                                <button @click="dropdownOpen = false; handleEdit()" class="flex items-center gap-1.5 whitespace-nowrap">
+                                <button @click="close(); handleEdit()" class="flex items-center gap-1.5 whitespace-nowrap">
                                     <LucideIcon name="pencil" :size="iconSize" />
                                     <span>Edit</span>
                                 </button>
                             </li>
                             <li v-if="canDelete">
-                                <button @click="dropdownOpen = false; handleDelete()" class="flex items-center gap-1.5 whitespace-nowrap text-error">
+                                <button @click="close(); handleDelete()" class="flex items-center gap-1.5 whitespace-nowrap text-error">
                                     <LucideIcon name="trash-2" :size="iconSize" />
                                     <span>Delete</span>
                                 </button>
                             </li>
                             <li v-if="!isOwner && authenticatedUserId">
                                 <button
-                                    @click="dropdownOpen = false; reportComment()"
+                                    @click="close(); reportComment()"
                                     class="flex items-center gap-1.5 whitespace-nowrap text-warning"
                                 >
                                     <LucideIcon name="flag" :size="iconSize" />
                                     <span>Report</span>
                                 </button>
                             </li>
-                        </ul>
-                    </div>
+                        </template>
+                    </DropdownMenu>
                 </div>
             </div>
 

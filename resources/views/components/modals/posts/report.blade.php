@@ -1,6 +1,8 @@
-@push('scripts')
-    @vite(['resources/js/bleep/modals/posts/reports.js'])
-@endpush
+@once
+    @push('scripts')
+        @vite(['resources/js/bleep/modals/posts/reports.js'])
+    @endpush
+@endonce
 
 {{-- Unified Report Modal --}}
 <dialog id="report-modal" class="modal modal-bottom sm:modal-middle">

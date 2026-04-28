@@ -1,6 +1,8 @@
-@push('scripts')
-    @vite('resources/js/bleep/users/follow-requests.js')
-@endpush
+@once
+    @push('scripts')
+        @vite('resources/js/bleep/users/follow-requests.js')
+    @endpush
+@endonce
 
 @props([
     'user',

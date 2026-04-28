@@ -2,18 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Logs;
 use App\Models\Bleep;
-
 use App\Models\BleepViews;
-
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-
-use App\Services\MediaUploadService;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Models\Logs;
 use App\Services\FeedService;
+use App\Services\MediaUploadService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BleepController extends Controller
 {
@@ -291,15 +289,25 @@ class BleepController extends Controller
      */
     public function lazyLoad(Request $request)
     {
+        $t1 = microtime(true);
         $page   = (int) $request->get('page', 2);
         $tab    = $request->get('tab', 'for-you');
         $bleeps = $this->fetchBleeps($request, $page, null, $tab);
+        $t2 = microtime(true);
 
-        $this->recordBleepsViews($bleeps);
+        $html = view('components.bleepslist', ['bleeps' => $bleeps])->render();
+        $t3 = microtime(true);
+
+        dispatch(fn() => $this->recordBleepsViews($bleeps))->afterResponse();
+
+        Log::info('lazyLoad timing', [
+            'fetchBleeps' => round(($t2 - $t1) * 1000) . 'ms',
+            'renderView'  => round(($t3 - $t2) * 1000) . 'ms',
+        ]);
 
         return response()->json([
             'success'      => true,
-            'html'         => view('components.bleepslist', ['bleeps' => $bleeps])->render(),
+            'html'         => $html,
             'has_more'     => $bleeps->hasMorePages(),
             'next_page'    => $bleeps->currentPage() + 1,
             'current_page' => $bleeps->currentPage(),

@@ -1,9 +1,3 @@
-@push('scripts')
-    @vite([
-        'resources/js/social/blockuser.js',
-    ])
-@endpush
-
 <x-layout>
     <x-slot:title>Blocked Users</x-slot:title>
 
@@ -46,19 +40,27 @@
         </div>
     </div>
 
-    {{-- Block/Unblock Confirmation Modal --}}
-    <input type="checkbox" id="block_confirm_modal_toggle" class="modal-toggle" />
-    <div class="modal">
-        <div class="modal-box max-w-md relative">
-            <label for="block_confirm_modal_toggle" class="btn btn-sm btn-circle absolute right-3 top-3">✕</label>
+    @once
+        @push('scripts')
+            @vite([
+                'resources/js/social/blockuser.js',
+            ])
+        @endpush
 
-            <h3 class="font-bold text-lg mb-2" id="block-confirm-title">Confirm action</h3>
-            <p class="text-sm text-base-content/70" id="block-confirm-message">Are you sure?</p>
+        {{-- Block/Unblock Confirmation Modal --}}
+        <input type="checkbox" id="block_confirm_modal_toggle" class="modal-toggle" />
+        <div class="modal">
+            <div class="modal-box max-w-md relative">
+                <label for="block_confirm_modal_toggle" class="btn btn-sm btn-circle absolute right-3 top-3">✕</label>
 
-            <div class="modal-action">
-                <label for="block_confirm_modal_toggle" class="btn btn-ghost">Cancel</label>
-                <button type="button" id="block-confirm-submit" class="btn btn-error">Confirm</button>
+                <h3 class="font-bold text-lg mb-2" id="block-confirm-title">Confirm action</h3>
+                <p class="text-sm text-base-content/70" id="block-confirm-message">Are you sure?</p>
+
+                <div class="modal-action">
+                    <label for="block_confirm_modal_toggle" class="btn btn-ghost">Cancel</label>
+                    <button type="button" id="block-confirm-submit" class="btn btn-error">Confirm</button>
+                </div>
             </div>
         </div>
-    </div>
+    @endonce
 </x-layout>

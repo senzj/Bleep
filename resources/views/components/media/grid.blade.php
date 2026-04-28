@@ -18,7 +18,7 @@
     $nsfwAttr = $isNsfw ? 'data-media-src' : 'data-src';
 @endphp
 
-<div class="mt-2 overflow-hidden rounded-xl border border-base-300 {{ $isNsfw ? 'nsfw-media-container' : 'bleep-media-gallery' }}" data-bleep-media>
+<div class="mt-0.5 overflow-hidden rounded-xl border border-base-300 {{ $isNsfw ? 'nsfw-media-container' : 'bleep-media-gallery' }}" data-bleep-media>
     @if ($count === 1)
         @php $m = $mediaItems->first(); @endphp
         <div class="flex items-center justify-center object-cover bg-base-100 max-h-64">

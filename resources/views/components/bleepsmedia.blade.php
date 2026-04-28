@@ -1,8 +1,10 @@
-@push('scripts')
-    @vite([
-        'resources/js/bleep/posts/media/lazyload.js',
-    ])
-@endpush
+@once
+    @push('scripts')
+        @vite([
+            'resources/js/bleep/posts/media/lazyload.js',
+        ])
+    @endpush
+@endonce
 
 @php
     $count = $mediaItems->count();

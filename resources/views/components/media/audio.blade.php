@@ -1,8 +1,10 @@
-@push('scripts')
-    @vite([
-        'resources/js/bleep/posts/media/audio.js',
-    ])
-@endpush
+@once
+    @push('scripts')
+        @vite([
+            'resources/js/bleep/posts/media/audio.js',
+        ])
+    @endpush
+@endonce
 
 @props([
     'src',

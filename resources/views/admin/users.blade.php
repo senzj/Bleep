@@ -1,16 +1,18 @@
-@push('styles')
-    <style>
-        @media(min-width: 768px) {
-            .user-table-row {
-                grid-template-columns: 140px 220px 100px 100px 140px 100px !important;
+@once
+    @push('styles')
+        <style>
+            @media(min-width: 768px) {
+                .user-table-row {
+                    grid-template-columns: 140px 220px 100px 100px 140px 100px !important;
+                }
             }
-        }
-    </style>
-@endpush
+        </style>
+    @endpush
 
-@push('scripts')
-    @vite('resources/js/admin/users.js')
-@endpush
+    @push('scripts')
+        @vite('resources/js/admin/users.js')
+    @endpush
+@endonce
 
 <x-admin.layout>
 
@@ -195,159 +197,161 @@
         {{ $users->links() }}
     </div>
 
-    {{-- Edit User Modal --}}
-    <input type="checkbox" id="edit_user_modal" class="modal-toggle" />
-    <div class="modal">
-        <div class="modal-box relative max-w-lg p-6 rounded-xl">
+    @once
+        {{-- Edit User Modal --}}
+        <input type="checkbox" id="edit_user_modal" class="modal-toggle" />
+        <div class="modal">
+            <div class="modal-box relative max-w-lg p-6 rounded-xl">
 
-            {{-- Close Button --}}
-            <label for="edit_user_modal"
-                class="btn btn-sm btn-circle absolute right-3 top-3">✕</label>
+                {{-- Close Button --}}
+                <label for="edit_user_modal"
+                    class="btn btn-sm btn-circle absolute right-3 top-3">✕</label>
 
-             {{-- Header --}}
-            <h3 class="text-xl font-semibold mb-6 flex items-center gap-2">
-                <i data-lucide="user-cog" class="w-5 h-5"></i>
-                Edit User
-            </h3>
+                {{-- Header --}}
+                <h3 class="text-xl font-semibold mb-6 flex items-center gap-2">
+                    <i data-lucide="user-cog" class="w-5 h-5"></i>
+                    Edit User
+                </h3>
 
-            <form id="edit-user-form" class="space-y-8">
-                @csrf
-                <input type="hidden" id="eu_user_id" name="user_id" />
+                <form id="edit-user-form" class="space-y-8">
+                    @csrf
+                    <input type="hidden" id="eu_user_id" name="user_id" />
 
-                {{-- Account --}}
-                <div class="space-y-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="space-y-1">
-                            <label class="font-semibold text-sm">Username</label>
-                            <input id="eu_username"
-                                class="input input-bordered w-full bg-base-200"
-                                disabled />
-                        </div>
+                    {{-- Account --}}
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <label class="font-semibold text-sm">Username</label>
+                                <input id="eu_username"
+                                    class="input input-bordered w-full bg-base-200"
+                                    disabled />
+                            </div>
 
-                        <div class="space-y-1">
-                            <label class="font-semibold text-sm">Email</label>
-                            <input id="eu_email"
-                                class="input input-bordered w-full bg-base-200"
-                                disabled />
-                        </div>
+                            <div class="space-y-1">
+                                <label class="font-semibold text-sm">Email</label>
+                                <input id="eu_email"
+                                    class="input input-bordered w-full bg-base-200"
+                                    disabled />
+                            </div>
 
-                        <div class="space-y-1">
-                            <label class="font-semibold text-sm">Role</label>
-                            <select id="eu_role"
-                                    name="role"
-                                    class="select select-bordered w-full">
-                                <option value="user">User</option>
-                                <option value="moderator">Moderator</option>
-                                <option value="admin">Admin</option>
-                            </select>
-                        </div>
+                            <div class="space-y-1">
+                                <label class="font-semibold text-sm">Role</label>
+                                <select id="eu_role"
+                                        name="role"
+                                        class="select select-bordered w-full">
+                                    <option value="user">User</option>
+                                    <option value="moderator">Moderator</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
 
-                        <div class="space-y-1">
-                            <label class="font-semibold text-sm block">Verified</label>
-                            <input type="checkbox"
-                                   class="toggle toggle-primary"
-                                   name="is_verified"
-                                   id="eu_is_verified" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="divider"></div>
-
-                {{-- Moderation --}}
-                <div class="collapse collapse-arrow bg-base-200/70 rounded-lg">
-                    <input type="checkbox" id="eu_mod_collapse" />
-                    <div class="collapse-title font-semibold text-base">
-                        Moderation
-                    </div>
-
-                    <div class="collapse-content space-y-6">
-
-                         {{-- Banned Toggle --}}
-                        <div class="form-control">
-                            <label class="flex items-center gap-3 cursor-pointer">
+                            <div class="space-y-1">
+                                <label class="font-semibold text-sm block">Verified</label>
                                 <input type="checkbox"
-                                    id="eu_is_banned"
-                                    class="toggle toggle-error" />
-                                <span class="font-semibold text-sm">User is Banned</span>
-                            </label>
-                        </div>
-
-                        {{-- Ban Fields --}}
-                        <div id="ban_fields" class="space-y-6 hidden">
-
-                            {{-- Ban Type --}}
-                            <div class="space-y-1">
-                                <label class="font-semibold text-sm">Ban Type</label>
-                                <div class="flex flex-wrap gap-5 mt-1">
-                                    <label class="flex items-center gap-2">
-                                        <input type="radio"
-                                            name="eu_ban_type"
-                                            id="eu_ban_type_temp"
-                                            value="temporary"
-                                            checked />
-                                        <span>Temporary</span>
-                                    </label>
-
-                                    <label class="flex items-center gap-2">
-                                        <input type="radio"
-                                            name="eu_ban_type"
-                                            id="eu_ban_type_perm"
-                                            value="permanent" />
-                                        <span>Permanent</span>
-                                    </label>
-                                </div>
+                                    class="toggle toggle-primary"
+                                    name="is_verified"
+                                    id="eu_is_verified" />
                             </div>
-
-                             {{-- Ban Reason --}}
-                            <div class="space-y-1">
-                                <label class="font-semibold text-sm">Ban Reason</label>
-                                <textarea id="eu_ban_reason"
-                                        class="textarea textarea-bordered w-full h-24 leading-relaxed"
-                                        maxlength="500"
-                                        placeholder="Why is this user banned?"></textarea>
-                                <div class="text-right text-xs opacity-60"
-                                    id="eu_ban_reason_counter">0 / 500</div>
-                            </div>
-
-                             {{-- Ban Duration (temporary only) --}}
-                            <div class="space-y-1" id="eu_ban_until_wrap">
-                                <label class="font-semibold text-sm">Ban Until (local time)</label>
-                                <input type="datetime-local"
-                                    id="eu_banned_until"
-                                    class="input input-bordered w-full" />
-
-                                <div class="flex flex-wrap gap-2 items-center mt-2 text-xs">
-                                    <button type="button" class="btn btn-xs preset" data-hours="6">+6h</button>
-                                    <button type="button" class="btn btn-xs preset" data-hours="24">+24h</button>
-                                    <button type="button" class="btn btn-xs preset" data-hours="72">+3d</button>
-                                    <button type="button" class="btn btn-xs preset" data-hours="168">+7d</button>
-                                    <button type="button" class="btn btn-xs preset" data-hours="720">+30d</button>
-
-                                    <span class="opacity-60 ml-1">
-                                        Saved in {{ config('app.timezone') }}
-                                    </span>
-                                </div>
-                            </div>
-
                         </div>
                     </div>
-                </div>
 
-                {{-- Actions --}}
-                <div class="modal-action">
-                    <label for="edit_user_modal" class="btn btn-ghost">Cancel</label>
+                    <div class="divider"></div>
 
-                    <button type="submit"
-                            class="btn btn-primary gap-2">
-                        <i data-lucide="save" class="w-4 h-4"></i>
-                        Save Changes
-                    </button>
-                </div>
+                    {{-- Moderation --}}
+                    <div class="collapse collapse-arrow bg-base-200/70 rounded-lg">
+                        <input type="checkbox" id="eu_mod_collapse" />
+                        <div class="collapse-title font-semibold text-base">
+                            Moderation
+                        </div>
 
-            </form>
+                        <div class="collapse-content space-y-6">
 
+                            {{-- Banned Toggle --}}
+                            <div class="form-control">
+                                <label class="flex items-center gap-3 cursor-pointer">
+                                    <input type="checkbox"
+                                        id="eu_is_banned"
+                                        class="toggle toggle-error" />
+                                    <span class="font-semibold text-sm">User is Banned</span>
+                                </label>
+                            </div>
+
+                            {{-- Ban Fields --}}
+                            <div id="ban_fields" class="space-y-6 hidden">
+
+                                {{-- Ban Type --}}
+                                <div class="space-y-1">
+                                    <label class="font-semibold text-sm">Ban Type</label>
+                                    <div class="flex flex-wrap gap-5 mt-1">
+                                        <label class="flex items-center gap-2">
+                                            <input type="radio"
+                                                name="eu_ban_type"
+                                                id="eu_ban_type_temp"
+                                                value="temporary"
+                                                checked />
+                                            <span>Temporary</span>
+                                        </label>
+
+                                        <label class="flex items-center gap-2">
+                                            <input type="radio"
+                                                name="eu_ban_type"
+                                                id="eu_ban_type_perm"
+                                                value="permanent" />
+                                            <span>Permanent</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {{-- Ban Reason --}}
+                                <div class="space-y-1">
+                                    <label class="font-semibold text-sm">Ban Reason</label>
+                                    <textarea id="eu_ban_reason"
+                                            class="textarea textarea-bordered w-full h-24 leading-relaxed"
+                                            maxlength="500"
+                                            placeholder="Why is this user banned?"></textarea>
+                                    <div class="text-right text-xs opacity-60"
+                                        id="eu_ban_reason_counter">0 / 500</div>
+                                </div>
+
+                                {{-- Ban Duration (temporary only) --}}
+                                <div class="space-y-1" id="eu_ban_until_wrap">
+                                    <label class="font-semibold text-sm">Ban Until (local time)</label>
+                                    <input type="datetime-local"
+                                        id="eu_banned_until"
+                                        class="input input-bordered w-full" />
+
+                                    <div class="flex flex-wrap gap-2 items-center mt-2 text-xs">
+                                        <button type="button" class="btn btn-xs preset" data-hours="6">+6h</button>
+                                        <button type="button" class="btn btn-xs preset" data-hours="24">+24h</button>
+                                        <button type="button" class="btn btn-xs preset" data-hours="72">+3d</button>
+                                        <button type="button" class="btn btn-xs preset" data-hours="168">+7d</button>
+                                        <button type="button" class="btn btn-xs preset" data-hours="720">+30d</button>
+
+                                        <span class="opacity-60 ml-1">
+                                            Saved in {{ config('app.timezone') }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Actions --}}
+                    <div class="modal-action">
+                        <label for="edit_user_modal" class="btn btn-ghost">Cancel</label>
+
+                        <button type="submit"
+                                class="btn btn-primary gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            Save Changes
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
         </div>
-    </div>
+    @endonce
 
 </x-admin.layout>

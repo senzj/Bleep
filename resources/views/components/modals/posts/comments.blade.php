@@ -1,3 +1,9 @@
+@once
+    @push('scripts')
+        @vite(['resources/js/bleep/comments/commentSheet.js'])
+    @endpush
+@endonce
+
 <div
     x-data="commentSheet"
     x-cloak
@@ -28,9 +34,11 @@
         </div>
 
         {{-- Content --}}
-        <div class="flex-1 min-h-0">
-            <x-subcomponents.comments.layout :layoutmode="'modal'" />
-        </div>
+        @once
+            <div class="flex-1 min-h-0">
+                <x-subcomponents.comments.layout :layoutmode="'modal'" />
+            </div>
+        @endonce
 
         {{-- Loading Curtain (persistent layer; toggled from app.js) --}}
         <div
@@ -63,11 +71,10 @@
 
 </div>
 
-{{-- report modal for comments --}}
-<x-modals.posts.report />
-
-@push('scripts')
-    @vite(['resources/js/bleep/comments/commentSheet.js'])
-@endpush
+{{-- load once --}}
+@once
+    {{-- report modal for comments --}}
+    <x-modals.posts.report />
+@endonce
 
 {{-- Dispatch close to app.js --}}

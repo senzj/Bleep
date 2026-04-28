@@ -282,14 +282,17 @@
 
 </x-layout>
 
-{{-- Media Bleep Modal --}}
-<x-subcomponents.bleeps.mediamodal />
+{{-- load modals once --}}
+@once
+    {{-- Media Bleep Modal --}}
+    <x-subcomponents.bleeps.mediamodal />
 
-{{-- Edit Bleep Modal --}}
-<x-modals.posts.edit />
+    {{-- Edit Bleep Modal --}}
+    <x-modals.posts.edit />
 
-{{-- Comments Bleep Modal --}}
-<x-modals.posts.comments />
+    {{-- Comments Bleep Modal --}}
+    <x-modals.posts.comments />
 
-{{-- Share Bleep Modal --}}
-<x-modals.posts.share />
+    {{-- Share Bleep Modal --}}
+    <x-modals.posts.share />
+@endonce

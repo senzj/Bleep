@@ -11,7 +11,7 @@
     $showCommentsButton = filter_var($showCommentsButton, FILTER_VALIDATE_BOOLEAN);
 @endphp
 
-<div class="grid {{ $gridClass }} items-center gap-2 pt-3 border-t border-base-300 text-sm min-h-10">
+<div class="grid {{ $gridClass }} items-center gap-2 pt-2 border-t border-base-300 text-sm min-h-10">
     {{-- Likes --}}
     <div class="flex items-center justify-center">
         <form method="POST" action="/bleeps/{{ $bleep->id }}/like" class="like-form inline-flex">

@@ -52,9 +52,9 @@
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74,#86efac\" \"php artisan serve\" \"php artisan queue:work --tries=1\" \"php artisan reverb:start\" \"npm run dev\" --names='server,queue,reverb,vite'"
         ],
-        "prod": [
-            "npm run build",
-            "npx concurrently -c \"#67cafd,#93c5fd,#c4b5fd,#fdba74,#86efac\" \"npm run build\" \"php artisan serve --host=0.0.0.0 --port=8000\" \"php artisan queue:work --tries=1\" \"php artisan reverb:start --env=production\" --names=server,queue,reverb"
+        "prodlocal": [
+            "Composer\\Config::disableProcessTimeout",
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74,#86efac\" \"cmd /C set PHP_CLI_SERVER_WORKERS=8 && php artisan serve --host=0.0.0.0 --port=8000\" \"php artisan queue:work --tries=1\" \"php artisan reverb:start --host=0.0.0.0 --port=8080\" --names=server,queue,reverb"
         ],
         "test": [
             "@php artisan config:clear --ansi",

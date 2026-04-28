@@ -1,216 +1,216 @@
 @once
-@push('scripts')
-    @vite(['resources/js/settings/preference.js'])
+    @push('scripts')
+        @vite(['resources/js/settings/preference.js'])
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
 
-    const csrf     = document.querySelector('meta[name="csrf-token"]')?.content;
-    const toast    = (ok, msg) => window.preferencesManager?.showToast(ok, msg);
+        const csrf     = document.querySelector('meta[name="csrf-token"]')?.content;
+        const toast    = (ok, msg) => window.preferencesManager?.showToast(ok, msg);
 
-    // Current saved values from server — used to restore selection after
-    // injecting the uploaded <optgroup> into both selects.
-    const saved = {
-        recieve_notification_sound: @json($preferences->recieve_notification_sound),
-        send_notification_sound:    @json($preferences->send_notification_sound),
-    };
+        // Current saved values from server — used to restore selection after
+        // injecting the uploaded <optgroup> into both selects.
+        const saved = {
+            recieve_notification_sound: @json($preferences->recieve_notification_sound),
+            send_notification_sound:    @json($preferences->send_notification_sound),
+        };
 
-    // Preview
-    let activeAudio = null;
+        // Preview
+        let activeAudio = null;
 
-    function playPath(path) {
-        if (!path || path === 'none') return;
-        if (activeAudio) { activeAudio.pause(); activeAudio.currentTime = 0; }
-        activeAudio = new Audio(path);
-        activeAudio.volume = 0.7;
-        activeAudio.play().catch(() => {});
-    }
+        function playPath(path) {
+            if (!path || path === 'none') return;
+            if (activeAudio) { activeAudio.pause(); activeAudio.currentTime = 0; }
+            activeAudio = new Audio(path);
+            activeAudio.volume = 0.7;
+            activeAudio.play().catch(() => {});
+        }
 
-    document.querySelectorAll('.sound-preview-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const sel = document.getElementById('select-' + btn.dataset.target);
-            playPath(sel?.value);
+        document.querySelectorAll('.sound-preview-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const sel = document.getElementById('select-' + btn.dataset.target);
+                playPath(sel?.value);
+            });
         });
-    });
 
-    // Inject uploaded optgroup into both selects
-    function injectUploadedOptions(sounds) {
-        ['recieve_notification_sound', 'send_notification_sound'].forEach(key => {
-            const select = document.getElementById('select-' + key);
-            if (!select) return;
+        // Inject uploaded optgroup into both selects
+        function injectUploadedOptions(sounds) {
+            ['recieve_notification_sound', 'send_notification_sound'].forEach(key => {
+                const select = document.getElementById('select-' + key);
+                if (!select) return;
 
-            // Remove existing uploaded group before re-adding
-            select.querySelector('optgroup[data-uploaded]')?.remove();
-            if (!sounds.length) return;
+                // Remove existing uploaded group before re-adding
+                select.querySelector('optgroup[data-uploaded]')?.remove();
+                if (!sounds.length) return;
 
-            const group        = document.createElement('optgroup');
-            group.label        = 'Your Uploads';
-            group.dataset.uploaded = '1';
+                const group        = document.createElement('optgroup');
+                group.label        = 'Your Uploads';
+                group.dataset.uploaded = '1';
+
+                sounds.forEach(s => {
+                    const opt       = document.createElement('option');
+                    opt.value       = s.path;
+                    opt.textContent = s.name;
+                    if (saved[key] === s.path) opt.selected = true;
+                    group.appendChild(opt);
+                });
+
+                select.appendChild(group);
+            });
+        }
+
+        // Render uploaded list below the upload zone
+        function renderUploadedList(sounds) {
+            const wrap  = document.getElementById('uploaded-sounds-list');
+            const items = document.getElementById('uploaded-sounds-items');
+            if (!wrap || !items) return;
+
+            if (!sounds.length) { wrap.classList.add('hidden'); return; }
+
+            wrap.classList.remove('hidden');
+            items.innerHTML = '';
 
             sounds.forEach(s => {
-                const opt       = document.createElement('option');
-                opt.value       = s.path;
-                opt.textContent = s.name;
-                if (saved[key] === s.path) opt.selected = true;
-                group.appendChild(opt);
+                const row     = document.createElement('div');
+                row.className = 'flex items-center gap-2 text-sm p-2 rounded-lg bg-base-200';
+                row.innerHTML = `
+                    <i data-lucide="bell" class="w-4 h-4 text-primary shrink-0"></i>
+                    <span class="truncate flex-1 text-base-content">${s.name}</span>
+                    <button type="button" class="btn btn-ghost btn-xs btn-circle preview-row"
+                            data-path="${s.path}" title="Preview">
+                        <i data-lucide="play" class="w-3 h-3"></i>
+                    </button>
+                `;
+                items.appendChild(row);
             });
 
-            select.appendChild(group);
-        });
-    }
+            items.querySelectorAll('.preview-row').forEach(btn =>
+                btn.addEventListener('click', () => playPath(btn.dataset.path))
+            );
 
-    // Render uploaded list below the upload zone
-    function renderUploadedList(sounds) {
-        const wrap  = document.getElementById('uploaded-sounds-list');
-        const items = document.getElementById('uploaded-sounds-items');
-        if (!wrap || !items) return;
-
-        if (!sounds.length) { wrap.classList.add('hidden'); return; }
-
-        wrap.classList.remove('hidden');
-        items.innerHTML = '';
-
-        sounds.forEach(s => {
-            const row     = document.createElement('div');
-            row.className = 'flex items-center gap-2 text-sm p-2 rounded-lg bg-base-200';
-            row.innerHTML = `
-                <i data-lucide="bell" class="w-4 h-4 text-primary shrink-0"></i>
-                <span class="truncate flex-1 text-base-content">${s.name}</span>
-                <button type="button" class="btn btn-ghost btn-xs btn-circle preview-row"
-                        data-path="${s.path}" title="Preview">
-                    <i data-lucide="play" class="w-3 h-3"></i>
-                </button>
-            `;
-            items.appendChild(row);
-        });
-
-        items.querySelectorAll('.preview-row').forEach(btn =>
-            btn.addEventListener('click', () => playPath(btn.dataset.path))
-        );
-
-        if (window.lucide) window.lucide.createIcons();
-    }
-
-    // Load uploaded sounds from API
-    async function loadUploadedSounds() {
-        try {
-            const res  = await fetch('/api/preferences', { headers: { Accept: 'application/json' } });
-            const data = await res.json();
-            const uploaded = data.sounds?.uploaded ?? [];
-            injectUploadedOptions(uploaded);
-            renderUploadedList(uploaded);
-        } catch (e) {
-            console.warn('[Sounds] Failed to load uploaded sounds:', e);
+            if (window.lucide) window.lucide.createIcons();
         }
-    }
 
-    // File input / drop zone
-    const fileInput   = document.getElementById('sound-file-input');
-    const dropZone    = document.getElementById('sound-drop-zone');
-    const previewWrap = document.getElementById('sound-upload-preview');
-    const previewName = document.getElementById('sound-upload-filename');
-    const clearBtn    = document.getElementById('sound-upload-clear');
-    const uploadBtn   = document.getElementById('sound-upload-btn');
-    const progWrap    = document.getElementById('sound-upload-progress-wrap');
-    const progBar     = document.getElementById('sound-upload-progress');
-    const progLbl     = document.getElementById('sound-upload-progress-label');
-
-    let selectedFile = null;
-
-    function setFile(file) {
-        if (!file) return;
-        selectedFile            = file;
-        previewName.textContent = file.name;
-        previewWrap.classList.remove('hidden');
-        uploadBtn.disabled      = false;
-    }
-
-    function clearFile() {
-        selectedFile       = null;
-        fileInput.value    = '';
-        previewWrap.classList.add('hidden');
-        progWrap.classList.add('hidden');
-        uploadBtn.disabled = true;
-        progBar.value      = 0;
-        progLbl.textContent = '0%';
-    }
-
-    fileInput.addEventListener('change', () => setFile(fileInput.files?.[0]));
-    clearBtn.addEventListener('click', clearFile);
-
-    dropZone.addEventListener('dragover', e => {
-        e.preventDefault();
-        dropZone.classList.add('border-primary', 'bg-primary/5');
-    });
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('border-primary', 'bg-primary/5');
-    });
-    dropZone.addEventListener('drop', e => {
-        e.preventDefault();
-        dropZone.classList.remove('border-primary', 'bg-primary/5');
-        setFile(e.dataTransfer.files?.[0]);
-    });
-
-    // Upload
-    uploadBtn.addEventListener('click', async () => {
-        if (!selectedFile) return;
-
-        uploadBtn.disabled = true;
-        progWrap.classList.remove('hidden');
-
-        const formData = new FormData();
-        formData.append('sound', selectedFile);
-
-        try {
-            const result = await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', '/api/preferences/sounds/upload');
-                xhr.setRequestHeader('X-CSRF-TOKEN', csrf);
-                xhr.setRequestHeader('Accept', 'application/json');
-
-                xhr.upload.onprogress = e => {
-                    if (e.lengthComputable) {
-                        const pct           = Math.round((e.loaded / e.total) * 100);
-                        progBar.value       = pct;
-                        progLbl.textContent = pct + '%';
-                    }
-                };
-
-                xhr.onload = () => {
-                    if (xhr.status === 201) {
-                        try { resolve(JSON.parse(xhr.responseText)); }
-                        catch (err) { reject(err); }
-                    } else {
-                        try { reject(new Error(JSON.parse(xhr.responseText)?.message || 'Upload failed')); }
-                        catch { reject(new Error('Upload failed')); }
-                    }
-                };
-
-                xhr.onerror = () => reject(new Error('Network error'));
-                xhr.send(formData);
-            });
-
-            toast(true, `"${result.name}" uploaded!`);
-            clearFile();
-
-            // Inject immediately without waiting for full reload
-            injectUploadedOptions([result]);
-
-            // Then do a full reload to sync the list properly
-            await loadUploadedSounds();
-
-        } catch (err) {
-            toast(false, err.message || 'Upload failed');
-            uploadBtn.disabled = false;
+        // Load uploaded sounds from API
+        async function loadUploadedSounds() {
+            try {
+                const res  = await fetch('/api/preferences', { headers: { Accept: 'application/json' } });
+                const data = await res.json();
+                const uploaded = data.sounds?.uploaded ?? [];
+                injectUploadedOptions(uploaded);
+                renderUploadedList(uploaded);
+            } catch (e) {
+                console.warn('[Sounds] Failed to load uploaded sounds:', e);
+            }
         }
+
+        // File input / drop zone
+        const fileInput   = document.getElementById('sound-file-input');
+        const dropZone    = document.getElementById('sound-drop-zone');
+        const previewWrap = document.getElementById('sound-upload-preview');
+        const previewName = document.getElementById('sound-upload-filename');
+        const clearBtn    = document.getElementById('sound-upload-clear');
+        const uploadBtn   = document.getElementById('sound-upload-btn');
+        const progWrap    = document.getElementById('sound-upload-progress-wrap');
+        const progBar     = document.getElementById('sound-upload-progress');
+        const progLbl     = document.getElementById('sound-upload-progress-label');
+
+        let selectedFile = null;
+
+        function setFile(file) {
+            if (!file) return;
+            selectedFile            = file;
+            previewName.textContent = file.name;
+            previewWrap.classList.remove('hidden');
+            uploadBtn.disabled      = false;
+        }
+
+        function clearFile() {
+            selectedFile       = null;
+            fileInput.value    = '';
+            previewWrap.classList.add('hidden');
+            progWrap.classList.add('hidden');
+            uploadBtn.disabled = true;
+            progBar.value      = 0;
+            progLbl.textContent = '0%';
+        }
+
+        fileInput.addEventListener('change', () => setFile(fileInput.files?.[0]));
+        clearBtn.addEventListener('click', clearFile);
+
+        dropZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            dropZone.classList.add('border-primary', 'bg-primary/5');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-primary', 'bg-primary/5');
+        });
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('border-primary', 'bg-primary/5');
+            setFile(e.dataTransfer.files?.[0]);
+        });
+
+        // Upload
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            uploadBtn.disabled = true;
+            progWrap.classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append('sound', selectedFile);
+
+            try {
+                const result = await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/preferences/sounds/upload');
+                    xhr.setRequestHeader('X-CSRF-TOKEN', csrf);
+                    xhr.setRequestHeader('Accept', 'application/json');
+
+                    xhr.upload.onprogress = e => {
+                        if (e.lengthComputable) {
+                            const pct           = Math.round((e.loaded / e.total) * 100);
+                            progBar.value       = pct;
+                            progLbl.textContent = pct + '%';
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status === 201) {
+                            try { resolve(JSON.parse(xhr.responseText)); }
+                            catch (err) { reject(err); }
+                        } else {
+                            try { reject(new Error(JSON.parse(xhr.responseText)?.message || 'Upload failed')); }
+                            catch { reject(new Error('Upload failed')); }
+                        }
+                    };
+
+                    xhr.onerror = () => reject(new Error('Network error'));
+                    xhr.send(formData);
+                });
+
+                toast(true, `"${result.name}" uploaded!`);
+                clearFile();
+
+                // Inject immediately without waiting for full reload
+                injectUploadedOptions([result]);
+
+                // Then do a full reload to sync the list properly
+                await loadUploadedSounds();
+
+            } catch (err) {
+                toast(false, err.message || 'Upload failed');
+                uploadBtn.disabled = false;
+            }
+        });
+
+        // Init
+        loadUploadedSounds();
     });
 
-    // Init
-    loadUploadedSounds();
-});
-
-</script>
-@endpush
+    </script>
+    @endpush
 @endonce
 
 <x-settings.layout>
