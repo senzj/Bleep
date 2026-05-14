@@ -564,7 +564,9 @@ class AdminController extends Controller
     public function logs(Request $request)
     {
         // Base query
-        $query = Logs::query()->with('user')->orderByDesc('created_at');
+        $query = Logs::query()
+            ->with('user')
+            ->orderByDesc('created_at');
 
         // Quick search across user display name, username, email and logs.ip
         $q = trim($request->get('q', ''));
