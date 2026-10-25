@@ -24,14 +24,14 @@
 @else
     <p class="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-1">Actions</p>
 
-    <button class="btn btn-sm w-full justify-start border-success/40 bg-success/10 text-success hover:bg-success/20 dismiss-report-btn"
+    <button class="btn btn-sm w-full justify-start border-success/40 bg-success/10 text-success hover:bg-success/20 mark-reviewed-btn"
             data-report-id="{{ $report->id }}">
         <i data-lucide="check" class="w-4 h-4"></i>
         Mark Resolved
     </button>
 
     @if(in_array($report->status, ['pending']))
-        <button class="btn btn-sm w-full justify-start btn-outline mark-reviewed-btn"
+        <button class="btn btn-sm w-full justify-start btn-outline dismiss-report-btn"
                 data-report-id="{{ $report->id }}">
             <i data-lucide="x-circle" class="w-4 h-4"></i>
             Dismiss Report

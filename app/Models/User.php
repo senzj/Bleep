@@ -3,16 +3,18 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -110,9 +112,10 @@ class User extends Authenticatable
         }
 
         $path = ltrim($path, '/');
-        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
-            return asset('storage/' . $path);
+        if (Storage::disk('public')->exists($path)) {
+            return asset('storage/'.$path);
         }
+
         return asset('images/avatar/default.jpg');
     }
 
@@ -127,7 +130,7 @@ class User extends Authenticatable
      */
     public function isBanned(): bool
     {
-        if (!$this->is_banned) {
+        if (! $this->is_banned) {
             return false;
         }
 
@@ -138,6 +141,7 @@ class User extends Authenticatable
                 'banned_until' => null,
                 'ban_reason' => null,
             ]);
+
             return false;
         }
 
@@ -162,7 +166,15 @@ class User extends Authenticatable
      */
     public function getPreferences(): UserPreferences
     {
-        return $this->preferences ?? $this->preferences()->create(UserPreferences::defaults());
+        if (! $this->relationLoaded('preferences')) {
+            $this->load('preferences');
+        }
+
+        if (! $this->preferences) {
+            $this->setRelation('preferences', $this->preferences()->create(UserPreferences::defaults()));
+        }
+
+        return $this->preferences;
     }
 
     /**
@@ -208,7 +220,7 @@ class User extends Authenticatable
     {
         return $this->following()->whereHas('following', function ($query) use ($user) {
             $query->where('following_id', $user->id);
-        })->exists() && $user->following()->whereHas('following', function ($query) use ($user) {
+        })->exists() && $user->following()->whereHas('following', function ($query) {
             $query->where('following_id', $this->id);
         })->exists();
     }
