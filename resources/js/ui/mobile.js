@@ -63,6 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
+
+        document.dispatchEvent(new CustomEvent('bleep:tab-changed', { detail: { tab: tabName } }));
     }
 
     tabButtons.forEach(btn => {

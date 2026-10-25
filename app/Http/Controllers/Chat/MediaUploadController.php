@@ -11,7 +11,7 @@ class MediaUploadController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'file' => ['required', 'file', 'max:1500000', 'mimetypes:image/jpeg,image/png,image/webp,video/mp4,video/webm,audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg,application/pdf'],
+            'file' => ['required', 'file', 'max:102400', 'mimetypes:image/jpeg,image/png,image/webp,video/mp4,video/webm,audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg'],
             'media_kind' => ['nullable', 'in:media,audio,voice'],
         ]);
 
@@ -23,7 +23,7 @@ class MediaUploadController extends Controller
         return response()->json([
             'data' => [
                 'media_path' => $path,
-                'media_url' => asset('storage/' . ltrim($path, '/')),
+                'media_url' => asset('storage/'.ltrim($path, '/')),
                 'media_type' => $file->getMimeType(),
                 'media_kind' => $kind,
                 'size' => $file->getSize(),

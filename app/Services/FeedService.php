@@ -22,11 +22,11 @@ class FeedService
         $page = $page ?? (int) $request->get('page', 1);
 
         $followedIds = $this->getFollowedIds($user);
-        $friendIds   = $this->getFriendIds($user, $followedIds);
+        $friendIds = $this->getFriendIds($user, $followedIds);
 
         $tab = $this->normalizeTab($tab);
 
-        $scopeIds = [];
+        $scopeIds = null;
         if ($tab === 'following') {
             $scopeIds = $followedIds;
         } elseif ($tab === 'friends') {
@@ -46,9 +46,9 @@ class FeedService
 
         $sorted = $this->applyOrdering($bleeps, $preferences, $user, $followedIds, $page, $tab);
 
-        $total  = $sorted->count();
+        $total = $sorted->count();
         $offset = max(0, ($page - 1) * $perPage);
-        $items  = $sorted->slice($offset, $perPage)->values();
+        $items = $sorted->slice($offset, $perPage)->values();
 
         $this->attachFollowedReposts($items, $user?->id);
 
@@ -58,7 +58,7 @@ class FeedService
             $perPage,
             $page,
             [
-                'path'  => $request->url(),
+                'path' => $request->url(),
                 'query' => $request->query(),
             ]
         );
@@ -78,12 +78,11 @@ class FeedService
      */
     protected function buildBaseQuery(?object $preferences, ?User $user, array $followedIds, string $tab)
     {
-        $query = Bleep::with(['user', 'media'])
-            ->withCount(['likes']);
+        $query = Bleep::query()->withCardStats($user);
 
         if ($user) {
             $blockedUserIds = $this->getBlockedRelationshipUserIds($user);
-            if (!empty($blockedUserIds)) {
+            if (! empty($blockedUserIds)) {
                 $query->whereNotIn('user_id', $blockedUserIds);
             }
         }
@@ -112,7 +111,7 @@ class FeedService
                 });
 
                 // Show bleeps from private-profile users the auth user follows
-                if ($user && !empty($followedIds)) {
+                if ($user && ! empty($followedIds)) {
                     // followedIds already includes $user->id, so slice it out
                     // to avoid redundancy (not harmful but cleaner)
                     $othersFollowed = array_filter(
@@ -120,12 +119,12 @@ class FeedService
                         fn ($id) => $id !== $user->id
                     );
 
-                    if (!empty($othersFollowed)) {
+                    if (! empty($othersFollowed)) {
                         $q->orWhere(function ($inner) use ($othersFollowed) {
                             $inner->whereIn('user_id', $othersFollowed)
-                                  ->whereHas('user.preferences', function ($pref) {
-                                      $pref->where('private_profile', true);
-                                  });
+                                ->whereHas('user.preferences', function ($pref) {
+                                    $pref->where('private_profile', true);
+                                });
                         });
                     }
                 }
@@ -150,9 +149,18 @@ class FeedService
             ->toArray();
     }
 
-    protected function applyScope($query, array $scopeIds, ?object $preferences): void
+    protected function applyScope($query, ?array $scopeIds, ?object $preferences): void
     {
+        // A null scope means "no tab filter" (the For You tab).
+        if ($scopeIds === null) {
+            return;
+        }
+
+        // Following/Friends with nobody in scope must yield an empty feed,
+        // not the global feed.
         if (empty($scopeIds)) {
+            $query->whereRaw('1 = 0');
+
             return;
         }
 
@@ -166,7 +174,7 @@ class FeedService
                     ->values()
                     ->toArray();
 
-                if (!empty($repostedIds)) {
+                if (! empty($repostedIds)) {
                     $q->orWhereIn('id', $repostedIds);
                 }
             }
@@ -180,9 +188,9 @@ class FeedService
         }
 
         $timezone = $user?->timezone ?? 'UTC';
-        $today    = now($timezone)->toDateString();
+        $today = now($timezone)->toDateString();
 
-        $sortMode       = $preferences?->default_feed_sort ?? 'newest';
+        $sortMode = $preferences?->default_feed_sort ?? 'newest';
         $followedLookup = array_flip($followedIds);
 
         $buckets = $bleeps->groupBy(function ($bleep) use ($timezone) {
@@ -204,6 +212,7 @@ class FeedService
                     if ($a->likes_count === $b->likes_count) {
                         return $b->created_at <=> $a->created_at;
                     }
+
                     return $b->likes_count <=> $a->likes_count;
                 })->values();
             } elseif ($sortMode === 'following') {
@@ -213,13 +222,14 @@ class FeedService
                     if ($aFollowed === $bFollowed) {
                         return $b->created_at <=> $a->created_at;
                     }
+
                     return $bFollowed <=> $aFollowed;
                 })->values();
             } else {
                 $sortedBucket = $bucket->sortByDesc('created_at')->values();
             }
 
-            $seed     = ($user?->id ?? 'guest') . ':' . $day . ':' . $page . ':' . $tab;
+            $seed = ($user?->id ?? 'guest').':'.$day.':'.$page.':'.$tab;
             $shuffled = $this->shuffleLightly($sortedBucket, $seed, 5);
 
             $ordered = $ordered->concat($shuffled);
@@ -236,22 +246,20 @@ class FeedService
 
         return $items->chunk($chunkSize)->flatMap(function ($chunk, $chunkIndex) use ($seed) {
             return $chunk->sortBy(function ($bleep) use ($seed, $chunkIndex) {
-                $hash = crc32($seed . ':' . $chunkIndex . ':' . $bleep->id);
-                return $hash / 0xffffffff;
+                $hash = crc32($seed.':'.$chunkIndex.':'.$bleep->id);
+
+                return $hash / 0xFFFFFFFF;
             })->values();
         })->values();
     }
 
     protected function attachFollowedReposts(Collection $bleeps, ?int $userId): void
     {
-        if (!$userId) {
+        if (! $userId) {
             return;
         }
 
-        $bleeps->transform(function ($bleep) use ($userId) {
-            $bleep->followedReposts = Repost::visibleToUser($userId, $bleep->id);
-            return $bleep;
-        });
+        Repost::attachVisibleTo($bleeps, $userId);
     }
 
     protected function normalizeTab(string $tab): string
@@ -263,12 +271,13 @@ class FeedService
         if (in_array($tab, ['following', 'friends'], true)) {
             return $tab;
         }
+
         return 'for-you';
     }
 
     protected function getFollowedIds(?User $user): array
     {
-        if (!$user) {
+        if (! $user) {
             return [];
         }
 
@@ -282,7 +291,7 @@ class FeedService
 
     protected function getFriendIds(?User $user, array $followedIds): array
     {
-        if (!$user) {
+        if (! $user) {
             return [];
         }
 

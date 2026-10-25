@@ -3,13 +3,13 @@
 namespace App\Models;
 
 use App\Traits\HasAnonymousName;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
 
 class Bleep extends Model
 {
@@ -26,8 +26,8 @@ class Bleep extends Model
     ];
 
     protected $casts = [
-        'is_anonymous'      => 'boolean',
-        'is_nsfw'           => 'boolean',
+        'is_anonymous' => 'boolean',
+        'is_nsfw' => 'boolean',
         'deleted_by_author' => 'boolean',
         'views' => 'integer',
     ];
@@ -85,6 +85,27 @@ class Bleep extends Model
     }
 
     /**
+     * Eager-load everything a bleep card needs to render without extra queries.
+     *
+     * Adds likes_count, comments_count, shares_count and reposts_count aggregates,
+     * plus the viewer-specific liked_by_viewer / has_reposted flags.
+     */
+    public function scopeWithCardStats(Builder $query, ?User $viewer = null): Builder
+    {
+        $query->with(['user.preferences', 'media'])
+            ->withCount(['likes', 'comments', 'shares', 'reposts']);
+
+        if ($viewer) {
+            $query->withExists([
+                'likes as liked_by_viewer' => fn (Builder $likes) => $likes->where('user_id', $viewer->id),
+                'reposts as has_reposted' => fn (Builder $reposts) => $reposts->where('user_id', $viewer->id),
+            ]);
+        }
+
+        return $query;
+    }
+
+    /**
      * Helpers
      */
 
@@ -94,13 +115,49 @@ class Bleep extends Model
         return $this->views ?? $this->views()->count();
     }
 
+    public function likeCount(): int
+    {
+        return (int) ($this->attributes['likes_count'] ?? $this->likes()->count());
+    }
+
+    public function commentCount(): int
+    {
+        return (int) ($this->attributes['comments_count'] ?? $this->comments()->count());
+    }
+
+    public function shareCount(): int
+    {
+        return (int) ($this->attributes['shares_count'] ?? $this->shares()->count());
+    }
+
+    public function repostCount(): int
+    {
+        return (int) ($this->attributes['reposts_count'] ?? $this->reposts()->count());
+    }
+
+    /**
+     * Whether the given viewer has reposted this bleep.
+     */
+    public function hasRepostedByViewer(?User $viewer): bool
+    {
+        if (! $viewer) {
+            return false;
+        }
+
+        if (array_key_exists('has_reposted', $this->attributes)) {
+            return (bool) $this->attributes['has_reposted'];
+        }
+
+        return $this->reposts()->where('user_id', $viewer->id)->exists();
+    }
+
     // Helper to record a view
     public function recordView(?User $user = null, ?string $sessionId = null): void
     {
         $created = BleepViews::firstOrCreate([
-            'bleep_id'  => $this->id,
-            'user_id'   => $user?->id,
-            'session_id'=> $user ? null : $sessionId,
+            'bleep_id' => $this->id,
+            'user_id' => $user?->id,
+            'session_id' => $user ? null : $sessionId,
         ], [
             'viewed_at' => now(),
         ]);
@@ -117,7 +174,14 @@ class Bleep extends Model
     // Helper to check if a user liked this bleep
     public function isLikedBy($user): bool
     {
-        if (!$user) return false;
+        if (! $user) {
+            return false;
+        }
+
+        // Use the pre-computed exists flag when the card query supplied it.
+        if (array_key_exists('liked_by_viewer', $this->attributes)) {
+            return (bool) $this->attributes['liked_by_viewer'];
+        }
 
         // Use loaded relation if available to avoid extra query
         if ($this->relationLoaded('likes')) {
@@ -125,6 +189,39 @@ class Bleep extends Model
         }
 
         return $this->likes()->where('user_id', $user->id)->exists();
+    }
+
+    /**
+     * Determine whether a viewer may see this bleep.
+     *
+     * Guests may see public, non-deleted bleeps. Private-profile posts require
+     * an accepted follow relationship. Soft-deleted posts are limited to the
+     * author and administrators.
+     */
+    public function isVisibleTo(?User $viewer = null): bool
+    {
+        $author = $this->user;
+
+        if (! $author) {
+            return ! $this->trashed();
+        }
+
+        if ($this->trashed()) {
+            return $viewer !== null
+                && ((int) $viewer->id === (int) $this->user_id || $viewer->hasAdminAccess());
+        }
+
+        if ($viewer && $viewer->isBlockedOrHasBlocked($author)) {
+            return false;
+        }
+
+        if ($viewer && (int) $viewer->id === (int) $this->user_id) {
+            return true;
+        }
+
+        $isPrivate = (bool) ($author->preferences?->private_profile ?? false);
+
+        return ! $isPrivate || ($viewer !== null && $viewer->isFollowing($author));
     }
 
     // Cleanup media files when bleep is deleted (soft delete)

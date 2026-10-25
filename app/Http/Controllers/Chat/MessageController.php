@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Chat;
 
 use App\Events\Chat\ConversationUpdated;
-use App\Events\Chat\MessageDelivered;
 use App\Events\Chat\MessageDeleted;
+use App\Events\Chat\MessageDelivered;
 use App\Events\Chat\MessageRead;
 use App\Events\Chat\MessageSent;
 use App\Events\Chat\MessageUpdated;
@@ -14,6 +14,8 @@ use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageEdit;
 use App\Models\MessageMedia;
+use App\Models\User;
+use App\Services\Chat\BroadcastGateway;
 use App\Services\Chat\ChatMessageFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +24,8 @@ use Illuminate\Support\Facades\Storage;
 
 class MessageController extends Controller
 {
+    public function __construct(private BroadcastGateway $broadcasts) {}
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -48,13 +52,13 @@ class MessageController extends Controller
 
         if ($imageCount > Message::MAX_IMAGES) {
             return response()->json([
-                'message' => 'Maximum ' . Message::MAX_IMAGES . ' images per message allowed.',
+                'message' => 'Maximum '.Message::MAX_IMAGES.' images per message allowed.',
             ], 422);
         }
 
         if ($videoCount > Message::MAX_VIDEOS) {
             return response()->json([
-                'message' => 'Maximum ' . Message::MAX_VIDEOS . ' videos per message allowed.',
+                'message' => 'Maximum '.Message::MAX_VIDEOS.' videos per message allowed.',
             ], 422);
         }
 
@@ -62,6 +66,17 @@ class MessageController extends Controller
         $conversation = Conversation::findOrFail($validated['conversation_id']);
 
         abort_unless($conversation->participants()->where('users.id', $user->id)->exists(), 403);
+        $this->assertDirectConversationAllowed($conversation, $user);
+
+        if (! empty($validated['reply_to_id'])) {
+            $replyTarget = Message::withTrashed()->find($validated['reply_to_id']);
+
+            if (! $replyTarget || (int) $replyTarget->conversation_id !== (int) $conversation->id) {
+                return response()->json([
+                    'message' => 'You can only reply to a message in the same conversation.',
+                ], 422);
+            }
+        }
 
         $body = trim((string) ($validated['body'] ?? ''));
         $mediaPath = $validated['media_path'] ?? null;
@@ -82,12 +97,18 @@ class MessageController extends Controller
             ], 422);
         }
 
+        if (! $this->chatMediaPathsAreValid($incomingMediaItems)) {
+            return response()->json([
+                'message' => 'One or more media attachments are invalid.',
+            ], 422);
+        }
+
         if (! empty($validated['client_uuid'])) {
             $existing = Message::query()
                 ->where('conversation_id', $conversation->id)
                 ->where('sender_id', $user->id)
                 ->where('client_uuid', $validated['client_uuid'])
-                ->with(['sender:id,username,dname,profile_picture', 'deliveries.user:id,username,dname', 'conversation.participants:id,username,dname'])
+                ->with(ChatMessageFormatter::relations())
                 ->first();
 
             if ($existing) {
@@ -97,7 +118,7 @@ class MessageController extends Controller
             }
         }
 
-        $message = DB::transaction(function () use ($validated, $conversation, $user, $body, $mediaPath, $incomingMediaItems) {
+        $message = DB::transaction(function () use ($validated, $conversation, $user, $body, $incomingMediaItems) {
             $message = Message::create([
                 'conversation_id' => $conversation->id,
                 'sender_id' => $user->id,
@@ -150,24 +171,19 @@ class MessageController extends Controller
                 'last_read_at' => $now,
             ]);
 
-            return $message->fresh([
-                'sender:id,username,dname,profile_picture',
-                'deliveries.user:id,username,dname',
-                'conversation.participants:id,username,dname',
-                'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
-            ]);
+            return $message->fresh(ChatMessageFormatter::relations());
         });
 
         $payload = ChatMessageFormatter::format($message, $user->id);
-        broadcast(new MessageSent($conversation->id, $payload))->toOthers();
+        $this->broadcasts->dispatch(new MessageSent($conversation->id, $payload), toOthers: true);
 
         $recipientIds = $conversation->participants()
             ->where('users.id', '!=', $user->id)
             ->pluck('users.id');
 
         foreach ($recipientIds as $recipientId) {
-            broadcast(new MessageDelivered((int) $recipientId, $conversation->id, $payload));
-            broadcast(new ConversationUpdated((int) $recipientId, $conversation->id));
+            $this->broadcasts->dispatch(new MessageDelivered((int) $recipientId, $conversation->id, $payload));
+            $this->broadcasts->dispatch(new ConversationUpdated((int) $recipientId, $conversation->id));
         }
 
         return response()->json(['data' => $payload], 201);
@@ -194,6 +210,12 @@ class MessageController extends Controller
         $body = trim((string) ($validated['body'] ?? ''));
         $incomingMediaItems = collect($validated['media_items'] ?? []);
 
+        if (! $this->chatMediaPathsAreValid($incomingMediaItems)) {
+            return response()->json([
+                'message' => 'One or more media attachments are invalid.',
+            ], 422);
+        }
+
         $existingMediaIds = $message->mediaItems()->pluck('id')->all();
         $hasRetainedMediaInput = array_key_exists('retained_media_ids', $validated);
         $retainedMediaIds = collect($hasRetainedMediaInput ? ($validated['retained_media_ids'] ?? []) : $existingMediaIds)
@@ -214,13 +236,13 @@ class MessageController extends Controller
 
         if ($imageCount > Message::MAX_IMAGES) {
             return response()->json([
-                'message' => 'Maximum ' . Message::MAX_IMAGES . ' images per message allowed.',
+                'message' => 'Maximum '.Message::MAX_IMAGES.' images per message allowed.',
             ], 422);
         }
 
         if ($videoCount > Message::MAX_VIDEOS) {
             return response()->json([
-                'message' => 'Maximum ' . Message::MAX_VIDEOS . ' videos per message allowed.',
+                'message' => 'Maximum '.Message::MAX_VIDEOS.' videos per message allowed.',
             ], 422);
         }
 
@@ -236,12 +258,7 @@ class MessageController extends Controller
 
         if (! $bodyChanged && ! $mediaChanged) {
             return response()->json([
-                'data' => ChatMessageFormatter::format($message->loadMissing([
-                    'sender:id,username,dname,profile_picture',
-                    'deliveries.user:id,username,dname',
-                    'conversation.participants:id,username,dname',
-                    'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
-                ]), $user->id),
+                'data' => ChatMessageFormatter::format($message->loadMissing(ChatMessageFormatter::relations()), $user->id),
             ]);
         }
 
@@ -280,16 +297,11 @@ class MessageController extends Controller
                 'edited_at' => now(),
             ]);
 
-            return $message->fresh([
-                'sender:id,username,dname,profile_picture',
-                'deliveries.user:id,username,dname',
-                'conversation.participants:id,username,dname',
-                'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
-            ]);
+            return $message->fresh(ChatMessageFormatter::relations());
         });
 
         $payload = ChatMessageFormatter::format($updatedMessage, $user->id);
-        broadcast(new MessageUpdated((int) $message->conversation_id, $payload))->toOthers();
+        $this->broadcasts->dispatch(new MessageUpdated((int) $message->conversation_id, $payload), toOthers: true);
 
         return response()->json(['data' => $payload]);
     }
@@ -307,7 +319,8 @@ class MessageController extends Controller
             // Hard delete media files from storage and database
             $mediaItems = $message->mediaItems;
             foreach ($mediaItems as $mediaItem) {
-                if ($mediaItem->media_path && Storage::disk('public')->exists($mediaItem->media_path)) {
+                if ($this->isSafeChatMediaPath($mediaItem->media_path)
+                    && Storage::disk('public')->exists($mediaItem->media_path)) {
                     Storage::disk('public')->delete($mediaItem->media_path);
                 }
             }
@@ -322,17 +335,12 @@ class MessageController extends Controller
         }
 
         $deletedMessage = Message::withTrashed()
-            ->with([
-                'sender:id,username,dname,profile_picture',
-                'deliveries.user:id,username,dname',
-                'conversation.participants:id,username,dname',
-                'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
-            ])
+            ->with(ChatMessageFormatter::relations())
             ->findOrFail($message->id);
 
         $payload = ChatMessageFormatter::format($deletedMessage, $user->id);
 
-        broadcast(new MessageDeleted((int) $message->conversation_id, $payload))->toOthers();
+        $this->broadcasts->dispatch(new MessageDeleted((int) $message->conversation_id, $payload), toOthers: true);
 
         return response()->json(['data' => $payload]);
     }
@@ -343,14 +351,24 @@ class MessageController extends Controller
         abort_unless($conversation->participants()->where('users.id', $user->id)->exists(), 403);
 
         $validated = $request->validate([
-            'last_message_id' => ['nullable', 'integer', 'exists:messages,id'],
+            'last_message_id' => ['nullable', 'integer'],
         ]);
 
-        $lastMessageId = (int) ($validated['last_message_id'] ?? $conversation->messages()->max('id'));
+        $lastMessageId = (int) ($validated['last_message_id'] ?? 0);
 
-        if (! $lastMessageId) {
+        if ($lastMessageId === 0) {
+            $lastMessageId = (int) $conversation->messages()->max('id');
+        }
+
+        if ($lastMessageId === 0) {
             return response()->json(['ok' => true]);
         }
+
+        abort_unless(
+            $conversation->messages()->withTrashed()->whereKey($lastMessageId)->exists(),
+            422,
+            'The message does not belong to this conversation.'
+        );
 
         $now = now();
 
@@ -358,26 +376,15 @@ class MessageController extends Controller
             'last_read_at' => $now,
         ]);
 
-        $messageIds = $conversation->messages()
-            ->where('id', '<=', $lastMessageId)
-            ->pluck('id');
-
-        $rows = $messageIds->map(fn ($id) => [
-            'message_id' => $id,
-            'user_id' => $user->id,
-            'delivered_at' => $now,
-            'read_at' => $now,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ])->all();
-
-        if (! empty($rows)) {
-            MessageDelivery::upsert(
-                $rows,
-                ['message_id', 'user_id'],
-                ['delivered_at', 'read_at', 'updated_at']
-            );
-        }
+        MessageDelivery::query()
+            ->where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->where('message_id', '<=', $lastMessageId)
+            ->whereIn('message_id', $conversation->messages()->withTrashed()->select('id'))
+            ->update([
+                'read_at' => $now,
+                'updated_at' => $now,
+            ]);
 
         $reader = [
             'id' => $user->id,
@@ -386,8 +393,51 @@ class MessageController extends Controller
             'profile_picture_url' => $user->profile_picture_url,
         ];
 
-        broadcast(new MessageRead($conversation->id, $lastMessageId, $reader, $now->toIso8601String()))->toOthers();
+        $this->broadcasts->dispatch(new MessageRead($conversation->id, $lastMessageId, $reader, $now->toIso8601String()), toOthers: true);
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Direct conversations cannot be used to bypass a block.
+     */
+    private function assertDirectConversationAllowed(Conversation $conversation, User $user): void
+    {
+        if ($conversation->is_group) {
+            return;
+        }
+
+        $other = $conversation->participants()
+            ->where('users.id', '!=', $user->id)
+            ->first();
+
+        abort_if($other && $user->isBlockedOrHasBlocked($other), 403, 'Messaging is unavailable due to a block relationship.');
+    }
+
+    /**
+     * Chat media must live inside the chat directory and actually exist.
+     */
+    private function chatMediaPathsAreValid(iterable $mediaItems): bool
+    {
+        foreach ($mediaItems as $item) {
+            if (! $this->isSafeChatMediaPath($item['media_path'] ?? null)) {
+                return false;
+            }
+
+            if (! Storage::disk('public')->exists($item['media_path'])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isSafeChatMediaPath(?string $path): bool
+    {
+        return is_string($path)
+            && $path !== ''
+            && str_starts_with($path, 'chat/')
+            && ! str_contains($path, '..')
+            && ! str_contains($path, "\0");
     }
 }

@@ -41,9 +41,13 @@ export default function commentSheet() {
                 this.open = false;
                 this.sheetY = 0;
                 this.fullscreen = false;
-                document.body.style.overflow = '';
+                this.unlockScroll();
+                this.restoreFocus();
             };
             window.addEventListener('close-comments', this._onExternalClose);
+
+            this._onKeydown = (event) => this.trapFocus(event);
+            document.addEventListener('keydown', this._onKeydown);
         },
 
         destroy() {
@@ -54,7 +58,58 @@ export default function commentSheet() {
             document.removeEventListener('mouseup', this._onMouseUp);
             document.removeEventListener('touchmove', this._onTouchMove);
             document.removeEventListener('touchend', this._onTouchEnd);
+            document.removeEventListener('keydown', this._onKeydown);
+            this.unlockScroll();
+        },
+
+        lockScroll() {
+            if (this._scrollLocked) return;
+            this._scrollLocked = true;
+            document.body.style.overflow = 'hidden';
+        },
+
+        unlockScroll() {
+            if (!this._scrollLocked) return;
+            this._scrollLocked = false;
             document.body.style.overflow = '';
+        },
+
+        focusableElements() {
+            const sheet = this.$refs.sheet;
+            if (!sheet) return [];
+
+            return Array.from(
+                sheet.querySelectorAll(
+                    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                )
+            ).filter((element) => element.offsetParent !== null || element === document.activeElement);
+        },
+
+        trapFocus(event) {
+            if (!this.open || event.key !== 'Tab') return;
+
+            const focusable = this.focusableElements();
+            if (!focusable.length) return;
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            const active = document.activeElement;
+
+            if (event.shiftKey && (active === first || !this.$refs.sheet?.contains(active))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && active === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        },
+
+        restoreFocus() {
+            const target = this._lastFocused;
+            this._lastFocused = null;
+            if (target && typeof target.focus === 'function' && document.contains(target)) {
+                target.focus({ preventScroll: true });
+            }
         },
 
         updateSize() {
@@ -68,7 +123,8 @@ export default function commentSheet() {
                 this.open       = false;
                 this.sheetY     = 0;
                 this.fullscreen = false;
-                document.body.style.overflow = '';
+                this.unlockScroll();
+                this.restoreFocus();
                 window.dispatchEvent(new CustomEvent('close-comments'));
             }
         },
@@ -122,10 +178,22 @@ export default function commentSheet() {
                 return;
             }
 
+            this._lastFocused = document.activeElement;
             this.fullscreen = false;
             this.sheetY = 0;
             this.bleepId = incomingId;
             this.open = true;
+            this.lockScroll();
+
+            // Move focus into the sheet once Alpine has rendered it.
+            this.$nextTick(() => {
+                const focusable = this.focusableElements();
+                if (focusable.length) {
+                    focusable[0].focus({ preventScroll: true });
+                } else {
+                    this.$refs.sheet?.focus({ preventScroll: true });
+                }
+            });
 
             // Show the spinner when the sheet opens (it's hidden by default in
             // modal mode to prevent ghost flash on resize).
@@ -142,7 +210,8 @@ export default function commentSheet() {
                 this.open = false;
                 this.sheetY = 0;
                 this.fullscreen = false;
-                document.body.style.overflow = '';
+                this.unlockScroll();
+                this.restoreFocus();
                 window.dispatchEvent(new CustomEvent('close-comments'));
             }, 280);
         },

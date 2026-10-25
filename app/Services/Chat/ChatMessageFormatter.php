@@ -6,9 +6,14 @@ use App\Models\Message;
 
 class ChatMessageFormatter
 {
-    public static function format(Message $message, ?int $viewerId = null): array
+    /**
+     * Relations required to format a message without triggering N+1 queries.
+     *
+     * @return array<int|string, mixed>
+     */
+    public static function relations(): array
     {
-        $message->loadMissing([
+        return [
             'sender:id,username,dname,profile_picture',
             'conversation.participants:id,username,dname',
             'deliveries.user:id,username,dname,profile_picture',
@@ -20,7 +25,12 @@ class ChatMessageFormatter
                     'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
                 ]);
             },
-        ]);
+        ];
+    }
+
+    public static function format(Message $message, ?int $viewerId = null): array
+    {
+        $message->loadMissing(self::relations());
 
         $isDeleted = $message->trashed();
 
@@ -28,7 +38,7 @@ class ChatMessageFormatter
             ->map(fn ($item) => [
                 'id' => $item->id,
                 'media_path' => $item->media_path,
-                'media_url' => asset('storage/' . ltrim($item->media_path, '/')),
+                'media_url' => asset('storage/'.ltrim($item->media_path, '/')),
                 'media_type' => $item->media_type,
                 'media_kind' => $item->media_kind,
                 'media_duration' => $item->media_duration,
@@ -60,7 +70,7 @@ class ChatMessageFormatter
                 ->map(fn ($item) => [
                     'id' => $item->id,
                     'media_path' => $item->media_path,
-                    'media_url' => asset('storage/' . ltrim($item->media_path, '/')),
+                    'media_url' => asset('storage/'.ltrim($item->media_path, '/')),
                     'media_type' => $item->media_type,
                     'media_kind' => $item->media_kind,
                     'media_duration' => $item->media_duration,

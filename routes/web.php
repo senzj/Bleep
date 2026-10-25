@@ -11,12 +11,12 @@ use App\Http\Controllers\Bleep\CommentsRepliesController;
 use App\Http\Controllers\Bleep\LikesController;
 use App\Http\Controllers\Bleep\RepostController;
 use App\Http\Controllers\Bleep\ShareController;
+use App\Http\Controllers\BleepController;
+use App\Http\Controllers\BlockedUsersController;
 use App\Http\Controllers\Chat\ConversationController;
 use App\Http\Controllers\Chat\MediaUploadController;
 use App\Http\Controllers\Chat\MessageController;
 use App\Http\Controllers\Chat\MessageReactionController;
-use App\Http\Controllers\BleepController;
-use App\Http\Controllers\BlockedUsersController;
 use App\Http\Controllers\FollowingController;
 use App\Http\Controllers\FollowRequestController;
 use App\Http\Controllers\PostController;
@@ -41,7 +41,6 @@ Route::view('/register', 'auth.register')
 Route::post('/register', Register::class)
     ->middleware('guest', 'progressive.lockout:register');
 
-
 // LOGIN
 Route::view('/login', 'auth.login')
     ->middleware('guest')
@@ -50,12 +49,10 @@ Route::view('/login', 'auth.login')
 Route::post('/login', Login::class)
     ->middleware('guest', 'progressive.lockout:login');
 
-
 // LOGOUT
 Route::post('/logout', Logout::class)
     ->middleware('auth')
     ->name('logout');
-
 
 // PUBLIC ROUTES
 
@@ -88,14 +85,12 @@ Route::post('/bleeps/{bleep}/share', [ShareController::class, 'store']);
 
 Route::get('/s/{token}', [ShareController::class, 'redirect'])->name('shares.redirect');
 
-
 // Bleep Posts (with soft-deleted support)
 Route::get('/bleeps/{id}', [PostController::class, 'index'])
     ->name('post');
 
 Route::get('/bleeps/{id}/comments/load-more', [PostController::class, 'loadMorePostComments'])
     ->name('bleeps.comments.loadmore');
-
 
 // Profile page
 Route::get('/bleeper/{username}', [ProfileController::class, 'index'])
@@ -107,15 +102,14 @@ Route::get('/users/{username}/reposts', [ProfileController::class, 'reposts'])->
 Route::get('/bleeper/{username}/relationships/{type}', [SocialController::class, 'relationships'])
     ->name('user.relationships');
 
-
 // Banned User Page (must be outside auth group)
 Route::get('/banned', function () {
-    if (!Auth::check() || !Auth::user()->is_banned) {
+    if (! Auth::check() || ! Auth::user()->is_banned) {
         return redirect('/');
     }
+
     return view('pages.banned');
 })->middleware('auth')->name('banned');
-
 
 // Protected Auth Routes
 Route::middleware('auth')->group((function () {
@@ -262,7 +256,6 @@ Route::middleware('auth')->group((function () {
         ->middleware('progressive.lockout:report')
         ->name('reports.store');
 
-
     // Admin/Mod routes
     Route::middleware('can:is_admin')->group(function () {
         // Admin Dashboard
@@ -291,14 +284,12 @@ Route::middleware('auth')->group((function () {
         Route::post('/admin/reports/{report}/delete-comment', [ReportsController::class, 'deleteComment'])
             ->name('admin.reports.deleteComment');
 
-
         // Users Management
         Route::get('/admin/users', [AdminController::class, 'users'])
             ->name('admin.users');
 
         Route::post('/admin/users/{user}/update', [AdminController::class, 'updateUsers'])
             ->name('admin.users.update');
-
 
         // Devices and Sessions Management
         Route::get('/admin/devices', [AdminController::class, 'devices'])
@@ -324,7 +315,6 @@ Route::middleware('auth')->group((function () {
     });
 }));
 
-
 /*
 |--------------------------------------------------------------------------
 | API Routes for Validation
@@ -347,17 +337,20 @@ Route::post('/generate-username', [ValidationController::class, 'generateRandomU
     ->middleware(['throttle:60,1', 'guest'])
     ->name('generate.username');
 
-
 // MEDIA STREAMING ROUTE
 // use Illuminate\Http\Request;
 // use Symfony\Component\HttpFoundation\StreamedResponse;
 
 Route::get('/media/stream/{path}', function ($path) {
-    $fullPath = storage_path('app/public/' . $path);
+    $publicRoot = realpath(storage_path('app/public'));
+    $fullPath = realpath(storage_path('app/public/'.$path));
 
-    if (!file_exists($fullPath)) {
-        abort(404);
-    }
+    $isInsidePublicDisk = $publicRoot !== false
+        && $fullPath !== false
+        && str_starts_with($fullPath, $publicRoot.DIRECTORY_SEPARATOR)
+        && is_file($fullPath);
+
+    abort_unless($isInsidePublicDisk, 404);
 
     $mimeType = mime_content_type($fullPath);
     $fileSize = filesize($fullPath);
@@ -366,6 +359,7 @@ Route::get('/media/stream/{path}', function ($path) {
     $headers = [
         'Content-Type' => $mimeType,
         'Accept-Ranges' => 'bytes',
+        'X-Content-Type-Options' => 'nosniff',
     ];
 
     // Check if client sent a Range header
@@ -373,8 +367,17 @@ Route::get('/media/stream/{path}', function ($path) {
         $range = request()->header('Range');
         preg_match('/bytes=(\d+)-(\d*)/', $range, $matches);
 
-        $start = intval($matches[1]);
-        $end = $matches[2] ? intval($matches[2]) : $fileSize - 1;
+        if (! isset($matches[1])) {
+            abort(416);
+        }
+
+        $start = max(0, min((int) $matches[1], $fileSize - 1));
+        $end = ($matches[2] ?? '') !== ''
+            ? min((int) $matches[2], $fileSize - 1)
+            : $fileSize - 1;
+
+        abort_if($end < $start, 416);
+
         $length = $end - $start + 1;
 
         $headers['Content-Range'] = "bytes $start-$end/$fileSize";

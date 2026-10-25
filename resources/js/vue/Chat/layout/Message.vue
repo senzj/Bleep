@@ -1,5 +1,5 @@
 <script setup>
-import { computed, watch } from 'vue';
+import { computed } from 'vue';
 import MessageInput from '../components/input/MessageInput.vue';
 import MessageList from '../components/messages/MessageList.vue';
 import { useMessageStore } from '../store/useMessageStore';
@@ -126,11 +126,6 @@ const handleDeleteMessage = async (messageId) => {
 const handleReplyMessage = (message) => {
 	store.setReplyTo(message);
 };
-
-watch(() => store.state.activeConversationId, async (conversationId) => {
-	if (!conversationId) return;
-	await store.markConversationRead(conversationId);
-});
 </script>
 
 <template>

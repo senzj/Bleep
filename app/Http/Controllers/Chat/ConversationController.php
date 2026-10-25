@@ -6,6 +6,7 @@ use App\Events\Chat\ConversationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\User;
+use App\Services\Chat\BroadcastGateway;
 use App\Services\Chat\ChatMessageFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 
 class ConversationController extends Controller
 {
+    public function __construct(private BroadcastGateway $broadcasts) {}
+
     public function users(Request $request): JsonResponse
     {
         $currentUser = $request->user();
@@ -78,8 +81,8 @@ class ConversationController extends Controller
 
         if ($keyword !== '') {
             $usersQuery->where(function ($query) use ($keyword) {
-                $query->where('users.username', 'like', '%' . $keyword . '%')
-                    ->orWhere('users.dname', 'like', '%' . $keyword . '%');
+                $query->where('users.username', 'like', '%'.$keyword.'%')
+                    ->orWhere('users.dname', 'like', '%'.$keyword.'%');
             });
         }
 
@@ -115,7 +118,7 @@ class ConversationController extends Controller
         $conversations = $user->conversations()
             ->with([
                 'participants:id,username,dname,profile_picture',
-                'messages' => fn ($query) => $query->withTrashed()->latest()->limit(1)->with(['sender:id,username,dname,profile_picture', 'deliveries.user:id,username,dname', 'conversation.participants:id,username,dname', 'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration']),
+                'latestMessage' => fn ($query) => $query->with(ChatMessageFormatter::relations()),
             ])
             ->orderByDesc('conversation_user.is_pinned')
             ->orderByDesc('last_message_at')
@@ -164,7 +167,7 @@ class ConversationController extends Controller
                 ->map(fn ($participant) => $participant->dname ?: $participant->username)
                 ->values();
 
-            $lastMessage = $conversation->messages->first();
+            $lastMessage = $conversation->latestMessage;
 
             return [
                 'id' => $conversation->id,
@@ -211,12 +214,7 @@ class ConversationController extends Controller
 
         $query = $conversation->messages()
             ->withTrashed()
-            ->with([
-                'sender:id,username,dname,profile_picture',
-                'deliveries.user:id,username,dname',
-                'conversation.participants:id,username,dname',
-                'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
-            ])
+            ->with(ChatMessageFormatter::relations())
             ->orderByDesc('id');
 
         if ($beforeId > 0) {
@@ -260,6 +258,13 @@ class ConversationController extends Controller
 
         $me = $request->user();
         $otherUserId = (int) $validated['user_id'];
+        $otherUser = User::findOrFail($otherUserId);
+
+        if ($me->isBlockedOrHasBlocked($otherUser)) {
+            return response()->json([
+                'message' => 'Messaging is unavailable due to a block relationship.',
+            ], 403);
+        }
 
         $existing = Conversation::query()
             ->where('is_group', false)
@@ -288,7 +293,7 @@ class ConversationController extends Controller
             ]);
         }
 
-        broadcast(new ConversationUpdated($otherUserId, $existing->id));
+        $this->broadcasts->dispatch(new ConversationUpdated($otherUserId, $existing->id));
 
         return response()->json([
             'data' => [
@@ -335,7 +340,7 @@ class ConversationController extends Controller
         $conversation->participants()->attach($attach);
 
         foreach ($userIds as $userId) {
-            broadcast(new ConversationUpdated($userId, $conversation->id));
+            $this->broadcasts->dispatch(new ConversationUpdated($userId, $conversation->id));
         }
 
         return response()->json(['data' => ['id' => $conversation->id]]);

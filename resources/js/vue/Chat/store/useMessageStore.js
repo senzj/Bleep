@@ -54,6 +54,8 @@ const state = reactive({
 
 const typingTimeouts = {};
 const ACTIVE_CONV_KEY = 'chat_active_conversation_id';
+const lastReadMarkerByConversation = {};
+let conversationsRefreshTimer = null;
 
 const ensureConversationArrays = (conversationId) => {
     if (!state.messagesByConversation[conversationId]) {
@@ -77,6 +79,257 @@ const ensureConversationArrays = (conversationId) => {
         };
     }
 };
+
+// ── Reactions (optimistic updates + offline replay) ──
+// Pending reactions are keyed by message id and store the desired end state,
+// so replaying them many times (network retries, multiple tabs, reloads) is idempotent.
+const PENDING_REACTIONS_KEY = 'bleep_chat_pending_reactions_v1';
+const reactionFlights = new Map();
+let flushingPendingReactions = false;
+
+const readPendingReactions = () => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(PENDING_REACTIONS_KEY) || '{}');
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+        return {};
+    }
+};
+
+const writePendingReactions = (pending) => {
+    try {
+        if (Object.keys(pending).length === 0) {
+            localStorage.removeItem(PENDING_REACTIONS_KEY);
+            return;
+        }
+        localStorage.setItem(PENDING_REACTIONS_KEY, JSON.stringify(pending));
+    } catch { /* storage may be unavailable */ }
+};
+
+const queuePendingReaction = (messageId, emoji, active) => {
+    const pending = readPendingReactions();
+    pending[String(messageId)] = {
+        messageId: Number(messageId),
+        emoji,
+        active: Boolean(active),
+        queuedAt: Date.now(),
+    };
+    writePendingReactions(pending);
+};
+
+const clearPendingReaction = (messageId, { emoji = null, active = null } = {}) => {
+    const pending = readPendingReactions();
+    const key = String(messageId);
+    const entry = pending[key];
+
+    if (!entry) return;
+    if (emoji !== null && entry.emoji !== emoji) return;
+    if (active !== null && Boolean(entry.active) !== Boolean(active)) return;
+
+    delete pending[key];
+    writePendingReactions(pending);
+};
+
+const persistConversationMessages = (conversationId) => {
+    const list = state.messagesByConversation[conversationId];
+    if (Array.isArray(list)) {
+        setCachedMessages(conversationId, list);
+    }
+};
+
+const findMessageById = (messageId) => {
+    const target = Number(messageId);
+    if (!target) return null;
+
+    for (const conversationId of Object.keys(state.messagesByConversation)) {
+        const message = (state.messagesByConversation[conversationId] || [])
+            .find((item) => Number(item.id) === target);
+
+        if (message) {
+            return { conversationId: Number(conversationId), message };
+        }
+    }
+
+    return null;
+};
+
+const applyLocalReaction = (messageId, emoji, active) => {
+    const found = findMessageById(messageId);
+    if (!found) return;
+
+    const { conversationId, message } = found;
+    const currentUserId = Number(state.currentUserId);
+    const reactions = Array.isArray(message.reactions) ? [...message.reactions] : [];
+    const mineIndex = reactions.findIndex((reaction) => Number(reaction.user_id) === currentUserId);
+
+    if (active) {
+        const optimistic = {
+            id: mineIndex >= 0 ? reactions[mineIndex].id : `local-${messageId}-${currentUserId}`,
+            user_id: currentUserId,
+            emoji,
+            user: {
+                id: currentUserId,
+                username: state.currentUsername,
+                dname: state.currentUsername,
+                profile_picture_url: null,
+            },
+        };
+
+        if (mineIndex >= 0) {
+            reactions[mineIndex] = { ...reactions[mineIndex], ...optimistic };
+        } else {
+            reactions.push(optimistic);
+        }
+    } else if (mineIndex >= 0) {
+        reactions.splice(mineIndex, 1);
+    }
+
+    message.reactions = reactions;
+    persistConversationMessages(conversationId);
+};
+
+const applyServerReactions = (conversationId, messageId, reactions) => {
+    ensureConversationArrays(conversationId);
+
+    const list = state.messagesByConversation[conversationId] || [];
+    const message = list.find((item) => Number(item.id) === Number(messageId));
+    if (!message) return;
+
+    message.reactions = Array.isArray(reactions) ? reactions : [];
+    persistConversationMessages(conversationId);
+};
+
+const postReaction = async (messageId, emoji, active) => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        queuePendingReaction(messageId, emoji, active);
+        return null;
+    }
+
+    try {
+        const response = await window.axios.post(`/messages/${messageId}/reactions`, {
+            emoji,
+            active: Boolean(active),
+        });
+
+        const data = response.data?.data;
+        if (data?.conversation_id && data?.message_id) {
+            applyServerReactions(Number(data.conversation_id), Number(data.message_id), data.reactions);
+        }
+
+        clearPendingReaction(messageId, { emoji, active });
+        return data;
+    } catch (error) {
+        const status = Number(error?.response?.status || 0);
+
+        // Network failures and server errors are retryable: keep the optimistic
+        // state and replay the desired end state when connectivity returns.
+        if (!status || status >= 500) {
+            queuePendingReaction(messageId, emoji, active);
+            return null;
+        }
+
+        // The server rejected the desired state (deleted message, lost access).
+        clearPendingReaction(messageId, { emoji, active });
+        const found = findMessageById(messageId);
+        if (found) {
+            await fetchMessages(found.conversationId, { force: true, silent: true }).catch(() => {});
+        }
+
+        return null;
+    }
+};
+
+const enqueueReactionRequest = (messageId, emoji, active) => {
+    const key = String(messageId);
+    const previous = reactionFlights.get(key) || Promise.resolve();
+
+    // Serialise requests per message so a rapid add/remove/save cannot land
+    // on the server out of order.
+    const request = previous
+        .catch(() => {})
+        .then(() => postReaction(messageId, emoji, active));
+
+    reactionFlights.set(key, request);
+    request
+        .finally(() => {
+            if (reactionFlights.get(key) === request) {
+                reactionFlights.delete(key);
+            }
+        })
+        .catch(() => {});
+
+    return request;
+};
+
+const flushPendingReactions = async () => {
+    if (flushingPendingReactions) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+    const pending = readPendingReactions();
+    const entries = Object.values(pending);
+    if (entries.length === 0) return;
+
+    flushingPendingReactions = true;
+    const conversationsToRefresh = new Set();
+
+    try {
+        for (const entry of entries) {
+            const messageId = Number(entry?.messageId);
+            if (!messageId || !entry?.emoji) continue;
+
+            if (reactionFlights.has(String(messageId))) continue;
+
+            try {
+                const response = await window.axios.post(`/messages/${messageId}/reactions`, {
+                    emoji: entry.emoji,
+                    active: Boolean(entry.active),
+                });
+
+                const data = response.data?.data;
+                if (data?.conversation_id && data?.message_id) {
+                    applyServerReactions(Number(data.conversation_id), Number(data.message_id), data.reactions);
+                    conversationsToRefresh.add(Number(data.conversation_id));
+                }
+
+                clearPendingReaction(messageId, { emoji: entry.emoji, active: entry.active });
+            } catch (error) {
+                const status = Number(error?.response?.status || 0);
+
+                if (status && status < 500) {
+                    // Permanently rejected (message deleted, no access): drop it.
+                    clearPendingReaction(messageId, { emoji: entry.emoji, active: entry.active });
+                    const found = findMessageById(messageId);
+                    if (found) {
+                        conversationsToRefresh.add(found.conversationId);
+                    }
+                    continue;
+                }
+
+                // Still offline or the server is down: stop and retry later.
+                break;
+            }
+        }
+    } finally {
+        flushingPendingReactions = false;
+    }
+
+    // Reconcile against the server so other people's reactions are exact too.
+    for (const conversationId of conversationsToRefresh) {
+        if (!state.messageMetaByConversation[conversationId]?.loaded) continue;
+        await fetchMessages(conversationId, { force: true, silent: true }).catch(() => {});
+    }
+};
+
+const handleReactionOnline = () => {
+    flushPendingReactions().catch(() => {});
+};
+
+const handleReactionVisibility = () => {
+    if (document.visibilityState === 'visible') {
+        handleReactionOnline();
+    }
+};
+
 
 const sortConversations = () => {
     state.conversations.sort((a, b) => {
@@ -188,12 +441,7 @@ const subscribeConversation = (conversationId) => {
 
     privateChannel.listen('.message.reacted', (event) => {
         if (!event?.message_id) return;
-        ensureConversationArrays(conversationId);
-        const list = state.messagesByConversation[conversationId] || [];
-        const msg = list.find((m) => Number(m.id) === Number(event.message_id));
-        if (msg) {
-            msg.reactions = event.reactions || [];
-        }
+        applyServerReactions(conversationId, event.message_id, event.reactions);
     });
 
     const presenceChannel = window.Echo.join(`conversation-online.${conversationId}`)
@@ -231,6 +479,17 @@ const subscribeConversation = (conversationId) => {
         privateChannel,
         presenceChannel,
     };
+};
+
+const scheduleConversationRefresh = (delay = 200) => {
+    if (conversationsRefreshTimer) {
+        clearTimeout(conversationsRefreshTimer);
+    }
+
+    conversationsRefreshTimer = setTimeout(() => {
+        conversationsRefreshTimer = null;
+        fetchConversations({ silent: true }).catch(() => {});
+    }, delay);
 };
 
 const fetchConversations = async ({ silent = false } = {}) => {
@@ -283,9 +542,9 @@ const fetchConversations = async ({ silent = false } = {}) => {
         const activeStillExists = state.conversations.some((conversation) => Number(conversation.id) === previousActiveId);
 
         if (activeStillExists) {
-            await selectConversation(previousActiveId);
+            await selectConversation(previousActiveId, { historyMode: 'none' });
         } else if (state.conversations.length > 0) {
-            await selectConversation(state.conversations[0].id);
+            await selectConversation(state.conversations[0].id, { historyMode: 'none' });
         }
 
         // Persist to cache for instant load next time
@@ -324,7 +583,7 @@ const mergeMessageLists = (incoming, existing) => {
     return [...map.values()].sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
 };
 
-const fetchMessages = async (conversationId, { beforeId = null, limit = 40, force = false } = {}) => {
+const fetchMessages = async (conversationId, { beforeId = null, limit = 40, force = false, silent = false } = {}) => {
     ensureConversationArrays(conversationId);
 
     const meta = state.messageMetaByConversation[conversationId];
@@ -334,7 +593,9 @@ const fetchMessages = async (conversationId, { beforeId = null, limit = 40, forc
     if (!force && !isPaginatingOlder && meta.loaded) return;
 
     meta.loading = true;
-    state.loadingMessages = !isPaginatingOlder && Number(state.activeConversationId) === Number(conversationId);
+    if (!silent) {
+        state.loadingMessages = !isPaginatingOlder && Number(state.activeConversationId) === Number(conversationId);
+    }
 
     try {
         const response = await window.axios.get(`/chat/conversations/${conversationId}/messages`, {
@@ -395,6 +656,11 @@ const markConversationRead = async (conversationId) => {
     const lastRealMessage = [...list].reverse().find((m) => m?.id && Number.isInteger(Number(m.id)) && !String(m.id).startsWith('tmp-'));
     if (!lastRealMessage) return;
 
+    // Skip repeat POSTs for a conversation we have already marked up to this message.
+    const marker = String(lastRealMessage.id);
+    if (lastReadMarkerByConversation[conversationId] === marker) return;
+    lastReadMarkerByConversation[conversationId] = marker;
+
     try {
         await window.axios.post(`/chat/conversations/${conversationId}/read`, {
             last_message_id: lastRealMessage.id,
@@ -409,47 +675,56 @@ const markConversationRead = async (conversationId) => {
             }
         }
     } catch {
-        // Non-critical — silently ignore read-receipt failures
+        // Allow a retry next time the conversation is opened.
+        delete lastReadMarkerByConversation[conversationId];
     }
 };
 
-const selectConversation = async (conversationId) => {
-    state.activeConversationId = Number(conversationId);
-    localStorage.setItem(ACTIVE_CONV_KEY, String(conversationId));
+const selectConversation = async (conversationId, { historyMode = 'push' } = {}) => {
+    const targetId = Number(conversationId);
 
-    // Update browser URL to reflect the active conversation
-    window.history.pushState(
-        { conversationId: Number(conversationId) },
-        '',
-        `/chat/${conversationId}`
-    );
+    state.activeConversationId = targetId;
+    localStorage.setItem(ACTIVE_CONV_KEY, String(targetId));
 
-    ensureConversationArrays(conversationId);
-    const meta = state.messageMetaByConversation[conversationId];
+    // Keep the browser URL in sync without stacking duplicate history entries.
+    // `fromChatList` marks entries we pushed from the chat list so the mobile
+    // back button can step back to it instead of leaving the page.
+    if (historyMode === 'push') {
+        window.history.pushState(
+            { conversationId: targetId, fromChatList: true },
+            '',
+            `/chat/${targetId}`
+        );
+    } else if (historyMode === 'replace') {
+        window.history.replaceState({ conversationId: targetId }, '', `/chat/${targetId}`);
+    }
+
+    ensureConversationArrays(targetId);
+    const meta = state.messageMetaByConversation[targetId];
 
     // Reset unread count immediately in local state
-    const conv = state.conversations.find((c) => Number(c.id) === Number(conversationId));
+    const conv = state.conversations.find((c) => Number(c.id) === targetId);
     if (conv) {
         conv.unread_count = 0;
     }
     broadcastUnreadCount();
 
-    subscribeConversation(conversationId);
+    subscribeConversation(targetId);
 
     if (!meta.loaded) {
         // Try cache first for instant render
-        const cached = await getCachedMessages(conversationId);
+        const cached = await getCachedMessages(targetId);
         if (cached && cached.length > 0) {
-            state.messagesByConversation[conversationId] = cached;
+            state.messagesByConversation[targetId] = cached;
             meta.loaded = true;
             meta.oldestMessageId = cached[0]?.id || null;
         }
 
         // Always fetch fresh data from server
-        await fetchMessages(conversationId, { force: true });
+        await fetchMessages(targetId, { force: true });
     }
 
-    await markConversationRead(conversationId);
+    await markConversationRead(targetId);
 };
 
 const sendMessage = async (payload) => {
@@ -562,17 +837,19 @@ const deleteMessage = async (messageId) => {
 };
 
 const toggleReaction = async (messageId, emoji) => {
-    const response = await window.axios.post(`/messages/${messageId}/reactions`, { emoji });
-    const data = response.data?.data;
-    if (data?.conversation_id && data?.message_id) {
-        ensureConversationArrays(Number(data.conversation_id));
-        const list = state.messagesByConversation[Number(data.conversation_id)] || [];
-        const msg = list.find((m) => Number(m.id) === Number(data.message_id));
-        if (msg) {
-            msg.reactions = data.reactions || [];
-        }
-    }
-    return data;
+    const found = findMessageById(messageId);
+    const mine = found
+        ? (found.message.reactions || []).find((reaction) => Number(reaction.user_id) === Number(state.currentUserId))
+        : null;
+
+    // Clicking the emoji you already reacted with removes it; any other emoji
+    // switches your reaction. The server receives the desired end state, which
+    // makes retries and offline replays safe.
+    const active = !(mine && mine.emoji === emoji);
+
+    applyLocalReaction(messageId, emoji, active);
+
+    return enqueueReactionRequest(messageId, emoji, active);
 };
 
 const setReplyTo = (message) => {
@@ -626,6 +903,8 @@ const createDirectConversation = async (userId) => {
     if (id) {
         await selectConversation(id);
     }
+
+    return id;
 };
 
 const createGroupConversation = async ({ name, userIds }) => {
@@ -663,14 +942,20 @@ const init = async ({ currentUserId, currentUsername, sendSound, receiveSound })
     state.currentUsername = currentUsername || 'You';
     state.initialized = true;
 
+    window.addEventListener('online', handleReactionOnline);
+    window.addEventListener('focus', handleReactionOnline);
+    document.addEventListener('visibilitychange', handleReactionVisibility);
+
     soundConfig.sendSound = sendSound || null;
     soundConfig.receiveSound = receiveSound || null;
 
     if (window.Echo && !state.userChannelRef) {
         state.userChannelRef = window.Echo.private(`App.Models.User.${state.currentUserId}`);
-        state.userChannelRef.listen('.chat.conversation.updated', async (event) => {
+        state.userChannelRef.listen('.chat.conversation.updated', (event) => {
             const updatedConversationId = Number(event?.conversation_id || 0);
-            await fetchConversations({ silent: true });
+
+            // Coalesce bursts of conversation updates into a single refresh.
+            scheduleConversationRefresh();
 
             if (!updatedConversationId) return;
 
@@ -682,20 +967,21 @@ const init = async ({ currentUserId, currentUsername, sendSound, receiveSound })
             subscribeConversation(updatedConversationId);
         });
 
-        state.userChannelRef.listen('.chat.message.delivered', async (event) => {
+        state.userChannelRef.listen('.chat.message.delivered', (event) => {
             const conversationId = Number(event?.conversation_id || 0);
             const message = event?.message || null;
 
             if (!conversationId || !message) return;
 
-            await fetchConversations({ silent: true });
-
             ensureConversationArrays(conversationId);
             subscribeConversation(conversationId);
+
+            // Show the message immediately; refresh sidebar metadata in the background.
             upsertMessage(conversationId, message);
+            scheduleConversationRefresh();
 
             if (Number(state.activeConversationId) === conversationId) {
-                await markConversationRead(conversationId);
+                markConversationRead(conversationId);
             }
         });
     }
@@ -736,11 +1022,15 @@ const init = async ({ currentUserId, currentUsername, sendSound, receiveSound })
         state.loadingConversations = false;
     }
 
-    // Fetch fresh data from server in background, replacing cache
+    // Fetch fresh data from server in background, replacing cache. Failures are
+    // expected while offline; cached data stays visible and reactions queue up.
     await Promise.all([
-        fetchConversations({ silent: cachedConversations?.length > 0 }),
-        fetchUserDirectory(),
+        fetchConversations({ silent: cachedConversations?.length > 0 }).catch(() => {}),
+        fetchUserDirectory().catch(() => {}),
     ]);
+
+    // Replay reactions queued while offline, then reconcile those conversations.
+    flushPendingReactions().catch(() => {});
 };
 
 export const useMessageStore = () => {

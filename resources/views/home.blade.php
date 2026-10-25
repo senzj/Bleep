@@ -178,7 +178,10 @@
                     @endauth
 
                     {{-- For You --}}
-                    <div id="bleeps-container" class="space-y-4 mt-1" data-tab-panel="bleep" style="overflow-anchor: auto;">
+                    <div id="bleeps-container" class="space-y-4 mt-1" data-tab-panel="bleep"
+                        data-page="{{ $bleeps->currentPage() + 1 }}"
+                        data-has-more="{{ $bleeps->hasMorePages() ? 'true' : 'false' }}"
+                        style="overflow-anchor: auto;">
                         @forelse ($bleeps as $bleep)
                             <x-bleep :bleep="$bleep" />
                         @empty
@@ -194,7 +197,9 @@
                     </div>
 
                     {{-- Following --}}
-                    <div id="following-container" class="space-y-4 mt-1 hidden" data-tab-panel="following" aria-hidden="true">
+                    <div id="following-container" class="space-y-4 mt-1 hidden" data-tab-panel="following" aria-hidden="true"
+                        data-page="{{ $followingBleeps ? $followingBleeps->currentPage() + 1 : 2 }}"
+                        data-has-more="{{ $followingBleeps && $followingBleeps->hasMorePages() ? 'true' : 'false' }}">
                         @auth
                             @if ($followingBleeps && $followingBleeps->count())
                                 @foreach ($followingBleeps as $bleep)
@@ -223,7 +228,9 @@
                     </div>
 
                     {{-- Friends --}}
-                    <div id="friends-container" class="space-y-4 mt-1 hidden" data-tab-panel="friends" aria-hidden="true">
+                    <div id="friends-container" class="space-y-4 mt-1 hidden" data-tab-panel="friends" aria-hidden="true"
+                        data-page="{{ $friendsBleeps ? $friendsBleeps->currentPage() + 1 : 2 }}"
+                        data-has-more="{{ $friendsBleeps && $friendsBleeps->hasMorePages() ? 'true' : 'false' }}">
                         @auth
                             @if ($friendsBleeps && $friendsBleeps->count())
                                 @foreach ($friendsBleeps as $bleep)
@@ -264,7 +271,7 @@
                     </div>
 
                     {{-- Infinite scroll trigger --}}
-                    <div id="infinite-scroll-trigger" data-page="2" data-has-more="{{ $bleeps->hasMorePages() ? 'true' : 'false' }}"></div>
+                    <div id="infinite-scroll-trigger"></div>
                 </div>
             </div>
 

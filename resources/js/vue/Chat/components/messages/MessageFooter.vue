@@ -52,7 +52,7 @@ const groupedReactions = computed(() => {
             v-for="group in groupedReactions"
             :key="group.emoji"
             type="button"
-            class="inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs transition-colors"
+            class="inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs transition duration-150 active:scale-95"
             :class="group.userReacted
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-base-300 bg-base-100 hover:bg-base-200'"
@@ -70,7 +70,7 @@ const groupedReactions = computed(() => {
             v-for="group in groupedReactions"
             :key="group.emoji"
             type="button"
-            class="inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs transition-colors"
+            class="inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs transition duration-150 active:scale-95"
             :class="group.userReacted
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-base-300 bg-base-100 hover:bg-base-200'"

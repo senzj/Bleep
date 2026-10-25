@@ -19,6 +19,36 @@ function setIconState(btn, checked, onClasses = ['bg-primary', 'text-white', 'sh
     }
 }
 
+function showToast(message, type = 'info') {
+    if (!message) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-top toast-center z-100';
+
+    const alertClass = type === 'error'
+        ? 'alert-error'
+        : (type === 'warning' ? 'alert-warning' : 'alert-info');
+    const icon = type === 'error' || type === 'warning' ? 'circle-alert' : 'info';
+
+    toast.innerHTML = `
+        <div class="alert ${alertClass}">
+            <i data-lucide="${icon}" class="h-6 w-6 shrink-0 stroke-current"></i>
+            <span></span>
+        </div>
+    `;
+    toast.querySelector('span').textContent = message;
+
+    document.body.appendChild(toast);
+
+    if (window.createLucideIcons) {
+        window.createLucideIcons();
+    } else if (window.lucide) {
+        window.lucide.createIcons();
+    }
+
+    setTimeout(() => toast.remove(), 3000);
+}
+
 // Anonymous toggle (legacy indicator + icon button)
 const postToggle    = document.getElementById('post-anonymous-toggle');
 const postIndicator = document.getElementById('post-toggle-indicator');
@@ -286,19 +316,54 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.createLucideIcons) window.createLucideIcons();
     }
 
+    openMediaBtn?.addEventListener('click', () => {
+        if (!mediaPicker) return;
+
+        // Clear the native input so re-picking the same file fires `change`.
+        mediaPicker.value = '';
+        mediaPicker.click();
+    });
+
+    // If the native picker is dismissed, put the previously chosen files back
+    // so the pending selection is not silently lost.
+    window.addEventListener('focus', () => {
+        if (mediaPicker && mediaPicker.value === '' && selectedFiles.length) {
+            syncFileInput();
+            updateMediaCount(
+                selectedFiles.length,
+                selectedFiles.length === 1 && isAudioFile(selectedFiles[0]),
+            );
+        }
+    });
+
     mediaPicker?.addEventListener('change', () => {
         if (!mediaPicker.files) return;
 
-        const files      = Array.from(mediaPicker.files);
-        const audioFiles = files.filter(f => isAudioFile(f));
-        const otherFiles = files.filter(f => !isAudioFile(f));
+        const incoming = Array.from(mediaPicker.files);
+
+        // Merge with previously selected files so multiple picks accumulate up to the cap.
+        const merged = [...selectedFiles];
+        incoming.forEach((file) => {
+            const isDuplicate = merged.some(
+                (existing) => existing.name === file.name
+                    && existing.size === file.size
+                    && existing.lastModified === file.lastModified,
+            );
+
+            if (!isDuplicate) {
+                merged.push(file);
+            }
+        });
+
+        const audioFiles = merged.filter(f => isAudioFile(f));
+        const otherFiles = merged.filter(f => !isAudioFile(f));
 
         if (audioFiles.length > 1 || (audioFiles.length === 1 && otherFiles.length)) {
             showToast('Only one audio file is allowed and it cannot be combined.', 'warning');
-            mediaPicker.value = '';
+            selectedFiles = [];
+            syncFileInput();
             mediaPreviewGrid.innerHTML = '';
             mediaPreviewGrid.dataset.audioSelected = 'false';
-            selectedFiles = [];
             updateMediaCount(0, false);
             return;
         }
@@ -306,17 +371,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const isAudio    = audioFiles.length === 1;
         const maxAllowed = isAudio ? 1 : 4;
 
-        if (files.length > maxAllowed) {
+        if (merged.length > maxAllowed) {
             showToast(`You can only upload up to ${maxAllowed} ${isAudio ? 'audio file' : 'files'}.`, 'warning');
-            mediaPicker.value = '';
+            selectedFiles = [];
+            syncFileInput();
             mediaPreviewGrid.innerHTML = '';
             mediaPreviewGrid.dataset.audioSelected = 'false';
-            selectedFiles = [];
             updateMediaCount(0, false);
             return;
         }
 
-        selectedFiles = files;
+        selectedFiles = merged;
+        syncFileInput();
         mediaPreviewGrid.dataset.audioSelected = isAudio ? 'true' : 'false';
 
         // Auto-fill message textarea with audio filename if empty
@@ -326,14 +392,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         renderPreview(selectedFiles);
-
-        setTimeout(() => updateMediaCount(selectedFiles.length, isAudio), 50);
+        updateMediaCount(selectedFiles.length, isAudio);
     });
-
-    // openMediaBtn?.addEventListener('click', () => {
-    //     if (mediaPicker?._opening) return;
-    //     mediaPicker._opening = true;
-    //     mediaPicker?.click();
-    //     setTimeout(() => { if (mediaPicker) mediaPicker._opening = false; }, 500);
-    // });
 });

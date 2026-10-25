@@ -1,10 +1,10 @@
-<div id="share-modal" x-cloak class="hidden fixed inset-0 z-50 items-center justify-center">
+<div id="share-modal" x-cloak class="hidden fixed inset-0 z-50 items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
 
     <div id="share-modal-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
 
     <div class="relative max-w-sm w-full mx-4 bg-base-100 rounded-2xl shadow-xl border border-base-300 p-5 z-10 space-y-4">
         <div class="space-y-1">
-            <h3 class="text-lg font-semibold">Share Post</h3>
+            <h3 id="share-modal-title" class="text-lg font-semibold">Share Post</h3>
             <p class="text-sm text-base-content/70">Copy the link to share this post.</p>
         </div>
 
@@ -23,7 +23,7 @@
                 </div>
             </div>
 
-            <button id="share-copy-btn" type="button" class="btn btn-ghost btn-sm shrink-0" title="Copy link">
+            <button id="share-copy-btn" type="button" class="btn btn-ghost btn-sm shrink-0" title="Copy link" aria-label="Copy link">
                 <i data-lucide="copy" class="w-4 h-4"></i>
             </button>
         </div>

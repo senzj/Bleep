@@ -16,7 +16,7 @@ class UserPreferences extends Model
         'show_nsfw',
         'blur_nsfw_media',
         'show_reposts_in_feed',
-        'show_anonymous_bleeps', //hidden if nt enabled
+        'show_anonymous_bleeps', // hidden if nt enabled
         'default_feed_sort',
         'bleeps_per_page',
 
@@ -77,6 +77,7 @@ class UserPreferences extends Model
             'private_profile' => false,
             'block_new_followers' => false,
             'hide_online_status' => false,
+            'hide_activity' => false,
         ];
     }
 

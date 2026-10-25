@@ -25,9 +25,9 @@
         $username = "@" . ($bleep->user->username ?? 'Unknown');
     }
 
-    $shareCount = \App\Models\Share::where('bleep_id', $bleep->id)->count();
-    $totalRepostCount = \App\Models\Repost::where('bleep_id', $bleep->id)->count();
-    $hasReposted = auth()->check() ? \App\Models\Repost::where('bleep_id', $bleep->id)->where('user_id', auth()->id())->exists() : false;
+    $shareCount = $bleep->shareCount();
+    $totalRepostCount = $bleep->repostCount();
+    $hasReposted = $bleep->hasRepostedByViewer(auth()->user());
 
     $followedReposts = collect();
     if (Auth::check()) {
@@ -398,7 +398,6 @@
     @push('scripts')
         @vite([
             'resources/js/bleep/posts/like.js',
-            'resources/js/bleep/posts/media.js',
             'resources/js/bleep/posts/nsfw.js',
             'resources/js/bleep/posts/repost.js',
             'resources/js/bleep/posts/share.js',

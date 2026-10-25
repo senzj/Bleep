@@ -131,22 +131,24 @@ document.addEventListener('submit', async (e) => {
 
         const data = await response.json();
 
-        // Fetch actual count to ensure consistency
-        const countResponse = await fetch(`/bleeps/${bleepId}/likes-count`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-        });
-        const countData = await countResponse.json();
-        const serverCount = parseInt(countData.count ?? 0, 10);
+        // Trust the server's authoritative state and count.
+        const serverLiked = Boolean(data.liked);
+        const serverCount = Number.isFinite(Number(data.count)) ? Number(data.count) : newCount;
 
-        // Update with server count if different
-        if (serverCount !== newCount) {
-            if (mobileElem) mobileElem.textContent = String(serverCount);
-            if (desktopElem) {
-                const suffix = serverCount === 1
-                    ? (newIsLiked ? 'Liked' : 'Like')
-                    : 'Likes';
-                desktopElem.textContent = `${serverCount} ${suffix}`;
-            }
+        button.classList.toggle('text-red-600', serverLiked);
+        heartIcon?.setAttribute('data-lucide', 'heart');
+        if (window.createLucideIcons) {
+            window.createLucideIcons(button);
+        }
+
+        if (mobileElem) {
+            mobileElem.textContent = String(serverCount);
+        }
+        if (desktopElem) {
+            const suffix = serverCount === 1
+                ? (serverLiked ? 'Liked' : 'Like')
+                : 'Likes';
+            desktopElem.textContent = `${serverCount} ${suffix}`;
         }
     } catch (error) {
         console.error('Error liking bleep:', error);

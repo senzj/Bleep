@@ -10,16 +10,8 @@
     'showMessage' => false,  // opt-in only
 ])
 
-@php
-    $authUser       = Auth::user();
-    $isOwnProfile   = Auth::check() && Auth::id() === $user->id;
-    $isFollowing    = Auth::check() && $authUser->isFollowing($user);
-    $isFriend       = Auth::check() && $authUser->isFriend($user);
-    $isPrivate      = $user->preferences?->private_profile ?? false;
-    $blockNewFollows = $user->preferences?->block_new_followers ?? false;
-    $canFollow      = Auth::check() && !$isFollowing && (!$blockNewFollows || $isFriend);
-    $hasPendingRequest = Auth::check() && $authUser->hasSentRequestTo($user);
-@endphp
+{{-- Follow state comes from App\View\Components\Button\Follow, which reads the
+     request-scoped FollowContext instead of running EXISTS queries per card. --}}
 
 <div class="gap-1.5 flex items-center">
     @if(!$isOwnProfile && Auth::check())

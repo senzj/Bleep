@@ -3,11 +3,9 @@
 namespace App\Http\Controllers\Bleep;
 
 use App\Http\Controllers\Controller;
-
 use App\Models\Bleep;
-use App\Models\Share;
 use App\Models\Repost;
-
+use App\Models\Share;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -18,15 +16,17 @@ class ShareController extends Controller
      */
     public function store(Request $request, Bleep $bleep)
     {
+        abort_unless($bleep->isVisibleTo(Auth::user()), 404);
+
         $sessionKey = $request->session()->getId();
         $day = now()->toDateString();
 
         $share = Share::firstOrCreate(
             [
-                'bleep_id'   => $bleep->id,
-                'shared_on'  => $day,
-                'user_id'    => Auth::id(),
-                'session_key'=> Auth::check() ? null : $sessionKey,
+                'bleep_id' => $bleep->id,
+                'shared_on' => $day,
+                'user_id' => Auth::id(),
+                'session_key' => Auth::check() ? null : $sessionKey,
             ],
             ['token' => Share::generateToken()]
         );
@@ -56,7 +56,7 @@ class ShareController extends Controller
         // Find share, if not found redirect to home
         $share = Share::with('bleep')->where('token', $token)->first();
 
-        if (!$share) {
+        if (! $share) {
             return redirect('/')->with('info', 'This share link is no longer available.');
         }
 
@@ -64,13 +64,17 @@ class ShareController extends Controller
         $bleep = $share->bleep;
 
         // If bleep doesn't exist at all (force deleted), redirect to home
-        if (!$bleep) {
+        if (! $bleep) {
             return redirect('/')->with('info', 'This bleep is no longer available.');
         }
 
         // If bleep is soft-deleted, show deleted page
         if ($bleep->trashed()) {
             return redirect()->route('post', $bleep->id);
+        }
+
+        if (! $bleep->isVisibleTo(Auth::user())) {
+            return redirect('/')->with('info', 'This bleep is not available.');
         }
 
         // Increment visits only if bleep is still active
@@ -96,4 +100,3 @@ class ShareController extends Controller
         return redirect()->back()->with('success', 'Unshared successfully.');
     }
 }
-

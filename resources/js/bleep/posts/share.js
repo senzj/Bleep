@@ -11,8 +11,15 @@ const openShareModal = (bleepId) => {
         return;
     }
 
+    // If the modal is already open for another bleep, tear the old handlers down
+    // before wiring the new ones so we never POST twice per click.
+    if (window.__shareModalCleanup) {
+        window.__shareModalCleanup();
+    }
+
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const cleanups = [];
+    const previouslyFocused = document.activeElement;
     let actionInFlight = false;
 
     const attach = (element, type, handler) => {
@@ -24,6 +31,12 @@ const openShareModal = (bleepId) => {
         while (cleanups.length) {
             const dispose = cleanups.pop();
             dispose();
+        }
+    };
+
+    const restoreFocus = () => {
+        if (previouslyFocused && typeof previouslyFocused.focus === 'function' && document.contains(previouslyFocused)) {
+            previouslyFocused.focus({ preventScroll: true });
         }
     };
 
@@ -56,7 +69,12 @@ const openShareModal = (bleepId) => {
         actionInFlight = false;
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+        document.body.style.overflow = '';
+        restoreFocus();
+        window.__shareModalCleanup = null;
     };
+
+    window.__shareModalCleanup = close;
 
     const copyToClipboard = async (text) => {
         if (navigator.clipboard?.writeText) {
@@ -157,10 +175,28 @@ const openShareModal = (bleepId) => {
     attach(cancelBtn, 'click', close);
     attach(overlay, 'click', close);
 
-    // Escape key to close
+    // Escape closes; Tab stays inside the dialog.
     attach(document, 'keydown', (event) => {
         if (event.key === 'Escape') {
             close();
+            return;
+        }
+
+        if (event.key !== 'Tab') return;
+
+        const focusable = [linkCard, copyBtn, cancelBtn].filter((el) => !el.disabled);
+
+        if (!focusable.length) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
         }
     });
 
@@ -174,6 +210,7 @@ const openShareModal = (bleepId) => {
     modal.removeAttribute('x-cloak');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
 
     requestAnimationFrame(() => {
         linkCard.focus({ preventScroll: true });

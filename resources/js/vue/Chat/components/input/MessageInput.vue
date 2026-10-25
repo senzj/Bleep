@@ -114,29 +114,41 @@ const onMediaSelected = async (filesPayload) => {
 
 	const combined = [...pendingMediaItems.value, ...nextItems];
 
-	// Count existing images and videos
-	const currentImages = combined.filter((item) => item.file?.type?.startsWith('image/')).length;
-	const currentVideos = combined.filter((item) => item.file?.type?.startsWith('video/')).length;
+	const isImage = (item) => Boolean(item.file?.type?.startsWith('image/'));
+	const isVideo = (item) => Boolean(item.file?.type?.startsWith('video/'));
 
-	// Check limits
-	if (currentImages > MAX_IMAGES) {
+	// Trim excess media while preserving the original selection order.
+	let imageCount = 0;
+	let videoCount = 0;
+	const kept = [];
+	const rejected = [];
+
+	combined.forEach((item) => {
+		if (isImage(item) && imageCount >= MAX_IMAGES) {
+			rejected.push(item);
+			return;
+		}
+
+		if (isVideo(item) && videoCount >= MAX_VIDEOS) {
+			rejected.push(item);
+			return;
+		}
+
+		if (isImage(item)) imageCount++;
+		if (isVideo(item)) videoCount++;
+		kept.push(item);
+	});
+
+	if (rejected.some(isImage)) {
 		window.alert(`Maximum ${MAX_IMAGES} images per message allowed. Excess images removed.`);
-		combined = combined.filter((item) => !item.file?.type?.startsWith('image/')).concat(
-			combined.filter((item) => item.file?.type?.startsWith('image/')).slice(0, MAX_IMAGES)
-		);
 	}
 
-	if (currentVideos > MAX_VIDEOS) {
+	if (rejected.some(isVideo)) {
 		window.alert(`Maximum ${MAX_VIDEOS} videos per message allowed. Excess videos removed.`);
-		combined = combined.filter((item) => !item.file?.type?.startsWith('video/')).concat(
-			combined.filter((item) => item.file?.type?.startsWith('video/')).slice(0, MAX_VIDEOS)
-		);
 	}
 
-	// Clean up dropped items
-	const kept = combined;
-	const dropped = filesPayload.filter((payload) => !kept.find((k) => k.file?.name === payload.file?.name));
-	dropped.forEach((item) => {
+	// Release object URLs for anything we are not keeping.
+	rejected.forEach((item) => {
 		if (item.previewUrl) {
 			URL.revokeObjectURL(item.previewUrl);
 		}

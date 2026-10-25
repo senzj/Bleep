@@ -16,9 +16,10 @@ class FollowRequestController extends Controller
     {
         $requests = FollowRequest::where('target_id', Auth::id())
             ->with('requester')
-            ->orderByRaw("FIELD(status, 'pending', 'accepted', 'rejected')")
+            ->orderByRaw("CASE status WHEN 'pending' THEN 0 WHEN 'accepted' THEN 1 ELSE 2 END")
             ->latest()
             ->get();
+
         return view('pages.users.request', compact('requests'));
     }
 
@@ -27,17 +28,33 @@ class FollowRequestController extends Controller
      */
     public function store(Request $request)
     {
-        $targetId = $request->input('target_id');
-        $target = User::findOrFail($targetId);
+        $validated = $request->validate([
+            'target_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $authUser = Auth::user();
+        $target = User::findOrFail($validated['target_id']);
+
+        if ((int) $target->id === (int) $authUser->id) {
+            return response()->json(['message' => 'You cannot follow yourself.'], 422);
+        }
+
+        if ($authUser->isBlockedOrHasBlocked($target)) {
+            return response()->json(['message' => 'Follow request is unavailable due to a block relationship.'], 403);
+        }
+
+        if ($target->getPreferences()?->block_new_followers) {
+            return response()->json(['message' => 'This user is not accepting new followers.'], 403);
+        }
 
         // Check if already following
-        if (Auth::user()->isFollowing($target)) {
+        if ($authUser->isFollowing($target)) {
             return response()->json(['message' => 'Already following'], 400);
         }
 
         // Check if request already exists (any status)
-        $existing = FollowRequest::where('requester_id', Auth::id())
-            ->where('target_id', $targetId)
+        $existing = FollowRequest::where('requester_id', $authUser->id)
+            ->where('target_id', $target->id)
             ->first();
 
         if ($existing) {
@@ -57,8 +74,8 @@ class FollowRequestController extends Controller
 
         // Create new follow request
         FollowRequest::create([
-            'requester_id' => Auth::id(),
-            'target_id' => $targetId,
+            'requester_id' => $authUser->id,
+            'target_id' => $target->id,
             'status' => 'pending',
         ]);
 
@@ -70,20 +87,31 @@ class FollowRequestController extends Controller
      */
     public function accept(FollowRequest $request)
     {
+        $authUser = Auth::user();
+
         // Verify the authenticated user is the target
-        if ($request->target_id !== Auth::id()) {
+        if ((int) $request->target_id !== (int) $authUser->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Create the follow relationship: requester follows target
-        // Check if requester is already following the target (auth user)
-        $isAlreadyFollower = Auth::user()->followers()->where('users.id', $request->requester_id)->exists();
-
-        if (!$isAlreadyFollower) {
-            Auth::user()->followers()->attach($request->requester_id);
+        if ($request->status !== 'pending') {
+            return response()->json(['message' => 'This follow request is no longer pending.'], 422);
         }
 
-        // Update the request status
+        $requester = User::find($request->requester_id);
+
+        if (! $requester) {
+            return response()->json(['message' => 'Requester no longer exists.'], 422);
+        }
+
+        if ($authUser->isBlockedOrHasBlocked($requester)) {
+            return response()->json(['message' => 'Follow request cannot be accepted due to a block relationship.'], 403);
+        }
+
+        // Create the follow relationship: requester follows target.
+        // syncWithoutDetaching is race-safe and does not duplicate rows.
+        $authUser->followers()->syncWithoutDetaching([$requester->id]);
+
         $request->update(['status' => 'accepted']);
 
         return response()->json(['success' => true, 'message' => 'Follow request accepted']);
@@ -95,7 +123,7 @@ class FollowRequestController extends Controller
     public function reject(FollowRequest $request)
     {
         // Verify the authenticated user is the target
-        if ($request->target_id !== Auth::id()) {
+        if ((int) $request->target_id !== (int) Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -115,7 +143,7 @@ class FollowRequestController extends Controller
             ->where('status', 'pending')
             ->first();
 
-        if (!$followRequest) {
+        if (! $followRequest) {
             return response()->json(['message' => 'Follow request not found'], 404);
         }
 
@@ -129,7 +157,7 @@ class FollowRequestController extends Controller
      */
     public function cancel(FollowRequest $request)
     {
-        if ($request->requester_id !== Auth::id()) {
+        if ((int) $request->requester_id !== (int) Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

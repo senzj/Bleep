@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Bleep;
 
 use App\Http\Controllers\Controller;
-
 use App\Models\Bleep;
 use App\Models\Repost;
-
 use Illuminate\Http\Request;
 
 class RepostController extends Controller
@@ -14,6 +12,8 @@ class RepostController extends Controller
     public function store(Request $request, Bleep $bleep)
     {
         $user = $request->user();
+
+        abort_unless($bleep->isVisibleTo($user), 404);
 
         // Check if already reposted
         $existing = Repost::where('bleep_id', $bleep->id)
@@ -24,7 +24,7 @@ class RepostController extends Controller
             return response()->json([
                 'message' => 'Already reposted',
                 'reposted' => true,
-                'repostCount' => Repost::where('bleep_id', $bleep->id)->count()
+                'repostCount' => Repost::where('bleep_id', $bleep->id)->count(),
             ], 200);
         }
 
@@ -35,7 +35,7 @@ class RepostController extends Controller
 
         return response()->json([
             'reposted' => true,
-            'repostCount' => Repost::where('bleep_id', $bleep->id)->count()
+            'repostCount' => Repost::where('bleep_id', $bleep->id)->count(),
         ]);
     }
 
@@ -43,15 +43,17 @@ class RepostController extends Controller
     {
         $user = $request->user();
 
+        abort_unless($bleep->isVisibleTo($user), 404);
+
         $repost = Repost::where('bleep_id', $bleep->id)
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$repost) {
+        if (! $repost) {
             return response()->json([
                 'message' => 'Repost not found',
                 'reposted' => false,
-                'repostCount' => Repost::where('bleep_id', $bleep->id)->count()
+                'repostCount' => Repost::where('bleep_id', $bleep->id)->count(),
             ], 404);
         }
 
@@ -59,7 +61,7 @@ class RepostController extends Controller
 
         return response()->json([
             'reposted' => false,
-            'repostCount' => Repost::where('bleep_id', $bleep->id)->count()
+            'repostCount' => Repost::where('bleep_id', $bleep->id)->count(),
         ]);
     }
 }

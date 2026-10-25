@@ -2,25 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use Throwable;
-use App\Models\Logs;
-use App\Models\User;
-use App\Models\Bleep;
-use App\Models\Likes;
-use App\Models\Share;
-use App\Models\Repost;
-use App\Models\Visits;
-use App\Models\Comments;
-use Carbon\CarbonPeriod;
-
-use Carbon\CarbonInterval;
-use Illuminate\Http\Request;
 use App\Helpers\UserAgentParser;
+use App\Models\Bleep;
+use App\Models\Comments;
+use App\Models\Likes;
+use App\Models\Logs;
 use App\Models\RememberedDevice;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Models\Repost;
+use App\Models\Share;
+use App\Models\User;
+use App\Models\Visits;
+use Carbon\CarbonInterval;
+use Carbon\CarbonPeriod;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Throwable;
 
 class AdminController extends Controller
 {
@@ -55,7 +57,7 @@ class AdminController extends Controller
         // Reports counts (fallback to 0 if table doesn't exist)
         try {
             $reportsPending = DB::table('reports')->where('status', 'pending')->count();
-            $reportsOngoing = DB::table('reports')->whereIn('status', ['ongoing','open','in_progress'])->count();
+            $reportsOngoing = DB::table('reports')->whereIn('status', ['ongoing', 'open', 'in_progress'])->count();
             $reportsResolved = DB::table('reports')->where('status', 'resolved')->count();
         } catch (Throwable $e) {
             $reportsPending = 0;
@@ -84,8 +86,7 @@ class AdminController extends Controller
         $range = $request->get('range', 'daily');
 
         try {
-            $payload = Cache::remember("admin:stats:dashboard:{$range}", 30, function () use ($range)
-            {
+            $payload = Cache::remember("admin:stats:dashboard:{$range}", 30, function () use ($range) {
                 $now = now();
 
                 switch ($range) {
@@ -173,26 +174,26 @@ class AdminController extends Controller
                 $activeUsers = DB::table('sessions')->where('last_activity', '>=', now()->subMinutes(5)->timestamp)->distinct()->count('user_id');
 
                 // Devices
-                $osCounts = RememberedDevice::select(DB::raw("COALESCE(parsed_os, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+                $osCounts = RememberedDevice::select(DB::raw("COALESCE(parsed_os, 'Unknown') as label"), DB::raw('COUNT(*) as total'))
                     ->groupBy('label')->orderByRaw('total DESC')->limit(10)
-                    ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int)$r->total])->values();
+                    ->get()->map(fn ($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
 
-                $browserCounts = RememberedDevice::select(DB::raw("COALESCE(parsed_browser, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+                $browserCounts = RememberedDevice::select(DB::raw("COALESCE(parsed_browser, 'Unknown') as label"), DB::raw('COUNT(*) as total'))
                     ->groupBy('label')->orderByRaw('total DESC')->limit(10)
-                    ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int)$r->total])->values();
+                    ->get()->map(fn ($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
 
-                $deviceTypeCounts = RememberedDevice::select(DB::raw("COALESCE(parsed_device_type, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+                $deviceTypeCounts = RememberedDevice::select(DB::raw("COALESCE(parsed_device_type, 'Unknown') as label"), DB::raw('COUNT(*) as total'))
                     ->groupBy('label')->orderByRaw('total DESC')
-                    ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int)$r->total])->values();
+                    ->get()->map(fn ($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
 
                 // Sessions - hourly/daily
                 $hourlyRows = DB::table('sessions')
-                    ->select(DB::raw("HOUR(FROM_UNIXTIME(last_activity)) as hour"), DB::raw("COUNT(*) as total"))
+                    ->select(DB::raw('HOUR(FROM_UNIXTIME(last_activity)) as hour'), DB::raw('COUNT(*) as total'))
                     ->whereBetween('last_activity', [now()->subDays(7)->timestamp, now()->timestamp])
                     ->groupBy('hour')->orderBy('hour')->get()->pluck('total', 'hour')->toArray();
 
                 $dailyRows = DB::table('sessions')
-                    ->select(DB::raw("DAYOFWEEK(FROM_UNIXTIME(last_activity)) as day"), DB::raw("COUNT(*) as total"))
+                    ->select(DB::raw('DAYOFWEEK(FROM_UNIXTIME(last_activity)) as day'), DB::raw('COUNT(*) as total'))
                     ->whereBetween('last_activity', [now()->subWeeks(8)->timestamp, now()->timestamp])
                     ->groupBy('day')->orderBy('day')->get()->pluck('total', 'day')->toArray();
 
@@ -212,9 +213,9 @@ class AdminController extends Controller
                 $topBleeps = Bleep::where('created_at', '>=', now()->subDays(90))
                     ->withCount('likes')->with('user')->orderByDesc('likes_count')->limit(10)
                     ->get(['id', 'message', 'user_id', 'created_at'])
-                    ->map(fn($b) => [
+                    ->map(fn ($b) => [
                         'id' => $b->id,
-                        'message' => \Illuminate\Support\Str::limit($b->message, 120),
+                        'message' => Str::limit($b->message, 120),
                         'likes' => $b->likes_count,
                         'user' => ['id' => $b->user_id, 'dname' => optional($b->user)->dname],
                         'created_at' => $b->created_at,
@@ -255,19 +256,19 @@ class AdminController extends Controller
                         ->count();
 
                 } catch (Throwable $e) {
-                    Log::warning('admin.dashboard.chart-data reports block failed: ' . $e->getMessage());
+                    Log::warning('admin.dashboard.chart-data reports block failed: '.$e->getMessage());
 
                     return back()->withErrors('Failed to load reports data. Please check logs for details.');
                 }
 
-                $userSeries = array_map(fn($l) => (int)($usersTimeSeries[$l] ?? 0), $labels);
-                $bleepSeries = array_map(fn($l) => (int)($bleepTimeSeries[$l] ?? 0), $labels);
-                $likesSeries = array_map(fn($l) => (int)($likesTimeSeries[$l] ?? 0), $labels);
-                $commentsSeries = array_map(fn($l) => (int)($commentsTimeSeries[$l] ?? 0), $labels);
-                $sharesSeries = array_map(fn($l) => (int)($sharesTimeSeries[$l] ?? 0), $labels);
-                $repostsSeries = array_map(fn($l) => (int)($repostsTimeSeries[$l] ?? 0), $labels);
-                $sessionSeries = array_map(fn($l) => (int)($sessionsTimeSeries[$l] ?? 0), $labels);
-                $reportSeries = array_map(fn($l) => (int)($reportsCounts[$l] ?? 0), $labels);
+                $userSeries = array_map(fn ($l) => (int) ($usersTimeSeries[$l] ?? 0), $labels);
+                $bleepSeries = array_map(fn ($l) => (int) ($bleepTimeSeries[$l] ?? 0), $labels);
+                $likesSeries = array_map(fn ($l) => (int) ($likesTimeSeries[$l] ?? 0), $labels);
+                $commentsSeries = array_map(fn ($l) => (int) ($commentsTimeSeries[$l] ?? 0), $labels);
+                $sharesSeries = array_map(fn ($l) => (int) ($sharesTimeSeries[$l] ?? 0), $labels);
+                $repostsSeries = array_map(fn ($l) => (int) ($repostsTimeSeries[$l] ?? 0), $labels);
+                $sessionSeries = array_map(fn ($l) => (int) ($sessionsTimeSeries[$l] ?? 0), $labels);
+                $reportSeries = array_map(fn ($l) => (int) ($reportsCounts[$l] ?? 0), $labels);
 
                 $bleepsToday = DB::table('bleeps')
                     ->whereDate('created_at', now()->toDateString())
@@ -276,19 +277,19 @@ class AdminController extends Controller
                 $engagementToday =
                     DB::table('likes')
                         ->whereDate('created_at', now()
-                        ->toDateString())
+                            ->toDateString())
                         ->count() +
                     DB::table('comments')
                         ->whereDate('created_at', now()
-                        ->toDateString())
+                            ->toDateString())
                         ->count() +
                     DB::table('shares')
                         ->whereDate('created_at', now()
-                        ->toDateString())
+                            ->toDateString())
                         ->count() +
                     DB::table('reposts')
                         ->whereDate('created_at', now()
-                        ->toDateString())
+                            ->toDateString())
                         ->count();
 
                 // Anonymous + nsfw bleeps
@@ -317,22 +318,22 @@ class AdminController extends Controller
                         'range' => $range,
                         'start' => $start->toDateString(),
                         'end' => $end->toDateString(),
-                        'labels' => $labels
+                        'labels' => $labels,
                     ],
 
                     'users' => [
-                        'total'   => $totalUsers,
-                        'active'  => $activeUsers,
-                        'banned'  => $bannedCount,
-                        'labels'  => $labels,
-                        'series'  => [$userSeries],
-                        'roles'   => $rolesCounts,
+                        'total' => $totalUsers,
+                        'active' => $activeUsers,
+                        'banned' => $bannedCount,
+                        'labels' => $labels,
+                        'series' => [$userSeries],
+                        'roles' => $rolesCounts,
                     ],
 
                     'devices' => [
                         'os' => $osCounts,
                         'browser' => $browserCounts,
-                        'deviceType' => $deviceTypeCounts
+                        'deviceType' => $deviceTypeCounts,
                     ],
 
                     'sessions' => [
@@ -341,35 +342,35 @@ class AdminController extends Controller
                         'peakHour' => $peakHour,
                         'peakDay' => $peakDay,
                         'labels' => $labels,
-                        'series' => [$sessionSeries]
+                        'series' => [$sessionSeries],
                     ],
 
                     'bleeps' => [
-                        'total'          => $totalBleeps,
-                        'today'          => $bleepsToday,
-                        'likes'          => $likesCount,
-                        'shares'         => $sharesCount,
-                        'reposts'        => $repostCount,
-                        'comments'       => $commentsCount,
+                        'total' => $totalBleeps,
+                        'today' => $bleepsToday,
+                        'likes' => $likesCount,
+                        'shares' => $sharesCount,
+                        'reposts' => $repostCount,
+                        'comments' => $commentsCount,
                         'engagementRate' => $engagementRate,
-                        'engagementToday'=> $engagementToday,
-                        'anonymous'      => $anonymousBleeps,
-                        'nsfw'           => $nsfwBleeps,
-                        'labels'         => $labels,
-                        'series'         => [$bleepSeries],
-                        'interactions'   => [
-                            'likes'    => $likesSeries,
+                        'engagementToday' => $engagementToday,
+                        'anonymous' => $anonymousBleeps,
+                        'nsfw' => $nsfwBleeps,
+                        'labels' => $labels,
+                        'series' => [$bleepSeries],
+                        'interactions' => [
+                            'likes' => $likesSeries,
                             'comments' => $commentsSeries,
-                            'shares'   => $sharesSeries,
-                            'reposts'  => $repostsSeries,
+                            'shares' => $sharesSeries,
+                            'reposts' => $repostsSeries,
                         ],
                         'top' => $topBleeps,
                     ],
 
                     'comments' => [
-                        'total'     => $commentsCount,
+                        'total' => $commentsCount,
                         'anonymous' => $anonymousComments,
-                        'nsfw'      => $nsfwComments,
+                        'nsfw' => $nsfwComments,
                     ],
 
                     'reports' => [
@@ -378,15 +379,16 @@ class AdminController extends Controller
                         'resolved' => $resolved,
                         'byCategory' => $reportsByCategory,
                         'labels' => $labels,
-                        'series' => [$reportSeries]
+                        'series' => [$reportSeries],
                     ],
                 ];
             });
 
             return response()->json($payload);
         } catch (Throwable $e) {
-            Log::error('admin.dashboard.chart-data error: ' . $e->getMessage(), ['exception' => $e]);
-            $message = config('app.debug') ? $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() : 'Internal server error';
+            Log::error('admin.dashboard.chart-data error: '.$e->getMessage(), ['exception' => $e]);
+            $message = config('app.debug') ? $e->getMessage().' in '.$e->getFile().':'.$e->getLine() : 'Internal server error';
+
             return response()->json(['error' => $message], 500);
         }
     }
@@ -397,9 +399,9 @@ class AdminController extends Controller
     public function users(Request $request)
     {
         // Basic stats
-        $totalUsers  = User::count();
+        $totalUsers = User::count();
         $bannedUsers = User::where('is_banned', true)->count();
-        $newToday    = User::whereDate('created_at', now()->toDateString())->count();
+        $newToday = User::whereDate('created_at', now()->toDateString())->count();
 
         // Online now (active in last 5 minutes)
         $onlineNow = DB::table('sessions')
@@ -411,9 +413,9 @@ class AdminController extends Controller
         // Simple search by username or email
         $q = trim($request->get('q', ''));
         $usersQuery = User::query()
-            ->when($q, fn($builder) => $builder->where(function($w) use ($q) {
+            ->when($q, fn ($builder) => $builder->where(function ($w) use ($q) {
                 $w->where('username', 'like', "%{$q}%")
-                  ->orWhere('email', 'like', "%{$q}%");
+                    ->orWhere('email', 'like', "%{$q}%");
             }))
             ->orderByDesc('created_at');
 
@@ -426,14 +428,16 @@ class AdminController extends Controller
 
     public function updateUsers(Request $request, User $user)
     {
-        $validated = $request->validate([
-            'role'          => ['required', \Illuminate\Validation\Rule::in(['admin','moderator','user'])],
-            'is_verified'   => ['required','boolean'],
+        abort_unless($request->user()->role === 'admin', 403);
 
-            'is_banned'     => ['required','boolean'],
-            'ban_reason'    => ['nullable','string','max:500'],
-            'duration_type' => ['nullable', \Illuminate\Validation\Rule::in(['temporary','permanent'])],
-            'banned_until'  => ['nullable','date'],
+        $validated = $request->validate([
+            'role' => ['required', Rule::in(['admin', 'moderator', 'user'])],
+            'is_verified' => ['required', 'boolean'],
+
+            'is_banned' => ['required', 'boolean'],
+            'ban_reason' => ['nullable', 'string', 'max:500'],
+            'duration_type' => ['nullable', Rule::in(['temporary', 'permanent'])],
+            'banned_until' => ['nullable', 'date'],
         ]);
 
         // Always update role + verification
@@ -446,6 +450,7 @@ class AdminController extends Controller
             $user->banned_until = null;
             $user->ban_reason = null;
             $user->save();
+
             return response()->json(['message' => 'User updated (unbanned).']);
         }
 
@@ -454,8 +459,8 @@ class AdminController extends Controller
         $user->ban_reason = $validated['ban_reason'] ?? 'Banned by admin';
 
         $bannedUntil = null;
-        if (($validated['duration_type'] ?? null) === 'temporary' && !empty($validated['banned_until'])) {
-            $bannedUntil = \Illuminate\Support\Carbon::parse($validated['banned_until'])
+        if (($validated['duration_type'] ?? null) === 'temporary' && ! empty($validated['banned_until'])) {
+            $bannedUntil = Carbon::parse($validated['banned_until'])
                 ->setTimezone(config('app.timezone'));
         }
         // If permanent, keep banned_until as null
@@ -495,10 +500,10 @@ class AdminController extends Controller
         }
 
         if ($search) {
-            $sessionsQuery->where(function($q) use ($search) {
+            $sessionsQuery->where(function ($q) use ($search) {
                 $q->where('users.username', 'like', "%{$search}%")
-                  ->orWhere('users.dname', 'like', "%{$search}%")
-                  ->orWhere('users.email', 'like', "%{$search}%");
+                    ->orWhere('users.dname', 'like', "%{$search}%")
+                    ->orWhere('users.email', 'like', "%{$search}%");
             });
         }
 
@@ -516,8 +521,8 @@ class AdminController extends Controller
         if ($search) {
             $devicesQuery->whereHas('user', function ($q) use ($search) {
                 $q->where('username', 'like', "%{$search}%")
-                  ->orWhere('dname', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('dname', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -546,8 +551,10 @@ class AdminController extends Controller
         $deleted = DB::table('sessions')->where('id', $sessionId)->delete();
         if ($deleted) {
             Logs::record(Auth::id(), 'session_removed', ['session_id' => $sessionId, 'by_admin' => Auth::id()], $request);
+
             return response()->json(['message' => 'Session revoked.']);
         }
+
         return response()->json(['message' => 'Session not found.'], 404);
     }
 
@@ -555,6 +562,7 @@ class AdminController extends Controller
     {
         $device->delete();
         Logs::record(Auth::id(), 'device_removed', ['device_id' => $device->id, 'target_user' => $device->user_id], $request);
+
         return response()->json(['message' => 'Device removed.']);
     }
 
@@ -566,7 +574,7 @@ class AdminController extends Controller
         // Base query
         $query = Logs::query()
             ->with('user')
-            ->orderByDesc('created_at');
+            ->orderByDesc('logs.created_at');
 
         // Quick search across user display name, username, email and logs.ip
         $q = trim($request->get('q', ''));
@@ -576,9 +584,9 @@ class AdminController extends Controller
                 ->select('logs.*')
                 ->where(function ($w) use ($q) {
                     $w->where('users.username', 'like', "%{$q}%")
-                      ->orWhere('users.dname', 'like', "%{$q}%")
-                      ->orWhere('users.email', 'like', "%{$q}%")
-                      ->orWhere('logs.ip', 'like', "%{$q}%");
+                        ->orWhere('users.dname', 'like', "%{$q}%")
+                        ->orWhere('users.email', 'like', "%{$q}%")
+                        ->orWhere('logs.ip', 'like', "%{$q}%");
                 });
         }
 
@@ -608,27 +616,27 @@ class AdminController extends Controller
 
         // Apply filters from request
         if ($request->filled('user_id')) {
-            $query->where('user_id', $request->get('user_id'));
+            $query->where('logs.user_id', $request->get('user_id'));
         }
 
         if ($request->filled('action')) {
-            $query->where('action', $request->get('action'));
+            $query->where('logs.action', $request->get('action'));
         }
 
         // device filters: we filter logs by matching user_agent content (best-effort)
         if ($request->filled('device_os')) {
-            $query->where('user_agent', 'like', '%'.$request->get('device_os').'%');
+            $query->where('logs.user_agent', 'like', '%'.$request->get('device_os').'%');
         }
         if ($request->filled('device_browser')) {
-            $query->where('user_agent', 'like', '%'.$request->get('device_browser').'%');
+            $query->where('logs.user_agent', 'like', '%'.$request->get('device_browser').'%');
         }
 
         // date filters
         if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->get('date_from'));
+            $query->whereDate('logs.created_at', '>=', $request->get('date_from'));
         }
         if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->get('date_to'));
+            $query->whereDate('logs.created_at', '<=', $request->get('date_to'));
         }
 
         $logs = $query->paginate(25)->withQueryString();
@@ -659,7 +667,7 @@ class AdminController extends Controller
 
         // Apply Filters
         if ($request->filled('ip')) {
-            $query->where('ip_address', 'like', '%' . $request->get('ip') . '%');
+            $query->where('ip_address', 'like', '%'.$request->get('ip').'%');
         }
         if ($request->filled('platform')) {
             $query->where('platform', $request->get('platform'));
@@ -682,6 +690,7 @@ class AdminController extends Controller
         // Transform the collection to include parsed UA
         $recentVisits->getCollection()->transform(function ($visit) {
             $visit->parsed_ua = UserAgentParser::parse($visit->user_agent);
+
             return $visit;
         });
 
@@ -696,7 +705,7 @@ class AdminController extends Controller
 
         // aggregate visits by day
         $rows = DB::table('visits')
-            ->select(DB::raw("DATE(created_at) as day"), DB::raw("COUNT(*) as total"))
+            ->select(DB::raw('DATE(created_at) as day'), DB::raw('COUNT(*) as total'))
             ->whereBetween('created_at', [$start, $end])
             ->groupBy('day')
             ->orderBy('day')
@@ -706,22 +715,24 @@ class AdminController extends Controller
         // build day labels for the full range
         $period = CarbonPeriod::create($start, CarbonInterval::day(), $end);
         $labels = [];
-        foreach ($period as $dt) { $labels[] = $dt->format('Y-m-d'); }
+        foreach ($period as $dt) {
+            $labels[] = $dt->format('Y-m-d');
+        }
 
-        $series = array_map(fn($l) => (int) ($rows[$l] ?? 0), $labels);
+        $series = array_map(fn ($l) => (int) ($rows[$l] ?? 0), $labels);
 
         // top browsers / devices / platforms
-        $browsers = Visits::select(DB::raw("COALESCE(browser, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+        $browsers = Visits::select(DB::raw("COALESCE(browser, 'Unknown') as label"), DB::raw('COUNT(*) as total'))
             ->groupBy('label')->orderByRaw('total DESC')->limit(10)
-            ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
+            ->get()->map(fn ($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
 
-        $devices = Visits::select(DB::raw("COALESCE(device, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+        $devices = Visits::select(DB::raw("COALESCE(device, 'Unknown') as label"), DB::raw('COUNT(*) as total'))
             ->groupBy('label')->orderByRaw('total DESC')->limit(10)
-            ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
+            ->get()->map(fn ($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
 
-        $platforms = Visits::select(DB::raw("COALESCE(platform, 'Unknown') as label"), DB::raw("COUNT(*) as total"))
+        $platforms = Visits::select(DB::raw("COALESCE(platform, 'Unknown') as label"), DB::raw('COUNT(*) as total'))
             ->groupBy('label')->orderByRaw('total DESC')->limit(10)
-            ->get()->map(fn($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
+            ->get()->map(fn ($r) => ['label' => $r->label, 'value' => (int) $r->total])->values();
 
         return response()->json([
             'meta' => ['days' => $days, 'start' => $start->toDateString(), 'end' => $end->toDateString()],

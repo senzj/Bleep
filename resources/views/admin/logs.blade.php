@@ -1,8 +1,3 @@
-@once
-    @php
-        use App\Helpers\UserAgentParser;
-    @endphp
-@endonce
 <x-admin.layout>
     <div class="mb-8">
         <h1 class="text-2xl font-bold mb-2">System Logs</h1>
@@ -193,8 +188,8 @@
                 <div class="text-center">
                     @if($log->user_agent)
                         @php
-                            $ua_os = UserAgentParser::parseOS($log->user_agent);
-                            $ua_browser = UserAgentParser::parseBrowser($log->user_agent);
+                            $ua_os = \App\Helpers\UserAgentParser::parseOS($log->user_agent);
+                            $ua_browser = \App\Helpers\UserAgentParser::parseBrowser($log->user_agent);
                         @endphp
                         <div class="text-xs leading-relaxed opacity-80">{!! $ua_os !!}</div>
                         <div class="text-xs leading-relaxed opacity-80">{!! $ua_browser !!}</div>
@@ -273,8 +268,8 @@
                         <div>
                             <div class="text-xs font-semibold text-base-content/50 uppercase mb-1">Device</div>
                             @php
-                                $ua_os = UserAgentParser::parseOS($log->user_agent);
-                                $ua_browser = UserAgentParser::parseBrowser($log->user_agent);
+                                $ua_os = \App\Helpers\UserAgentParser::parseOS($log->user_agent);
+                                $ua_browser = \App\Helpers\UserAgentParser::parseBrowser($log->user_agent);
                             @endphp
                             <div class="text-xs leading-relaxed opacity-80">{!! $ua_os !!}</div>
                             <div class="text-xs leading-relaxed opacity-80">{!! $ua_browser !!}</div>

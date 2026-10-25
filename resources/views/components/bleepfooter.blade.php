@@ -9,6 +9,9 @@
 
 @php
     $showCommentsButton = filter_var($showCommentsButton, FILTER_VALIDATE_BOOLEAN);
+    $likeCount = $bleep->likeCount();
+    $commentCount = $bleep->commentCount();
+    $isLiked = Auth::check() && $bleep->isLikedBy(Auth::user());
 @endphp
 
 <div class="grid {{ $gridClass }} items-center gap-2 pt-2 border-t border-base-300 text-sm min-h-10">
@@ -19,17 +22,17 @@
             @csrf
             <button type="submit"
                 class="btn btn-ghost btn-xs h-8 min-h-8 leading-none whitespace-nowrap gap-1 group like-btn
-                {{ Auth::check() && $bleep->isLikedBy(Auth::user()) ? 'text-red-600 hover:bg-red-100/50 hover:text-red-600' : 'hover:bg-red-100/50 hover:text-red-600' }}"
+                {{ $isLiked ? 'text-red-600 hover:bg-red-100/50 hover:text-red-600' : 'hover:bg-red-100/50 hover:text-red-600' }}"
                 data-bleep-id="{{ $bleep->id }}">
                 <i data-lucide="heart" class="w-5 h-5 align-middle group-hover:scale-110 transition-transform heart-icon"></i>
                 <span class="inline sm:hidden text-xs like-count align-middle" data-bleep-id="{{ $bleep->id }}">
-                    {{ $bleep->likes()->count() }}
+                    {{ $likeCount }}
                 </span>
                 <span class="hidden sm:inline text-xs like-text whitespace-nowrap align-middle">
-                    @if (Auth::check() && $bleep->isLikedBy(Auth::user()))
-                        {{ $bleep->likes()->count() }} {{ $bleep->likes()->count() === 1 ? 'Liked' : 'Likes' }}
+                    @if ($isLiked)
+                        {{ $likeCount }} {{ $likeCount === 1 ? 'Liked' : 'Likes' }}
                     @else
-                        {{ $bleep->likes()->count() }} {{ $bleep->likes()->count() === 1 ? 'Like' : 'Likes' }}
+                        {{ $likeCount }} {{ $likeCount === 1 ? 'Like' : 'Likes' }}
                     @endif
                 </span>
             </button>
@@ -45,9 +48,9 @@
                 data-bleep-id="{{ $bleep->id }}"
                 class="btn btn-ghost btn-xs h-8 min-h-8 leading-none whitespace-nowrap gap-1 hover:bg-blue-100/50 hover:text-blue-600 transition-colors group comment-btn">
                 <i data-lucide="message-circle" class="w-5 h-5 align-middle group-hover:scale-110 transition-transform"></i>
-                <span class="inline sm:hidden text-xs align-middle">{{ $bleep->comments()->count() }}</span>
+                <span class="inline sm:hidden text-xs align-middle">{{ $commentCount }}</span>
                 <span class="hidden sm:inline text-xs whitespace-nowrap align-middle">
-                    {{ $bleep->comments()->count() }} {{ $bleep->comments()->count() === 1 ? 'Comment' : 'Comments' }}
+                    {{ $commentCount }} {{ $commentCount === 1 ? 'Comment' : 'Comments' }}
                 </span>
             </button>
         </div>

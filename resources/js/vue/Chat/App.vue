@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import Message from './layout/Message.vue';
 import Nav from './layout/Nav.vue';
 import CreateGroupChat from './components/modals/CreateGroupChat.vue';
@@ -14,7 +14,15 @@ const openChat = () => {
 };
 
 const goBackToNav = () => {
+    // Only step back when this entry was pushed from the chat list; otherwise
+    // browser history would leave the chat page entirely (direct link load).
+    if (window.history.state?.fromChatList) {
+        window.history.back();
+        return;
+    }
+
     mobileView.value = 'nav';
+    window.history.replaceState({}, '', '/chat');
 };
 
 // Trigger icon rendering after a slight delay to ensure DOM is ready
@@ -25,6 +33,10 @@ const triggerIconRender = () => {
             window.lucide.replace();
         }, 0);
     }
+};
+
+const onPopState = () => {
+    handleUrlNavigation(true);
 };
 
 onMounted(async () => {
@@ -42,14 +54,18 @@ onMounted(async () => {
     await handleUrlNavigation();
 
     // Listen for browser back/forward navigation
-    window.addEventListener('popstate', handleUrlNavigation);
+    window.addEventListener('popstate', onPopState);
 
     // Render icons after initial mount
     triggerIconRender();
 });
 
+onBeforeUnmount(() => {
+    window.removeEventListener('popstate', onPopState);
+});
+
 // Extract conversation ID from URL path or user_id from query parameter
-const handleUrlNavigation = async () => {
+const handleUrlNavigation = async (isPopState = false) => {
     const path = window.location.pathname;
     const searchParams = new URLSearchParams(window.location.search);
 
@@ -57,7 +73,8 @@ const handleUrlNavigation = async () => {
     const pathMatch = path.match(/\/chat\/(\d+)$/);
     if (pathMatch && pathMatch[1]) {
         const conversationId = Number(pathMatch[1]);
-        await store.selectConversation(conversationId);
+        // The URL already points here, so replace the entry instead of pushing a copy.
+        await store.selectConversation(conversationId, { historyMode: 'replace' });
         mobileView.value = 'chat';
         return;
     }
@@ -66,13 +83,28 @@ const handleUrlNavigation = async () => {
     const userId = searchParams.get('user_id');
     if (userId) {
         try {
-            await store.createDirectConversation(Number(userId));
+            const conversationId = await store.createDirectConversation(Number(userId));
             mobileView.value = 'chat';
-            // Clean up the query parameter from URL
-            window.history.replaceState({}, '', '/chat');
+            // Drop the one-off query parameter but keep the conversation URL.
+            if (conversationId) {
+                window.history.replaceState(
+                    { conversationId: Number(conversationId) },
+                    '',
+                    `/chat/${conversationId}`
+                );
+            } else {
+                window.history.replaceState({}, '', '/chat');
+            }
         } catch (error) {
             console.error('Failed to create conversation:', error);
         }
+        return;
+    }
+
+    // Back/forward navigation landed on the plain chat list: show the nav pane
+    // and leave the previously selected conversation untouched on desktop.
+    if (isPopState) {
+        mobileView.value = 'nav';
         return;
     }
 
@@ -81,6 +113,7 @@ const handleUrlNavigation = async () => {
     if (storedId && store.state.conversations.length > 0) {
         const conversationExists = store.state.conversations.some(c => Number(c.id) === storedId);
         if (conversationExists) {
+            // Push so the browser Back button returns to the chat list.
             await store.selectConversation(storedId);
         }
     }

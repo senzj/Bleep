@@ -12,9 +12,14 @@
 >
     <div
         x-show="open"
+        x-ref="sheet"
         style="display:none"
         @click.stop
-        class="fixed z-50 bg-base-300 shadow-2xl border border-base-300/50 flex flex-col overflow-hidden max-w-full overflow-x-hidden will-change-transform"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Comments"
+        tabindex="-1"
+        class="fixed z-50 bg-base-300 shadow-2xl border border-base-300/50 flex flex-col overflow-hidden max-w-full overflow-x-hidden will-change-transform focus:outline-none"
         :class="isMobile
             ? 'left-0 right-0 bottom-0 mx-auto rounded-t-2xl'
             : 'top-1/2 right-4 -translate-y-1/2 rounded-2xl'"

@@ -11,9 +11,7 @@ class MediaUploadService
     /**
      * Save a profile picture for a user
      *
-     * @param UploadedFile $file
-     * @param int $userId
-     * @param string|null $oldPath Path to delete if exists
+     * @param  string|null  $oldPath  Path to delete if exists
      * @return string Stored file path
      */
     public static function saveProfileImage(UploadedFile $file, int $userId, ?string $oldPath = null): string
@@ -24,21 +22,32 @@ class MediaUploadService
         }
 
         // Generate filename: timestamp_random.ext
-        $filename = time() . '_' . Str::random(8) . '.' . $file->extension();
+        $filename = self::randomFilename($file);
 
         // Store in: profile/{user_id}/{filename}
         return $file->storeAs("user/{$userId}", $filename, 'public');
     }
 
     /**
+     * Build a safe, non-guessable filename using only the detected extension.
+     */
+    private static function randomFilename(UploadedFile $file, int $randomLength = 10): string
+    {
+        $extension = strtolower((string) $file->extension());
+
+        if (! preg_match('/^[a-z0-9]{1,10}$/', $extension)) {
+            $extension = 'bin';
+        }
+
+        return time().'_'.Str::random($randomLength).'.'.$extension;
+    }
+
+    /**
      * Delete a profile picture from storage
-     *
-     * @param string|null $path
-     * @return bool
      */
     public static function deleteProfileImage(?string $path): bool
     {
-        if (!$path || !Storage::disk('public')->exists($path)) {
+        if (! $path || ! Storage::disk('public')->exists($path)) {
             return false;
         }
 
@@ -48,8 +57,6 @@ class MediaUploadService
     /**
      * Save a bleep media file (image, video, or audio)
      *
-     * @param UploadedFile $file
-     * @param int $bleepId
      * @return array ['path' => string, 'type' => string, 'mime' => string]
      */
     public static function saveBleepMedia(UploadedFile $file, int $bleepId): array
@@ -61,14 +68,9 @@ class MediaUploadService
                 ? 'video'
                 : (str_starts_with($mime, 'audio/') ? 'audio' : 'file'));
 
-        // For audio files, preserve original name
-        if ($type === 'audio') {
-            $originalName = $file->getClientOriginalName();
-            $filename = $originalName;
-        } else {
-            // For images and videos, use timestamp + random string
-            $filename = time() . '_' . Str::random(8) . '.' . $file->extension();
-        }
+        // Always generate the filename server-side. Never trust the client's
+        // original name, which can contain executable extensions or traversal.
+        $filename = self::randomFilename($file);
 
         // Store in: bleep/{bleep_id}/{filename}
         $path = $file->storeAs("bleep/{$bleepId}", $filename, 'public');
@@ -82,13 +84,10 @@ class MediaUploadService
 
     /**
      * Delete a bleep media file from storage
-     *
-     * @param string|null $path
-     * @return bool
      */
     public static function deleteBleepMedia(?string $path): bool
     {
-        if (!$path || !Storage::disk('public')->exists($path)) {
+        if (! $path || ! Storage::disk('public')->exists($path)) {
             return false;
         }
 
@@ -98,7 +97,7 @@ class MediaUploadService
     /**
      * Delete multiple bleep media files
      *
-     * @param array $paths Array of file paths
+     * @param  array  $paths  Array of file paths
      * @return int Number of files deleted
      */
     public static function deleteBleepMediaBatch(array $paths): int
@@ -117,8 +116,6 @@ class MediaUploadService
     /**
      * Save a comment media file (image, video, or audio)
      *
-     * @param UploadedFile $file
-     * @param int $commentId
      * @return array ['path' => string, 'type' => string, 'mime' => string]
      */
     public static function saveCommentMedia(UploadedFile $file, int $commentId): array
@@ -134,13 +131,9 @@ class MediaUploadService
             throw new \InvalidArgumentException('Only image, video, or audio files are allowed for comment media.');
         }
 
-        // For audio files, preserve original name
-        if ($type === 'audio') {
-            $originalName = $file->getClientOriginalName();
-            $filename = $originalName;
-        } else {
-            $filename = time() . '_' . Str::random(6) . '.' . $file->extension();
-        }
+        // Always generate the filename server-side. Never trust the client's
+        // original name, which can contain executable extensions or traversal.
+        $filename = self::randomFilename($file, 8);
 
         // Store in: comments/{comment_id}/{filename}
         $path = $file->storeAs("comments/{$commentId}", $filename, 'public');
@@ -154,13 +147,10 @@ class MediaUploadService
 
     /**
      * Delete a comment media file from storage
-     *
-     * @param string|null $path
-     * @return bool
      */
     public static function deleteCommentMedia(?string $path): bool
     {
-        if (!$path || !Storage::disk('public')->exists($path)) {
+        if (! $path || ! Storage::disk('public')->exists($path)) {
             return false;
         }
 

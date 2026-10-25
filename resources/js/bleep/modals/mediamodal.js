@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let translateY = 0;
     let currentTranslateX = 0;
     let currentTranslateY = 0;
+    let lastFocusedElement = null;
 
     const MIN_ZOOM = 0.5;
     const MAX_ZOOM = 8;
@@ -34,6 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Open modal when clicking on media
     document.addEventListener('click', (e) => {
+        // Don't hijack clicks on inline players or other interactive controls.
+        if (e.target.closest('video, audio, button, a, input, textarea, select')) return;
+
         const mediaItem = e.target.closest('[data-media-index]');
         if (!mediaItem) return;
 
@@ -52,10 +56,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset all state before showing
         resetZoom();
 
+        lastFocusedElement = document.activeElement;
         showMedia(currentIndex);
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         document.body.style.overflow = 'hidden';
+        closeBtn.focus({ preventScroll: true });
     }, true);
 
     // Close modal
@@ -66,6 +72,11 @@ document.addEventListener('DOMContentLoaded', () => {
         video.pause();
         video.currentTime = 0;
         resetZoom();
+
+        if (lastFocusedElement && document.contains(lastFocusedElement)) {
+            lastFocusedElement.focus({ preventScroll: true });
+        }
+        lastFocusedElement = null;
     };
 
     closeBtn.addEventListener('click', closeModal);

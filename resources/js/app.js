@@ -1,12 +1,10 @@
 import './bootstrap';
 import './lucideicons';
-import './chart';
 import './alpine';
 import './theme';
 
 // vue js
 import { createApp } from 'vue';
-import router from './router';
 
 // Import Vue Components
 import ChatApp from './vue/Chat/App.vue';

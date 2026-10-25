@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bleep;
-
+use App\Models\Repost;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -11,13 +12,15 @@ class PostController extends Controller
 {
     public function index($id)
     {
-        $bleep = Bleep::with(['user', 'media', 'likes'])
+        $bleep = Bleep::query()
+            ->with('user.preferences')
+            ->withCardStats(Auth::user())
             ->withTrashed()
             ->findOrFail($id);
 
-        if (Auth::check() && $bleep->user && Auth::user()->isBlockedOrHasBlocked($bleep->user)) {
-            abort(404);
-        }
+        abort_unless($bleep->isVisibleTo(Auth::user()), 404);
+
+        Repost::attachVisibleTo([$bleep], Auth::id());
 
         // Record view for single post page
         $bleep->recordView(
@@ -37,17 +40,14 @@ class PostController extends Controller
         return view('pages.bleeps.post', compact('bleep', 'comments'));
     }
 
-
     /**
      * Load more comments for post page (AJAX)
      */
     public function loadMorePostComments(Request $request, $id)
     {
-        $bleep = Bleep::findOrFail($id);
+        $bleep = Bleep::with('user.preferences')->findOrFail($id);
 
-        if (Auth::check() && $bleep->user && Auth::user()->isBlockedOrHasBlocked($bleep->user)) {
-            abort(404);
-        }
+        abort_unless($bleep->isVisibleTo(Auth::user()), 404);
 
         $page = (int) $request->get('page', 1);
         $perPage = 10;
@@ -61,26 +61,27 @@ class PostController extends Controller
 
         // Group by date
         $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
-        $groups = $comments->getCollection()->groupBy(function($c) {
+        $groups = $comments->getCollection()->groupBy(function ($c) {
             $tz = $c->user?->timezone ?? config('app.timezone', 'UTC');
-            return $c->created_at->copy()->setTimezone($tz)->format('Y-m-d') . '|' . $tz;
+
+            return $c->created_at->copy()->setTimezone($tz)->format('Y-m-d').'|'.$tz;
         });
 
         // Build HTML
         $html = '';
         foreach ($groups as $key => $group) {
             [$date, $tz] = explode('|', $key);
-            $dt = \Carbon\Carbon::createFromFormat('Y-m-d', $date, $tz);
+            $dt = Carbon::createFromFormat('Y-m-d', $date, $tz);
             $showYear = $dt->year !== now()->year;
-            $label = $dt->format('F j') . ($showYear ? ', ' . $dt->year : '');
+            $label = $dt->format('F j').($showYear ? ', '.$dt->year : '');
 
             // Date header with unique data attribute
-            $html .= '<div class="text-sm text-base-content/60 font-medium mt-4 mb-2 comment-date-header" data-date="' . $date . '">' . $label . '</div>';
+            $html .= '<div class="text-sm text-base-content/60 font-medium mt-4 mb-2 comment-date-header" data-date="'.$date.'">'.$label.'</div>';
 
             foreach ($group as $comment) {
                 $html .= view('components.subcomponents.comments.commentcard', [
                     'comment' => $comment,
-                    'bleep' => $bleep
+                    'bleep' => $bleep,
                 ])->render();
             }
         }

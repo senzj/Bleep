@@ -3,15 +3,16 @@
 namespace App\Providers;
 
 use App\Models\Bleep;
-use App\Models\Visits;
 use App\Models\Comments;
+use App\Models\Visits;
 use App\Policies\BleepPolicy;
 use App\Policies\CommentsPolicy;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\ServiceProvider;
+use App\Services\FollowContext;
 use Illuminate\Foundation\Http\Events\RequestHandled;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,7 +31,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(FollowContext::class, function ($app) {
+            return new FollowContext($app['auth']->user());
+        });
     }
 
     /**
@@ -71,7 +74,7 @@ class AppServiceProvider extends ServiceProvider
                 // 2. Not a tracked page
                 // 3. API routes
                 // 4. Static assets
-                if (!$shouldTrack || $req->method() !== 'GET' ||
+                if (! $shouldTrack || $req->method() !== 'GET' ||
                     str_starts_with($path, 'api/') ||
                     str_starts_with($path, 'admin/')) {
                     return;
@@ -99,19 +102,19 @@ class AppServiceProvider extends ServiceProvider
                     $browser = 'Edge';
                 } elseif (preg_match('/OPR\/|Opera/i', $ua)) {
                     $browser = 'Opera';
-                } elseif (preg_match('/CriOS\/|Chrome\/([0-9.]+)/i', $ua) && !preg_match('/Edg|OPR|Opera/i', $ua)) {
+                } elseif (preg_match('/CriOS\/|Chrome\/([0-9.]+)/i', $ua) && ! preg_match('/Edg|OPR|Opera/i', $ua)) {
                     $browser = 'Chrome';
                 } elseif (preg_match('/Firefox\/([0-9.]+)/i', $ua)) {
                     $browser = 'Firefox';
                 } elseif (preg_match('/MSIE |Trident\//i', $ua)) {
                     $browser = 'Internet Explorer';
-                } elseif (preg_match('/Version\/([0-9.]+).*Safari/i', $ua) && !preg_match('/Chrome|CriOS|Chromium/i', $ua)) {
+                } elseif (preg_match('/Version\/([0-9.]+).*Safari/i', $ua) && ! preg_match('/Chrome|CriOS|Chromium/i', $ua)) {
                     $browser = 'Safari';
                 }
 
                 // Basic device type detection
                 $device = 'Desktop';
-                if (preg_match('/iPad|tablet|playbook|silk/i', $ua) && !preg_match('/Mobile/i', $ua)) {
+                if (preg_match('/iPad|tablet|playbook|silk/i', $ua) && ! preg_match('/Mobile/i', $ua)) {
                     $device = 'Tablet';
                 } elseif (preg_match('/Mobile|Android.*Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Windows Phone/i', $ua)) {
                     $device = 'Mobile';
@@ -119,12 +122,12 @@ class AppServiceProvider extends ServiceProvider
 
                 // Track visit with user_id (null for anonymous/unregistered users)
                 Visits::create([
-                    'user_id'    => Auth::id() ?? null,
+                    'user_id' => Auth::id() ?? null,
                     'ip_address' => $req->ip() ?? '0.0.0.0',
                     'user_agent' => substr($ua, 0, 191),
-                    'browser'    => substr($browser, 0, 64),
-                    'device'     => substr($device, 0, 64),
-                    'platform'   => substr($platform, 0, 64),
+                    'browser' => substr($browser, 0, 64),
+                    'device' => substr($device, 0, 64),
+                    'platform' => substr($platform, 0, 64),
                 ]);
             } catch (\Throwable $e) {
                 // swallow errors so site is not impacted
@@ -139,6 +142,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Convert pattern to regex
         $pattern = str_replace('\*', '.*', preg_quote($pattern, '/'));
-        return (bool) preg_match('/^' . $pattern . '$/', $path);
+
+        return (bool) preg_match('/^'.$pattern.'$/', $path);
     }
 }

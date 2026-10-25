@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Bleep;
 
 use App\Http\Controllers\Controller;
-
 use App\Models\Comments;
+use App\Services\MediaUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Services\MediaUploadService;
 
 class CommentsRepliesController extends Controller
 {
@@ -16,23 +15,35 @@ class CommentsRepliesController extends Controller
      */
     public function index(Request $request, Comments $comment)
     {
+        $comment->loadMissing('bleep.user.preferences');
+
+        abort_unless($comment->bleep?->isVisibleTo(Auth::user()), 404);
+
         $perPage = 5;
-        $page    = max(1, (int) $request->integer('page', 1));
-        $depth   = max(1, (int) $request->integer('depth', $comment->depth() + 1));
+        $page = max(1, (int) $request->integer('page', 1));
+        $depth = max(1, (int) $request->integer('depth', $comment->depth() + 1));
 
         $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
 
-        $replies = $comment->replies()
-            ->with(['user', 'likes'])
-            ->paginate($perPage, ['*'], 'page', $page);
+        $repliesQuery = $comment->replies()
+            ->with(['user', 'bleep'])
+            ->withCount(['likes', 'replies']);
+
+        if (Auth::check()) {
+            $repliesQuery->withExists([
+                'likes as liked' => fn ($query) => $query->where('user_id', Auth::id()),
+            ]);
+        }
+
+        $replies = $repliesQuery->paginate($perPage, ['*'], 'page', $page);
 
         // Transform replies to JSON format
         $transformedReplies = $replies->map(fn ($reply) => $this->transformComment($reply, $viewerSeed))->values();
 
         return response()->json([
-            'replies'    => $transformedReplies,
-            'has_more'   => $replies->hasMorePages(),
-            'next_page'  => $replies->currentPage() + 1,
+            'replies' => $transformedReplies,
+            'has_more' => $replies->hasMorePages(),
+            'next_page' => $replies->currentPage() + 1,
         ]);
     }
 
@@ -41,11 +52,15 @@ class CommentsRepliesController extends Controller
      */
     public function store(Request $request, Comments $comment)
     {
+        $comment->loadMissing('bleep.user.preferences');
+
+        abort_unless($comment->bleep?->isVisibleTo(Auth::user()), 404);
+
         $data = $request->validate([
-            'message'      => ['nullable', 'string', 'max:500'],
+            'message' => ['nullable', 'string', 'max:500'],
             'is_anonymous' => ['boolean'],
-            'is_nsfw'      => ['boolean'],
-            'media'        => [
+            'is_nsfw' => ['boolean'],
+            'media' => [
                 'nullable',
                 'file',
                 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,webm,mp3,wav,ogg,m4a',
@@ -53,19 +68,19 @@ class CommentsRepliesController extends Controller
             ],
         ]);
 
-        if (!$request->filled('message') && !$request->hasFile('media')) {
+        if (! $request->filled('message') && ! $request->hasFile('media')) {
             return response()->json([
                 'message' => 'Write something or attach media.',
             ], 422);
         }
 
         $reply = Comments::create([
-            'user_id'      => Auth::id(),
-            'bleep_id'     => $comment->bleep_id,
-            'parent_id'    => $comment->id,
-            'message'      => $data['message'],
+            'user_id' => Auth::id(),
+            'bleep_id' => $comment->bleep_id,
+            'parent_id' => $comment->id,
+            'message' => $data['message'],
             'is_anonymous' => $request->boolean('is_anonymous'),
-            'is_nsfw'      => $request->boolean('is_nsfw'),
+            'is_nsfw' => $request->boolean('is_nsfw'),
         ]);
 
         if ($request->hasFile('media')) {
@@ -82,13 +97,16 @@ class CommentsRepliesController extends Controller
                 ]);
             } catch (\Exception $e) {
                 $reply->delete();
+
                 return response()->json([
-                    'message' => 'Failed to upload media: ' . $e->getMessage(),
+                    'message' => 'Failed to upload media: '.$e->getMessage(),
                 ], 422);
             }
         }
 
-        $reply->load(['user', 'likes']);
+        $reply->load(['user', 'bleep']);
+        $reply->loadCount(['likes', 'replies']);
+        $reply->setAttribute('liked', false);
 
         $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
         $transformed = $this->transformComment($reply, $viewerSeed);
@@ -141,29 +159,32 @@ class CommentsRepliesController extends Controller
             ? ($bleep ? $bleep->anonymousDisplayNameFor($viewerSeed) : 'Anonymous')
             : (optional($user)->dname ?? 'Unknown');
 
+        $likesCount = $comment->getAttribute('likes_count');
+        $repliesCount = $comment->getAttribute('replies_count');
+        $liked = $comment->getAttribute('liked');
+
         return [
-            'id'             => $comment->id,
-            'parent_id'      => $comment->parent_id,
-            'message'        => $comment->message,
-            'created_at'     => optional($comment->created_at)->toDateTimeString(),
+            'id' => $comment->id,
+            'parent_id' => $comment->parent_id,
+            'message' => $comment->message,
+            'created_at' => optional($comment->created_at)->toDateTimeString(),
             'created_at_iso' => optional($comment->created_at)->toIso8601String(),
-            'diffTimestamp'  => optional($comment->created_at)->diffForHumans(),
-            'is_anonymous'   => (bool) $comment->is_anonymous,
-            'is_nsfw'        => (bool) $comment->is_nsfw,
-            'display_name'   => $displayName,
-            'canEdit'        => Auth::check() && Auth::id() === $comment->user_id,
-            'canDelete'      => Auth::check() && Auth::id() === $comment->user_id,
-            'media'          => $comment->media_path,
-            'likes_count'    => $comment->likes()->count(),
-            'liked'          => Auth::check() ? $comment->likes()->where('user_id', Auth::id())->exists() : false,
-            'replies_count'  => $comment->replies()->count(),
+            'diffTimestamp' => optional($comment->created_at)->diffForHumans(),
+            'is_anonymous' => (bool) $comment->is_anonymous,
+            'is_nsfw' => (bool) $comment->is_nsfw,
+            'display_name' => $displayName,
+            'canEdit' => Auth::check() && Auth::id() === $comment->user_id,
+            'canDelete' => Auth::check() && Auth::id() === $comment->user_id,
+            'media' => $comment->media_path,
+            'likes_count' => $likesCount !== null ? (int) $likesCount : $comment->likes()->count(),
+            'liked' => $liked !== null ? (bool) $liked : (Auth::check() && $comment->likes()->where('user_id', Auth::id())->exists()),
+            'replies_count' => $repliesCount !== null ? (int) $repliesCount : $comment->replies()->count(),
+            'isOP' => Auth::check() && $bleep && $comment->user_id === $bleep->user_id,
             'user' => [
                 'id' => $comment->is_anonymous ? null : optional($user)->id,
                 'username' => $comment->is_anonymous ? null : optional($user)->username,
                 'profile_picture' => $comment->is_anonymous ? null : optional($user)->profile_picture_url,
                 'dname' => $comment->is_anonymous ? null : optional($user)->dname,
-                'email' => $comment->is_anonymous ? null : optional($user)->email,
-                'timezone' => $comment->is_anonymous ? null : optional($user)->timezone,
                 'role' => $comment->is_anonymous ? null : optional($user)->role,
                 'is_verified' => $comment->is_anonymous ? null : (bool) optional($user)->is_verified,
             ],
