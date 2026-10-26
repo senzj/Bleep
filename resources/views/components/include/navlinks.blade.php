@@ -8,6 +8,8 @@
             ->whereRaw('(cu.last_read_at IS NULL OR m.created_at > cu.last_read_at)')
             ->distinct()
             ->count('cu.conversation_id');
+
+        $unreadNotificationCount = once(fn () => app(\App\Services\Notifications\NotificationService::class)->unreadCount(auth()->user()));
     @endphp
 
     {{-- Home --}}
@@ -37,10 +39,33 @@
     </a>
 
     {{-- Notifications --}}
-    <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('announcements') ? 'bg-primary text-primary-content' : '' }}">
-        <i data-lucide="bell" class="w-5 h-5 shrink-0"></i>
+    <a href="{{ route('notifications.index') }}" class="relative flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('notifications.index') ? 'bg-primary text-primary-content' : '' }}">
+        <span class="relative shrink-0">
+            <i data-lucide="bell" class="w-5 h-5"></i>
+            <span
+                class="nav-notification-unread-badge absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white leading-none{{ $unreadNotificationCount > 0 ? '' : ' hidden' }}"
+            >
+                {{ $unreadNotificationCount > 0 ? ($unreadNotificationCount > 99 ? '99+' : $unreadNotificationCount) : '' }}
+            </span>
+        </span>
         <span class="sidebar-text">Notifications</span>
     </a>
+
+    {{-- Keep nav notification badge in sync with the bell --}}
+    <script>
+        document.addEventListener('notifications:unread-updated', function(e) {
+            var count = Number(e.detail?.count || 0);
+            document.querySelectorAll('.nav-notification-unread-badge').forEach(function(badge) {
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : String(count);
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.textContent = '';
+                    badge.classList.add('hidden');
+                }
+            });
+        });
+    </script>
 
     {{-- Keep nav chat badge in sync with Vue chat store --}}
     <script>

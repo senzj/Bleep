@@ -2,10 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\MessageDelivery;
-use App\Models\MessageEdit;
-use App\Models\MessageMedia;
-use App\Models\MessageReaction;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +13,7 @@ class Message extends Model
     use HasFactory, SoftDeletes;
 
     const MAX_IMAGES = 10;
+
     const MAX_VIDEOS = 5;
 
     protected $fillable = [
@@ -24,6 +21,7 @@ class Message extends Model
         'sender_id',
         'body',
         'reply_to_id',
+        'shared_bleep_id',
         'is_edited',
         'edited_at',
         'client_uuid',
@@ -50,6 +48,17 @@ class Message extends Model
     public function replyTo(): BelongsTo
     {
         return $this->belongsTo(self::class, 'reply_to_id');
+    }
+
+    /**
+     * Bleep attached to the message via "Send in chat".
+     *
+     * Kept with trashed rows so a deleted bleep still renders as a stable
+     * "no longer available" card instead of vanishing from the bubble.
+     */
+    public function sharedBleep(): BelongsTo
+    {
+        return $this->belongsTo(Bleep::class, 'shared_bleep_id')->withTrashed();
     }
 
     public function deliveries(): HasMany

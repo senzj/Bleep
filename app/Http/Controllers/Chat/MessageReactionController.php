@@ -6,7 +6,7 @@ use App\Events\Chat\MessageReacted;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\MessageReaction;
-use App\Services\Chat\BroadcastGateway;
+use App\Services\Broadcasting\BroadcastGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

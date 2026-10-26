@@ -445,5 +445,6 @@
 
 @once
     <x-modals.admin.ban />
+    <x-modals.admin.warn />
     <x-subcomponents.bleeps.mediamodal />
 @endonce

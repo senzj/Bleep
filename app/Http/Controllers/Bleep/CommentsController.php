@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Bleep;
 
+use App\Enums\NotificationType;
 use App\Http\Controllers\Controller;
 use App\Models\Bleep;
 use App\Models\Comments;
 use App\Services\MediaUploadService;
+use App\Services\Notifications\NotificationData;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 class CommentsController extends Controller
 {
     use AuthorizesRequests;
+
+    public function __construct(private NotificationService $notifications) {}
 
     /**
      * Display comments for a bleep
@@ -108,6 +113,8 @@ class CommentsController extends Controller
         $comment->setAttribute('liked', false);
         $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
         $transformed = $this->transformComment($comment, $bleep, $viewerSeed);
+
+        $this->notifyBleepAuthor($bleep, $comment);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -276,6 +283,26 @@ class CommentsController extends Controller
         }
 
         return redirect()->back()->with('success', 'Comment reported successfully.');
+    }
+
+    /**
+     * Notify the bleep author that someone commented, grouped per bleep.
+     */
+    private function notifyBleepAuthor(Bleep $bleep, Comments $comment): void
+    {
+        $bleep->loadMissing('user');
+
+        if (! $bleep->user) {
+            return;
+        }
+
+        $this->notifications->notify($bleep->user, NotificationType::BleepCommented, [
+            'actor' => Auth::user(),
+            'subject' => $comment,
+            'url' => route('post', $bleep->id),
+            'group_key' => 'comment:bleep:'.$bleep->id,
+            'data' => NotificationData::comment($comment),
+        ]);
     }
 
     protected function transformComment(Comments $comment, ?Bleep $bleep = null, $viewerSeed = null): array

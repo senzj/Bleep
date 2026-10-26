@@ -10,6 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const banUntil = document.getElementById('ban_until');
     const presets = document.querySelectorAll('.preset-btn');
 
+    const warnModal = document.getElementById('warn_modal');
+    const warnForm = document.getElementById('warn-form');
+    const warnReason = document.getElementById('warn_reason');
+    const warnNotes = document.getElementById('warn_notes');
+    const warnNotesCounter = document.getElementById('warn_notes_counter');
+
     function toast(type, msg) {
         const old = document.querySelector('.toast[data-dyn="1"]');
         if (old) old.remove();
@@ -34,6 +40,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     reasonTextarea?.addEventListener('input', updateReasonCounter);
+
+    function updateWarnCounter() {
+        const len = warnNotes?.value.length || 0;
+        if (warnNotesCounter) {
+            warnNotesCounter.textContent = `${len} / 500`;
+        }
+    }
+    warnNotes?.addEventListener('input', updateWarnCounter);
 
     durationType?.addEventListener('change', () => {
         if (durationType.value === 'temporary') {
@@ -99,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deleteBtn = e.target.closest('.delete-bleep-btn');
         const banOpBtn = e.target.closest('.ban-op-btn');
         const banReporterBtn = e.target.closest('.ban-reporter-btn');
+        const warnBtn = e.target.closest('.warn-user-btn');
         const dismissBtn = e.target.closest('.dismiss-report-btn');
 
         // Mark Reviewed
@@ -162,6 +177,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 reasonTextarea.value = 'Violated community guidelines (reported content)';
             }
             showBanModal();
+        }
+
+        // Warn User - Open Modal
+        if (warnBtn) {
+            e.preventDefault();
+            document.getElementById('warn_report_id').value = warnBtn.dataset.reportId;
+            document.getElementById('warn_user_id').value = warnBtn.dataset.userId;
+
+            if (warnReason) {
+                warnReason.value = warnBtn.dataset.category || 'other';
+            }
+            if (warnNotes) {
+                warnNotes.value = '';
+            }
+            updateWarnCounter();
+            if (warnModal) warnModal.checked = true;
         }
 
         // Ban Reporter - Open Modal
@@ -290,9 +321,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // WARN FORM SUBMISSION
+    warnForm?.addEventListener('submit', async e => {
+        e.preventDefault();
+
+        const reportId = document.getElementById('warn_report_id')?.value;
+        if (!reportId) return;
+
+        const payload = {
+            reason: warnReason?.value || 'other',
+            notes: warnNotes?.value?.trim() || null,
+        };
+
+        try {
+            const res = await fetch(`/admin/reports/${reportId}/warn`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify(payload),
+            });
+            const json = await res.json().catch(() => ({}));
+
+            if (res.ok) {
+                toast('success', json.message || 'Warning issued.');
+                if (warnModal) warnModal.checked = false;
+                setTimeout(() => location.reload(), 700);
+            } else {
+                toast('error', json.message || 'Warning failed.');
+            }
+        } catch {
+            toast('error', 'Network error.');
+        }
+    });
+
     // Initialize on page load
     if (durationType && banUntil) {
         initBanUntilDefault();
     }
     updateReasonCounter();
+    updateWarnCounter();
 });

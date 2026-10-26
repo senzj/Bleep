@@ -334,6 +334,19 @@
                                 </div>
 
                             </div>
+
+                            <div class="divider my-0"></div>
+
+                            {{-- Warning history --}}
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-semibold text-sm">Warnings</span>
+                                    <span id="eu_warning_count" class="badge badge-sm badge-ghost">0 active</span>
+                                </div>
+                                <div id="eu_warnings" class="space-y-2 text-xs">
+                                    <p class="text-base-content/50">Loading…</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

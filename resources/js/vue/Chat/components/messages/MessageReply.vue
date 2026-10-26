@@ -25,6 +25,7 @@ const replyToSenderName = computed(() => {
 const replyToSnippet = computed(() => {
     if (!replyTo.value) return '';
     if (replyTo.value.is_deleted) return '[deleted]';
+    if (replyTo.value.shared_bleep) return '🔗 Shared a bleep';
     const body = replyTo.value.body || '';
     return body.length > 80 ? body.slice(0, 80) + '…' : body;
 });

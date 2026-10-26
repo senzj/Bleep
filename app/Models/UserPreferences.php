@@ -23,6 +23,21 @@ class UserPreferences extends Model
         // notifications
         'recieve_notification_sound',
         'send_notification_sound',
+        'notify_likes',
+        'notify_comments',
+        'notify_replies',
+        'notify_comment_likes',
+        'notify_reposts',
+        'notify_shares',
+        'notify_repost_likes',
+        'notify_follows',
+        'notify_unfollows',
+        'notify_profile_visits',
+        'notify_report_updates',
+        'notify_moderation',
+        'notify_account',
+        'notify_staff_reports',
+        'notify_staff_audit',
 
         // Privacy settings
         'private_profile',
@@ -44,6 +59,22 @@ class UserPreferences extends Model
 
         'recieve_notification_sound' => 'string',
         'send_notification_sound' => 'string',
+
+        'notify_likes' => 'boolean',
+        'notify_comments' => 'boolean',
+        'notify_replies' => 'boolean',
+        'notify_comment_likes' => 'boolean',
+        'notify_reposts' => 'boolean',
+        'notify_shares' => 'boolean',
+        'notify_repost_likes' => 'boolean',
+        'notify_follows' => 'boolean',
+        'notify_unfollows' => 'boolean',
+        'notify_profile_visits' => 'boolean',
+        'notify_report_updates' => 'boolean',
+        'notify_moderation' => 'boolean',
+        'notify_account' => 'boolean',
+        'notify_staff_reports' => 'boolean',
+        'notify_staff_audit' => 'boolean',
 
         'private_profile' => 'boolean',
         'block_new_followers' => 'boolean',
@@ -72,6 +103,22 @@ class UserPreferences extends Model
             // notifications
             'recieve_notification_sound' => '/sounds/notifications/marimba-bloop-1.mp3',
             'send_notification_sound' => '/sounds/effects/bloop-1.mp3',
+
+            'notify_likes' => true,
+            'notify_comments' => true,
+            'notify_replies' => true,
+            'notify_comment_likes' => false,
+            'notify_reposts' => true,
+            'notify_shares' => true,
+            'notify_repost_likes' => false,
+            'notify_follows' => true,
+            'notify_unfollows' => false,
+            'notify_profile_visits' => false,
+            'notify_report_updates' => true,
+            'notify_moderation' => true,
+            'notify_account' => true,
+            'notify_staff_reports' => true,
+            'notify_staff_audit' => true,
 
             // Privacy settings
             'private_profile' => false,

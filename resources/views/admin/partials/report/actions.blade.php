@@ -65,6 +65,14 @@
     @endif
 
     @if($contentUser)
+        <button class="btn btn-sm w-full justify-start border-warning/40 bg-warning/10 text-warning hover:bg-warning/20 warn-user-btn"
+                data-report-id="{{ $report->id }}"
+                data-user-id="{{ $contentUser->id }}"
+                data-category="{{ $report->category }}">
+            <i data-lucide="triangle-alert" class="w-4 h-4"></i>
+            Warn User
+        </button>
+
         <button class="btn btn-sm w-full justify-start border-error/40 bg-error/10 text-error hover:bg-error/20 ban-op-btn"
                 data-report-id="{{ $report->id }}"
                 data-user-id="{{ $contentUser->id }}">

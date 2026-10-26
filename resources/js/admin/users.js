@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const euBanTypePerm = document.getElementById('eu_ban_type_perm');
     const euBanUntilWrap = document.getElementById('eu_ban_until_wrap');
 
+    const warningsList = document.getElementById('eu_warnings');
+    const warningCount = document.getElementById('eu_warning_count');
+
     let lastBanChecked = false;
 
     function toast(type, text) {
@@ -82,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     euBanTypeTemp?.addEventListener('change', updateBanTypeUI);
     euBanTypePerm?.addEventListener('change', updateBanTypeUI);
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async (e) => {
         const btn = e.target.closest('.edit-user-btn');
         if (btn) {
             e.preventDefault();
@@ -106,6 +109,35 @@ document.addEventListener('DOMContentLoaded', () => {
             euBannedUntil.value = fmtLocal(t);
             if (euBanTypeTemp) euBanTypeTemp.checked = true;
             updateBanTypeUI();
+        }
+
+        const revokeBtn = e.target.closest('.revoke-warning-btn');
+        if (revokeBtn) {
+            e.preventDefault();
+            const warningId = revokeBtn.dataset.warningId;
+            if (!warningId) return;
+            if (!confirm('Revoke this warning? It will stop counting as a strike.')) return;
+
+            try {
+                const res = await fetch(`/admin/warnings/${warningId}/revoke`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                    },
+                    body: JSON.stringify({}),
+                });
+                const json = await res.json().catch(() => ({}));
+
+                if (res.ok) {
+                    toast('success', json.message || 'Warning revoked.');
+                    loadWarnings(euId.value);
+                } else {
+                    toast('error', json.message || 'Could not revoke the warning.');
+                }
+            } catch {
+                toast('error', 'Network error.');
+            }
         }
     });
 
@@ -155,8 +187,108 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function openModalWithUser(user) {
-        euId.value = user.id;
+    async function loadWarnings(userId) {
+        if (!warningsList) return;
+
+        warningsList.innerHTML = '<p class="text-base-content/50">Loading…</p>';
+        if (warningCount) warningCount.textContent = '…';
+
+        try {
+            const res = await fetch(`/admin/users/${userId}/warnings`, {
+                headers: { 'Accept': 'application/json' },
+            });
+            if (!res.ok) throw new Error('Could not load warnings');
+
+            renderWarnings(await res.json());
+        } catch {
+            warningsList.innerHTML = '<p class="text-error">Could not load warnings.</p>';
+            if (warningCount) warningCount.textContent = '—';
+        }
+    }
+
+    function renderWarnings(data) {
+        if (!warningsList) return;
+
+        const warnings = Array.isArray(data.warnings) ? data.warnings : [];
+
+        if (warningCount) {
+            warningCount.textContent = `${data.active_count || 0} active`;
+        }
+
+        if ((data.active_count || 0) > 0) {
+            const modToggle = document.getElementById('eu_mod_collapse');
+            if (modToggle) modToggle.checked = true;
+        }
+
+        warningsList.innerHTML = '';
+
+        if (!warnings.length) {
+            const empty = document.createElement('p');
+            empty.className = 'text-base-content/50';
+            empty.textContent = 'No warnings on record.';
+            warningsList.appendChild(empty);
+            return;
+        }
+
+        warnings.forEach(w => {
+            const row = document.createElement('div');
+            row.className = 'rounded-lg border border-base-300 bg-base-100 p-2.5';
+
+            const head = document.createElement('div');
+            head.className = 'flex items-center justify-between gap-2';
+
+            const label = document.createElement('span');
+            label.className = 'font-semibold capitalize';
+            label.textContent = w.reason || 'warning';
+            head.appendChild(label);
+
+            const status = document.createElement('span');
+            const state = w.active ? 'active' : (w.revoked_at ? 'revoked' : 'expired');
+            status.className = 'badge badge-xs ' + (w.active ? 'badge-warning' : 'badge-ghost');
+            status.textContent = state;
+            head.appendChild(status);
+            row.appendChild(head);
+
+            const meta = document.createElement('div');
+            meta.className = 'text-base-content/50 mt-1';
+            meta.textContent = `by ${w.moderator || 'System'} · ${w.created_at_human || ''}`;
+            row.appendChild(meta);
+
+            const expiry = document.createElement('div');
+            expiry.className = 'text-base-content/40 mt-0.5';
+            if (w.revoked_at) {
+                expiry.textContent = 'Revoked';
+            } else if (w.expires_at) {
+                expiry.textContent = 'Expires ' + new Date(w.expires_at).toLocaleDateString();
+            }
+            if (expiry.textContent) row.appendChild(expiry);
+
+            if (w.notes) {
+                const notes = document.createElement('div');
+                notes.className = 'italic text-base-content/50 mt-1 break-words';
+                notes.textContent = `"${w.notes}"`;
+                row.appendChild(notes);
+            }
+
+            if (w.active) {
+                const actions = document.createElement('div');
+                actions.className = 'mt-2';
+
+                const revoke = document.createElement('button');
+                revoke.type = 'button';
+                revoke.className = 'btn btn-xs btn-ghost text-error revoke-warning-btn';
+                revoke.dataset.warningId = String(w.id);
+                revoke.textContent = 'Revoke';
+
+                actions.appendChild(revoke);
+                row.appendChild(actions);
+            }
+
+            warningsList.appendChild(row);
+        });
+    }
+
+    function openModalWithUser(user) {        euId.value = user.id;
         euUsername.value = user.username ?? `User #${user.id}`;
         euEmail.value = user.email ?? '';
 
@@ -190,6 +322,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Collapse moderation closed by default unless already banned
         const modToggle = document.getElementById('eu_mod_collapse');
         if (modToggle) modToggle.checked = !!user.is_banned;
+
+        loadWarnings(user.id);
 
         modal.checked = true;
     }

@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Users;
 use App\Http\Controllers\Controller;
 use App\Models\Repost;
 use App\Models\User;
+use App\Services\Profiles\ProfileVisitService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ProfileController extends Controller
 {
+    public function __construct(private ProfileVisitService $profileVisits) {}
+
     // user profile page
     public function index($username)
     {
@@ -47,6 +50,12 @@ class ProfileController extends Controller
             && ! $isFollowing
             && ! $hasBlockingRelationship
             && (! $blockNewFollows || $isFriend);
+
+        // Only the HTML profile page counts as a visit; the JSON pagination
+        // endpoints below are follow-up requests, not new arrivals.
+        if ($authUser && ! $isOwnProfile && ! $hasBlockingRelationship) {
+            $this->profileVisits->record($user, $authUser);
+        }
 
         if ($canViewContent) {
             $bleeps = $user->bleeps()

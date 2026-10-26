@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers\Bleep;
 
+use App\Enums\NotificationType;
 use App\Http\Controllers\Controller;
 use App\Models\Bleep;
 use App\Models\Repost;
+use App\Models\User;
+use App\Services\Notifications\NotificationData;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Http\Request;
 
 class RepostController extends Controller
 {
+    public function __construct(private NotificationService $notifications) {}
+
     public function store(Request $request, Bleep $bleep)
     {
         $user = $request->user();
@@ -33,9 +39,28 @@ class RepostController extends Controller
             'user_id' => $user->id,
         ]);
 
+        $this->notifyBleepAuthor($bleep, $user);
+
         return response()->json([
             'reposted' => true,
             'repostCount' => Repost::where('bleep_id', $bleep->id)->count(),
+        ]);
+    }
+
+    private function notifyBleepAuthor(Bleep $bleep, User $user): void
+    {
+        $bleep->loadMissing('user');
+
+        if (! $bleep->user) {
+            return;
+        }
+
+        $this->notifications->notify($bleep->user, NotificationType::BleepReposted, [
+            'actor' => $user,
+            'subject' => $bleep,
+            'url' => route('post', $bleep->id),
+            'group_key' => 'repost:bleep:'.$bleep->id,
+            'data' => NotificationData::bleep($bleep),
         ]);
     }
 

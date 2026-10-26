@@ -13,8 +13,10 @@
         <x-include.navlinks />
     </div>
 
-    {{-- RIGHT: Profile + mobile hamburger --}}
+    {{-- RIGHT: Notifications + Profile + mobile hamburger --}}
     <div class="navbar-end gap-2">
+        <x-notifications.bell />
+
         {{-- Desktop: user profile --}}
         <div class="hidden lg:flex items-center min-w-48">
             <x-include.userprofile />

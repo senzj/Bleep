@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\NotificationType;
 use App\Models\FollowRequest;
 use App\Models\User;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class FollowRequestController extends Controller
 {
+    public function __construct(private NotificationService $notifications) {}
+
     /**
      * Display a listing of all follow requests for the authenticated user.
      */
@@ -68,15 +72,20 @@ class FollowRequestController extends Controller
                 'status' => 'pending',
                 'updated_at' => now(),
             ]);
-
-            return response()->json(['success' => true, 'message' => 'Follow request sent']);
+        } else {
+            // Create new follow request
+            FollowRequest::create([
+                'requester_id' => $authUser->id,
+                'target_id' => $target->id,
+                'status' => 'pending',
+            ]);
         }
 
-        // Create new follow request
-        FollowRequest::create([
-            'requester_id' => $authUser->id,
-            'target_id' => $target->id,
-            'status' => 'pending',
+        $this->notifications->notify($target, NotificationType::FollowRequested, [
+            'actor' => $authUser,
+            'subject' => $authUser,
+            'url' => route('follow.requests'),
+            'group_key' => 'followreq:'.$authUser->id,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Follow request sent']);
@@ -113,6 +122,13 @@ class FollowRequestController extends Controller
         $authUser->followers()->syncWithoutDetaching([$requester->id]);
 
         $request->update(['status' => 'accepted']);
+
+        $this->notifications->notify($requester, NotificationType::FollowAccepted, [
+            'actor' => $authUser,
+            'subject' => $authUser,
+            'url' => route('user.profile', ['username' => $authUser->username]),
+            'group_key' => 'followacc:'.$authUser->id,
+        ]);
 
         return response()->json(['success' => true, 'message' => 'Follow request accepted']);
     }

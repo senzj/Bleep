@@ -2,57 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\NotificationType;
 use App\Models\Bleep;
 use App\Models\Comments;
 use App\Models\Reports;
 use App\Models\User;
+use App\Services\Moderation\BanService;
+use App\Services\Notifications\NotificationData;
+use App\Services\Notifications\NotificationService;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ReportsController extends Controller
 {
-    // ── Strike → ban duration map
-    // suspension_count is incremented each time the user is banned
-    // Each ban resets strikes to 0; if no violations in 7 days, strikes reset
-    private function computeBanDuration(User $user): Carbon
-    {
-        $count = $user->suspension_count; // how many times banned so far
-
-        return match (true) {
-            $count === 0 => now()->addDay(),        // 1st ban: 1 day
-            $count === 1 => now()->addWeek(),       // 2nd ban: 1 week
-            $count === 2 => now()->addMonth(),      // 3rd ban: 1 month
-            $count === 3 => now()->addMonths(3),    // 4th ban: 3 months
-            $count === 4 => now()->addMonths(6),    // 5th ban: 6 months
-            default => now()->addYear(),       // 6th+ ban: 1 year (max)
-        };
-    }
-
-    private function applyStrikeToUser(User $user, string $reason): void
-    {
-        // Reset strikes if user has been clean for 7+ days
-        if ($user->last_strike_at && $user->last_strike_at->lt(now()->subWeek())) {
-            $user->report_strikes = 0;
-        }
-
-        $user->report_strikes += 1;
-        $user->last_strike_at = now();
-
-        // 3 strikes → auto-ban
-        if ($user->report_strikes >= 3) {
-            $bannedUntil = $this->computeBanDuration($user);
-
-            $user->is_banned = true;
-            $user->banned_until = $bannedUntil;
-            $user->ban_reason = $reason;
-            $user->report_strikes = 0; // reset strikes on ban
-            $user->suspension_count += 1;
-        }
-
-        $user->save();
-    }
+    public function __construct(
+        private NotificationService $notifications,
+        private BanService $bans,
+    ) {}
 
     // ── Admin/Mod report dashboard
     public function index(Request $request)
@@ -145,30 +114,42 @@ class ReportsController extends Controller
             'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $reporterId = Auth::id();
+        $reporter = Auth::user();
         $target = $validated['type'] === 'bleep'
             ? Bleep::findOrFail($validated['bleep_id'])
             : Comments::findOrFail($validated['comment_id']);
 
-        if ($target->user_id === $reporterId) {
+        if ($target->user_id === $reporter->id) {
             return response()->json(['message' => 'You cannot report your own content.'], 422);
         }
 
         $exists = Reports::where('reportable_id', $target->id)
             ->where('reportable_type', get_class($target))
-            ->where('reporter_id', $reporterId)
+            ->where('reporter_id', $reporter->id)
             ->exists();
 
         if ($exists) {
             return response()->json(['message' => 'You have already reported this item.'], 409);
         }
 
-        $target->reports()->create([
-            'reporter_id' => $reporterId,
+        $report = $target->reports()->create([
+            'reporter_id' => $reporter->id,
             'category' => $validated['category'],
             'reason' => $validated['reason'],
             'status' => 'pending',
         ]);
+
+        $this->notifications->notifyStaff(NotificationType::ReportSubmitted, [
+            'actor' => $reporter,
+            'subject' => $report,
+            'url' => route('admin.reports', ['status' => 'pending']),
+            'group_key' => $this->queueGroupKey($report),
+            'data' => [
+                'subject_label' => $validated['type'] === 'comment' ? 'comment' : 'bleep',
+                'excerpt' => NotificationData::excerpt($target->message),
+                'category' => $validated['category'],
+            ],
+        ], $reporter);
 
         return response()->json(['message' => 'Report submitted successfully.'], 201);
     }
@@ -191,32 +172,39 @@ class ReportsController extends Controller
         }
 
         $op = $target->user;
+        $excerpt = NotificationData::excerpt($target->message);
+        $pendingReports = $this->pendingReportsFor($report);
+        $notes = $validated['notes'] ?? null;
+        $banned = (bool) ($validated['ban_op'] ?? false);
 
         $target->delete(); // soft delete
 
-        if (($validated['ban_op'] ?? false) && $op) {
+        if ($banned && $op) {
             $bannedUntil = ! empty($validated['banned_until'])
                 ? Carbon::parse($validated['banned_until'])->setTimezone(config('app.timezone'))
-                : $this->computeBanDuration($op);
+                : $this->bans->nextBanDuration($op);
 
-            $op->is_banned = true;
-            $op->banned_until = $bannedUntil;
-            $op->ban_reason = 'Violated community guidelines (reported content)';
-            $op->report_strikes = 0;
-            $op->suspension_count += 1;
-            $op->save();
+            $this->bans->ban(
+                $op,
+                $bannedUntil,
+                'Violated community guidelines (reported content)',
+                Auth::user(),
+            );
         }
 
-        // Resolve ALL reports for this same target
         Reports::where('reportable_id', $report->reportable_id)
             ->where('reportable_type', $report->reportable_type)
             ->update([
                 'status' => 'resolved',
-                'action_taken' => ($validated['ban_op'] ?? false) ? 'op_banned' : 'bleep_deleted',
+                'action_taken' => $banned ? 'op_banned' : 'bleep_deleted',
                 'reviewed_at' => now(),
                 'reviewed_by' => Auth::id(),
-                'notes' => $validated['notes'] ?? null,
+                'notes' => $notes,
             ]);
+
+        $this->notifyContentRemoved($op, 'bleep', $excerpt);
+        $this->notifyReporters($pendingReports, 'action_taken', Auth::user());
+        $this->notifyStaffReview($report, 'bleep', $excerpt, $notes);
 
         return response()->json(['message' => 'Content deleted and reports resolved.']);
     }
@@ -238,16 +226,20 @@ class ReportsController extends Controller
         }
 
         $op = $target->user;
+        $excerpt = NotificationData::excerpt($target->message);
+        $pendingReports = $this->pendingReportsFor($report);
+        $notes = $validated['notes'] ?? null;
+        $banned = (bool) ($validated['ban_op'] ?? false);
+
         $target->delete(); // soft delete
 
-        if (($validated['ban_op'] ?? false) && $op) {
-            $bannedUntil = $this->computeBanDuration($op);
-            $op->is_banned = true;
-            $op->banned_until = $bannedUntil;
-            $op->ban_reason = 'Violated community guidelines (reported comment)';
-            $op->report_strikes = 0;
-            $op->suspension_count += 1;
-            $op->save();
+        if ($banned && $op) {
+            $this->bans->ban(
+                $op,
+                $this->bans->nextBanDuration($op),
+                'Violated community guidelines (reported comment)',
+                Auth::user(),
+            );
         }
 
         Reports::where('reportable_id', $report->reportable_id)
@@ -257,8 +249,12 @@ class ReportsController extends Controller
                 'action_taken' => 'bleep_deleted',
                 'reviewed_at' => now(),
                 'reviewed_by' => Auth::id(),
-                'notes' => $validated['notes'] ?? null,
+                'notes' => $notes,
             ]);
+
+        $this->notifyContentRemoved($op, 'comment', $excerpt);
+        $this->notifyReporters($pendingReports, 'action_taken', Auth::user());
+        $this->notifyStaffReview($report, 'comment', $excerpt, $notes);
 
         return response()->json(['message' => 'Comment deleted and reports resolved.']);
     }
@@ -281,14 +277,9 @@ class ReportsController extends Controller
 
         $bannedUntil = ! empty($validated['banned_until'])
             ? Carbon::parse($validated['banned_until'])->setTimezone(config('app.timezone'))
-            : $this->computeBanDuration($reporter);
+            : $this->bans->nextBanDuration($reporter);
 
-        $reporter->is_banned = true;
-        $reporter->banned_until = $bannedUntil;
-        $reporter->ban_reason = 'Abuse of report system';
-        $reporter->report_strikes = 0;
-        $reporter->suspension_count += 1;
-        $reporter->save();
+        $this->bans->ban($reporter, $bannedUntil, 'Abuse of report system', Auth::user());
 
         $report->update([
             'status' => 'resolved',
@@ -297,6 +288,13 @@ class ReportsController extends Controller
             'reviewed_by' => Auth::id(),
             'notes' => $validated['notes'] ?? null,
         ]);
+
+        $this->notifyStaffReview(
+            $report,
+            $report->reportable instanceof Comments ? 'comment' : 'bleep',
+            NotificationData::excerpt($report->reportable?->message),
+            $validated['notes'] ?? null,
+        );
 
         return response()->json(['message' => 'Reporter banned and report resolved.']);
     }
@@ -310,6 +308,8 @@ class ReportsController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $pendingReports = $this->pendingReportsFor($report);
+
         Reports::where('reportable_id', $report->reportable_id)
             ->where('reportable_type', $report->reportable_type)
             ->where('status', 'pending')
@@ -320,6 +320,14 @@ class ReportsController extends Controller
                 'reviewed_by' => Auth::id(),
                 'notes' => $validated['notes'] ?? null,
             ]);
+
+        $this->notifyReporters($pendingReports, 'no_action', Auth::user());
+        $this->notifyStaffReview(
+            $report,
+            $report->reportable instanceof Comments ? 'comment' : 'bleep',
+            NotificationData::excerpt($report->reportable?->message),
+            $validated['notes'] ?? null,
+        );
 
         return response()->json(['message' => 'Report marked as resolved.']);
     }
@@ -333,6 +341,8 @@ class ReportsController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $pendingReports = $this->pendingReportsFor($report);
+
         Reports::where('reportable_id', $report->reportable_id)
             ->where('reportable_type', $report->reportable_type)
             ->where('status', 'pending')
@@ -344,7 +354,89 @@ class ReportsController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
+        $this->notifyReporters($pendingReports, 'no_action', Auth::user());
+        $this->notifyStaffReview(
+            $report,
+            $report->reportable instanceof Comments ? 'comment' : 'bleep',
+            NotificationData::excerpt($report->reportable?->message),
+            $validated['notes'] ?? null,
+        );
+
         // Do NOT apply or modify strikes — false alarm, no punishment
         return response()->json(['message' => 'Report dismissed.']);
+    }
+
+    /**
+     * @return EloquentCollection<int, Reports>
+     */
+    private function pendingReportsFor(Reports $report): EloquentCollection
+    {
+        return Reports::query()
+            ->with('reporter')
+            ->where('reportable_id', $report->reportable_id)
+            ->where('reportable_type', $report->reportable_type)
+            ->where('status', 'pending')
+            ->get();
+    }
+
+    /**
+     * Notify each reporter without revealing the moderator. Moderator notes are
+     * private, so they are deliberately not included.
+     *
+     * @param  EloquentCollection<int, Reports>  $reports
+     */
+    private function notifyReporters(EloquentCollection $reports, string $outcome, User $resolver): void
+    {
+        $reporters = $reports
+            ->pluck('reporter')
+            ->filter()
+            ->reject(fn (User $reporter) => (int) $reporter->id === (int) $resolver->id)
+            ->unique('id');
+
+        $first = $reports->first();
+
+        if ($reporters->isEmpty() || ! $first) {
+            return;
+        }
+
+        $this->notifications->notify($reporters, NotificationType::ReportResolved, [
+            'url' => route('notifications.index'),
+            'group_key' => 'reportres:'.$first->reportable_type.':'.$first->reportable_id,
+            'data' => ['outcome' => $outcome],
+        ]);
+    }
+
+    private function notifyStaffReview(Reports $report, string $subjectLabel, ?string $excerpt, ?string $notes): void
+    {
+        $this->notifications->notifyStaff(NotificationType::ReportReviewed, [
+            'subject' => $report,
+            'url' => route('admin.reports', ['status' => 'resolved']),
+            'group_key' => 'reportreview:'.$report->reportable_type.':'.$report->reportable_id,
+            'data' => [
+                'subject_label' => $subjectLabel,
+                'excerpt' => $excerpt,
+                'notes' => $notes,
+            ],
+        ], Auth::user());
+    }
+
+    private function notifyContentRemoved(?User $author, string $subjectLabel, ?string $excerpt): void
+    {
+        if (! $author) {
+            return;
+        }
+
+        $this->notifications->notify($author, NotificationType::ContentRemoved, [
+            'data' => [
+                'subject_label' => $subjectLabel,
+                'excerpt' => $excerpt,
+                'reason' => 'Violated community guidelines',
+            ],
+        ]);
+    }
+
+    private function queueGroupKey(Reports $report): string
+    {
+        return 'reportqueue:'.$report->reportable_type.':'.$report->reportable_id;
     }
 }

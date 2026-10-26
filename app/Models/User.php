@@ -9,13 +9,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory;
 
     /**
      * The attributes that are mass assignable.
@@ -67,6 +66,39 @@ class User extends Authenticatable
             'is_banned' => 'boolean',
             'banned_until' => 'datetime',
         ];
+    }
+
+    /**
+     * In-app notifications addressed to this user.
+     *
+     * The framework's `Notifiable` trait was removed from this model: its
+     * database channel expects a different table shape and would silently
+     * query the wrong columns through `notifications()`.
+     */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    /**
+     * Moderation warnings received by this user.
+     */
+    public function warnings(): HasMany
+    {
+        return $this->hasMany(UserWarning::class);
+    }
+
+    public function activeWarnings(): HasMany
+    {
+        return $this->warnings()->active();
+    }
+
+    /**
+     * Profile views received by this user (only recorded for opted-in owners).
+     */
+    public function profileVisits(): HasMany
+    {
+        return $this->hasMany(ProfileVisit::class, 'profile_user_id');
     }
 
     /**

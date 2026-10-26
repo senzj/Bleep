@@ -19,12 +19,14 @@ use App\Http\Controllers\Chat\MessageController;
 use App\Http\Controllers\Chat\MessageReactionController;
 use App\Http\Controllers\FollowingController;
 use App\Http\Controllers\FollowRequestController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SocialController;
 use App\Http\Controllers\UserPreferencesController;
 use App\Http\Controllers\Users\ProfileController;
+use App\Http\Controllers\WarningsController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -148,6 +150,18 @@ Route::middleware('auth')->group((function () {
         ->name('chat.conversations.read');
     Route::post('/messages/{message}/reactions', [MessageReactionController::class, 'toggle'])
         ->name('chat.messages.reactions.toggle');
+
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index'])
+        ->name('notifications.index');
+    Route::get('/api/notifications', [NotificationController::class, 'data'])
+        ->name('notifications.data');
+    Route::get('/api/notifications/unread-count', [NotificationController::class, 'unreadCount'])
+        ->name('notifications.unread-count');
+    Route::post('/api/notifications/read-all', [NotificationController::class, 'markAllRead'])
+        ->name('notifications.read-all');
+    Route::post('/api/notifications/{notification}/read', [NotificationController::class, 'markRead'])
+        ->name('notifications.read');
 
     // Bleep Resource Routes
     Route::post('/bleeps', [BleepController::class, 'store']);
@@ -283,6 +297,16 @@ Route::middleware('auth')->group((function () {
 
         Route::post('/admin/reports/{report}/delete-comment', [ReportsController::class, 'deleteComment'])
             ->name('admin.reports.deleteComment');
+
+        Route::post('/admin/reports/{report}/warn', [WarningsController::class, 'store'])
+            ->name('admin.reports.warn');
+
+        // Warnings
+        Route::get('/admin/users/{user}/warnings', [WarningsController::class, 'index'])
+            ->name('admin.users.warnings');
+
+        Route::post('/admin/warnings/{warning}/revoke', [WarningsController::class, 'revoke'])
+            ->name('admin.warnings.revoke');
 
         // Users Management
         Route::get('/admin/users', [AdminController::class, 'users'])

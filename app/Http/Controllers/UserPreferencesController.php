@@ -26,6 +26,21 @@ class UserPreferencesController extends Controller
         'block_new_followers',
         'hide_online_status',
         'hide_activity',
+        'notify_likes',
+        'notify_comments',
+        'notify_replies',
+        'notify_comment_likes',
+        'notify_reposts',
+        'notify_shares',
+        'notify_repost_likes',
+        'notify_follows',
+        'notify_unfollows',
+        'notify_profile_visits',
+        'notify_report_updates',
+        'notify_moderation',
+        'notify_account',
+        'notify_staff_reports',
+        'notify_staff_audit',
     ];
 
     private const BOOLEAN_KEYS = [
@@ -37,6 +52,21 @@ class UserPreferencesController extends Controller
         'block_new_followers',
         'hide_online_status',
         'hide_activity',
+        'notify_likes',
+        'notify_comments',
+        'notify_replies',
+        'notify_comment_likes',
+        'notify_reposts',
+        'notify_shares',
+        'notify_repost_likes',
+        'notify_follows',
+        'notify_unfollows',
+        'notify_profile_visits',
+        'notify_report_updates',
+        'notify_moderation',
+        'notify_account',
+        'notify_staff_reports',
+        'notify_staff_audit',
     ];
 
     private const SOUND_KEYS = [
@@ -54,18 +84,18 @@ class UserPreferencesController extends Controller
 
         return response()->json([
             'preferences' => $user->getPreferences(),
-            'sounds'      => self::availableSounds(),
+            'sounds' => self::availableSounds(),
         ]);
     }
 
     public function update(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'key'   => ['required', 'string', 'in:' . implode(',', self::VALID_KEYS)],
+            'key' => ['required', 'string', 'in:'.implode(',', self::VALID_KEYS)],
             'value' => ['required'],
         ]);
 
-        $key   = $validated['key'];
+        $key = $validated['key'];
         $value = $validated['value'];
 
         $error = $this->validateValue($key, $value);
@@ -78,36 +108,51 @@ class UserPreferencesController extends Controller
 
         return response()->json([
             'success' => true,
-            'key'     => $key,
-            'value'   => $preferences->fresh()->{$key},
+            'key' => $key,
+            'value' => $preferences->fresh()->{$key},
         ]);
     }
 
     public function batchUpdate(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'preferences'                            => ['required', 'array'],
-            'preferences.nav_layout'                 => ['sometimes', 'string', 'in:horizontal,vertical'],
-            'preferences.theme'                      => ['sometimes', 'string', 'max:50'],
-            'preferences.show_nsfw'                  => ['sometimes', 'boolean'],
-            'preferences.blur_nsfw_media'            => ['sometimes', 'boolean'],
-            'preferences.show_reposts_in_feed'       => ['sometimes', 'boolean'],
-            'preferences.show_anonymous_bleeps'      => ['sometimes', 'boolean'],
-            'preferences.default_feed_sort'          => ['sometimes', 'string', 'in:newest,popular,following'],
-            'preferences.bleeps_per_page'            => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'preferences' => ['required', 'array'],
+            'preferences.nav_layout' => ['sometimes', 'string', 'in:horizontal,vertical'],
+            'preferences.theme' => ['sometimes', 'string', 'max:50'],
+            'preferences.show_nsfw' => ['sometimes', 'boolean'],
+            'preferences.blur_nsfw_media' => ['sometimes', 'boolean'],
+            'preferences.show_reposts_in_feed' => ['sometimes', 'boolean'],
+            'preferences.show_anonymous_bleeps' => ['sometimes', 'boolean'],
+            'preferences.default_feed_sort' => ['sometimes', 'string', 'in:newest,popular,following'],
+            'preferences.bleeps_per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'preferences.recieve_notification_sound' => ['sometimes', 'string', 'max:255'],
-            'preferences.send_notification_sound'    => ['sometimes', 'string', 'max:255'],
-            'preferences.private_profile'            => ['sometimes', 'boolean'],
-            'preferences.block_new_followers'        => ['sometimes', 'boolean'],
-            'preferences.hide_online_status'         => ['sometimes', 'boolean'],
-            'preferences.hide_activity'              => ['sometimes', 'boolean'],
+            'preferences.send_notification_sound' => ['sometimes', 'string', 'max:255'],
+            'preferences.private_profile' => ['sometimes', 'boolean'],
+            'preferences.block_new_followers' => ['sometimes', 'boolean'],
+            'preferences.hide_online_status' => ['sometimes', 'boolean'],
+            'preferences.hide_activity' => ['sometimes', 'boolean'],
+            'preferences.notify_likes' => ['sometimes', 'boolean'],
+            'preferences.notify_comments' => ['sometimes', 'boolean'],
+            'preferences.notify_replies' => ['sometimes', 'boolean'],
+            'preferences.notify_comment_likes' => ['sometimes', 'boolean'],
+            'preferences.notify_reposts' => ['sometimes', 'boolean'],
+            'preferences.notify_shares' => ['sometimes', 'boolean'],
+            'preferences.notify_repost_likes' => ['sometimes', 'boolean'],
+            'preferences.notify_follows' => ['sometimes', 'boolean'],
+            'preferences.notify_unfollows' => ['sometimes', 'boolean'],
+            'preferences.notify_profile_visits' => ['sometimes', 'boolean'],
+            'preferences.notify_report_updates' => ['sometimes', 'boolean'],
+            'preferences.notify_moderation' => ['sometimes', 'boolean'],
+            'preferences.notify_account' => ['sometimes', 'boolean'],
+            'preferences.notify_staff_reports' => ['sometimes', 'boolean'],
+            'preferences.notify_staff_audit' => ['sometimes', 'boolean'],
         ]);
 
         $preferences = $this->userPreferences();
         $preferences->update($validated['preferences']);
 
         return response()->json([
-            'success'     => true,
+            'success' => true,
             'preferences' => $preferences->fresh(),
         ]);
     }
@@ -118,19 +163,19 @@ class UserPreferencesController extends Controller
             'sound' => ['required', 'file', 'mimes:mp3,wav,ogg,webm,m4a', 'max:5120'],
         ]);
 
-        $file     = $request->file('sound');
-        $ext      = strtolower($file->getClientOriginalExtension());
-        $filename = 'user_' . Str::random(12) . '.' . $ext;
-        $path     = $file->storeAs('sounds', $filename, 'public');
+        $file = $request->file('sound');
+        $ext = strtolower($file->getClientOriginalExtension());
+        $filename = 'user_'.Str::random(12).'.'.$ext;
+        $path = $file->storeAs('sounds', $filename, 'public');
 
         return response()->json([
-            'success'  => true,
+            'success' => true,
             'filename' => $filename,
-            'path'     => '/storage/' . $path,
-            'name'     => self::humaniseName(pathinfo($filename, PATHINFO_FILENAME)),
-            'source'   => 'uploaded',
+            'path' => '/storage/'.$path,
+            'name' => self::humaniseName(pathinfo($filename, PATHINFO_FILENAME)),
+            'source' => 'uploaded',
             'category' => 'custom',
-            'ext'      => $ext,
+            'ext' => $ext,
         ], 201);
     }
 
@@ -139,7 +184,7 @@ class UserPreferencesController extends Controller
     public static function availableSounds(): array
     {
         return [
-            'system'   => self::scanSystemSounds(),
+            'system' => self::scanSystemSounds(),
             'uploaded' => self::scanUploadedSounds(),
         ];
     }
@@ -151,28 +196,28 @@ class UserPreferencesController extends Controller
         foreach (['effects', 'notifications'] as $category) {
             $dir = public_path("sounds/{$category}");
 
-            if (!is_dir($dir)) {
+            if (! is_dir($dir)) {
                 continue;
             }
 
             foreach (new \DirectoryIterator($dir) as $file) {
-                if (!$file->isFile()) {
+                if (! $file->isFile()) {
                     continue;
                 }
 
                 $ext = strtolower($file->getExtension());
 
-                if (!in_array($ext, self::AUDIO_EXTENSIONS)) {
+                if (! in_array($ext, self::AUDIO_EXTENSIONS)) {
                     continue;
                 }
 
                 $sounds[] = [
-                    'source'   => 'system',
+                    'source' => 'system',
                     'category' => $category,
-                    'name'     => self::humaniseName(pathinfo($file->getFilename(), PATHINFO_FILENAME)),
+                    'name' => self::humaniseName(pathinfo($file->getFilename(), PATHINFO_FILENAME)),
                     'filename' => $file->getFilename(),
-                    'path'     => "/sounds/{$category}/{$file->getFilename()}",
-                    'ext'      => $ext,
+                    'path' => "/sounds/{$category}/{$file->getFilename()}",
+                    'ext' => $ext,
                 ];
             }
         }
@@ -186,29 +231,29 @@ class UserPreferencesController extends Controller
     {
         $disk = Storage::disk('public');
 
-        if (!$disk->exists('sounds')) {
+        if (! $disk->exists('sounds')) {
             return [];
         }
 
         return collect($disk->files('sounds'))
             ->filter(function (string $path) {
                 $filename = basename($path);
-                $ext      = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
                 return in_array($ext, self::AUDIO_EXTENSIONS)
                     && preg_match('/^user_[a-zA-Z0-9]+\.[a-z0-9]+$/', $filename);
             })
             ->map(function (string $path) {
                 $filename = basename($path);
-                $ext      = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
                 return [
-                    'source'   => 'uploaded',
+                    'source' => 'uploaded',
                     'category' => 'custom',
-                    'name'     => self::humaniseName(pathinfo($filename, PATHINFO_FILENAME)),
+                    'name' => self::humaniseName(pathinfo($filename, PATHINFO_FILENAME)),
                     'filename' => $filename,
-                    'path'     => '/storage/' . $path,
-                    'ext'      => $ext,
+                    'path' => '/storage/'.$path,
+                    'ext' => $ext,
                 ];
             })
             ->values()
@@ -233,20 +278,16 @@ class UserPreferencesController extends Controller
     private function validateValue(string $key, mixed $value): ?string
     {
         return match (true) {
-            $key === 'nav_layout'
-                => in_array($value, ['horizontal', 'vertical'])
+            $key === 'nav_layout' => in_array($value, ['horizontal', 'vertical'])
                     ? null : 'Invalid nav layout value',
 
-            $key === 'default_feed_sort'
-                => in_array($value, ['newest', 'popular', 'following'])
+            $key === 'default_feed_sort' => in_array($value, ['newest', 'popular', 'following'])
                     ? null : 'Invalid feed sort value',
 
-            $key === 'bleeps_per_page'
-                => ((int) $value >= 1 && (int) $value <= 100)
+            $key === 'bleeps_per_page' => ((int) $value >= 1 && (int) $value <= 100)
                     ? null : 'bleeps_per_page must be between 1 and 100',
 
-            in_array($key, self::SOUND_KEYS)
-                => ($value === 'none' || $this->isValidSoundPath((string) $value))
+            in_array($key, self::SOUND_KEYS) => ($value === 'none' || $this->isValidSoundPath((string) $value))
                     ? null : 'Invalid sound path',
 
             default => null,

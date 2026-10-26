@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers\Bleep;
 
+use App\Enums\NotificationType;
 use App\Http\Controllers\Controller;
 use App\Models\Comments;
 use App\Services\MediaUploadService;
+use App\Services\Notifications\NotificationData;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class CommentsRepliesController extends Controller
 {
+    public function __construct(private NotificationService $notifications) {}
+
     /**
      * Display a listing of the resource with pagination.
      */
@@ -108,10 +113,32 @@ class CommentsRepliesController extends Controller
         $reply->loadCount(['likes', 'replies']);
         $reply->setAttribute('liked', false);
 
+        $this->notifyParentAuthor($comment, $reply);
+
         $viewerSeed = Auth::check() ? Auth::id() : $request->session()->getId();
         $transformed = $this->transformComment($reply, $viewerSeed);
 
         return response()->json($transformed);
+    }
+
+    /**
+     * Notify the author of the comment being replied to.
+     */
+    private function notifyParentAuthor(Comments $parent, Comments $reply): void
+    {
+        $parent->loadMissing('user');
+
+        if (! $parent->user) {
+            return;
+        }
+
+        $this->notifications->notify($parent->user, NotificationType::CommentReplied, [
+            'actor' => Auth::user(),
+            'subject' => $reply,
+            'url' => route('post', $parent->bleep_id),
+            'group_key' => 'reply:comment:'.$parent->id,
+            'data' => NotificationData::comment($reply),
+        ]);
     }
 
     /**

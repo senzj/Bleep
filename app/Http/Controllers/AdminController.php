@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\NotificationType;
 use App\Helpers\UserAgentParser;
 use App\Models\Bleep;
 use App\Models\Comments;
@@ -12,6 +13,8 @@ use App\Models\Repost;
 use App\Models\Share;
 use App\Models\User;
 use App\Models\Visits;
+use App\Services\Moderation\BanService;
+use App\Services\Notifications\NotificationService;
 use Carbon\CarbonInterval;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -26,6 +29,11 @@ use Throwable;
 
 class AdminController extends Controller
 {
+    public function __construct(
+        private NotificationService $notifications,
+        private BanService $bans,
+    ) {}
+
     /**
      * Dashboard page
      */
@@ -440,34 +448,76 @@ class AdminController extends Controller
             'banned_until' => ['nullable', 'date'],
         ]);
 
+        $previousRole = $user->role;
+        $wasBanned = (bool) $user->is_banned;
+
         // Always update role + verification
         $user->role = $validated['role'];
         $user->is_verified = (bool) $validated['is_verified'];
+        $user->save();
+
+        if ($previousRole !== $user->role) {
+            $this->notifyRoleChanged($user, $previousRole, $request->user());
+        }
 
         if (! $validated['is_banned']) {
-            // Unban
-            $user->is_banned = false;
-            $user->banned_until = null;
-            $user->ban_reason = null;
-            $user->save();
+            if ($wasBanned) {
+                $this->bans->unban($user, $request->user());
+            } else {
+                $user->forceFill([
+                    'is_banned' => false,
+                    'banned_until' => null,
+                    'ban_reason' => null,
+                ])->save();
+            }
 
             return response()->json(['message' => 'User updated (unbanned).']);
         }
-
-        // Ban
-        $user->is_banned = true;
-        $user->ban_reason = $validated['ban_reason'] ?? 'Banned by admin';
 
         $bannedUntil = null;
         if (($validated['duration_type'] ?? null) === 'temporary' && ! empty($validated['banned_until'])) {
             $bannedUntil = Carbon::parse($validated['banned_until'])
                 ->setTimezone(config('app.timezone'));
         }
-        // If permanent, keep banned_until as null
-        $user->banned_until = $bannedUntil;
-        $user->save();
+
+        if (! $wasBanned) {
+            $this->bans->ban(
+                $user,
+                $bannedUntil,
+                $validated['ban_reason'] ?? 'Banned by admin',
+                $request->user(),
+            );
+        } else {
+            // Already banned: editing the reason/duration is not a new ban.
+            $user->forceFill([
+                'is_banned' => true,
+                'ban_reason' => $validated['ban_reason'] ?? $user->ban_reason ?? 'Banned by admin',
+                'banned_until' => $bannedUntil,
+            ])->save();
+        }
 
         return response()->json(['message' => 'User updated.']);
+    }
+
+    private function notifyRoleChanged(User $user, string $previousRole, User $issuer): void
+    {
+        $this->notifications->notify($user, NotificationType::RoleChanged, [
+            'actor' => $issuer,
+            'url' => route('user.profile', $user->username),
+            'data' => ['role' => $user->role],
+        ]);
+
+        $this->notifications->notifyStaff(NotificationType::AdminRoleChanged, [
+            'actor' => $issuer,
+            'subject' => $user,
+            'url' => route('admin.users', ['q' => $user->username]),
+            'data' => [
+                'target_name' => $user->dname.' (@'.$user->username.')',
+                'role' => $user->role,
+                'previous_role' => $previousRole,
+                'actor_name' => null,
+            ],
+        ], [$issuer, $user]);
     }
 
     /**

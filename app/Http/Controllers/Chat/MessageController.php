@@ -9,13 +9,14 @@ use App\Events\Chat\MessageRead;
 use App\Events\Chat\MessageSent;
 use App\Events\Chat\MessageUpdated;
 use App\Http\Controllers\Controller;
+use App\Models\Bleep;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageEdit;
 use App\Models\MessageMedia;
 use App\Models\User;
-use App\Services\Chat\BroadcastGateway;
+use App\Services\Broadcasting\BroadcastGateway;
 use App\Services\Chat\ChatMessageFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,6 +42,7 @@ class MessageController extends Controller
             'media_items.*.media_kind' => ['nullable', 'in:none,media,audio,voice'],
             'media_items.*.media_duration' => ['nullable', 'integer', 'min:0', 'max:3600'],
             'reply_to_id' => ['nullable', 'integer', 'exists:messages,id'],
+            'shared_bleep_id' => ['nullable', 'integer', 'exists:bleeps,id'],
             'client_uuid' => ['nullable', 'string', 'max:64'],
         ]);
 
@@ -78,6 +80,21 @@ class MessageController extends Controller
             }
         }
 
+        $sharedBleep = null;
+
+        if (! empty($validated['shared_bleep_id'])) {
+            $sharedBleep = Bleep::withTrashed()->find($validated['shared_bleep_id']);
+
+            // A sender may only attach something they can see themselves, and
+            // never a soft-deleted bleep (the formatter would mark it missing
+            // for everyone else, including the recipient).
+            if (! $sharedBleep || $sharedBleep->trashed() || ! $sharedBleep->isVisibleTo($user)) {
+                return response()->json([
+                    'message' => 'This bleep is not available to share.',
+                ], 422);
+            }
+        }
+
         $body = trim((string) ($validated['body'] ?? ''));
         $mediaPath = $validated['media_path'] ?? null;
 
@@ -91,9 +108,9 @@ class MessageController extends Controller
             ]]);
         }
 
-        if ($body === '' && ! $mediaPath && $incomingMediaItems->isEmpty()) {
+        if ($body === '' && ! $mediaPath && $incomingMediaItems->isEmpty() && ! $sharedBleep) {
             return response()->json([
-                'message' => 'Message body or media is required.',
+                'message' => 'Message body, media or a shared bleep is required.',
             ], 422);
         }
 
@@ -118,12 +135,13 @@ class MessageController extends Controller
             }
         }
 
-        $message = DB::transaction(function () use ($validated, $conversation, $user, $body, $incomingMediaItems) {
+        $message = DB::transaction(function () use ($validated, $conversation, $user, $body, $incomingMediaItems, $sharedBleep) {
             $message = Message::create([
                 'conversation_id' => $conversation->id,
                 'sender_id' => $user->id,
                 'body' => $body ?: null,
                 'reply_to_id' => $validated['reply_to_id'] ?? null,
+                'shared_bleep_id' => $sharedBleep?->id,
                 'client_uuid' => $validated['client_uuid'] ?? null,
             ]);
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Chat;
+namespace App\Services\Broadcasting;
 
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Events\Dispatcher;
@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Dispatches chat broadcast events without letting a broadcast transport
- * failure break the HTTP request that produced the change.
+ * Dispatches broadcast events without letting a broadcast transport failure
+ * break the HTTP request that produced the change.
  *
  * Reverb/Pusher may be unreachable (shared hosting, local development, or a
  * temporary outage). The database write has already succeeded at that point,
@@ -28,7 +28,7 @@ class BroadcastGateway
 
             $this->events->dispatch($event);
         } catch (Throwable $exception) {
-            Log::warning('Chat broadcast failed.', [
+            Log::warning('Broadcast failed.', [
                 'event' => $event::class,
                 'connection' => config('broadcasting.default'),
                 'error' => $exception->getMessage(),

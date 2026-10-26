@@ -283,6 +283,7 @@
             <x-announcement.system />
 
             {{-- Quick Few Notifications --}}
+            <x-notifications.quick />
 
         </div>
     </div>
@@ -299,4 +300,7 @@
 
     {{-- Comments Bleep Modal --}}
     <x-modals.posts.comments />
+
+    {{-- Share Bleep Modal --}}
+    <x-modals.posts.share />
 @endonce

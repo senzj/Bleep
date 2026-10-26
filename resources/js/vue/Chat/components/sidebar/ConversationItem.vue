@@ -15,6 +15,7 @@ const props = defineProps({
 const preview = computed(() => {
 	const last = props.conversation.last_message;
 	if (!last) return 'No messages yet';
+	if (last.shared_bleep) return '🔗 Shared a bleep';
 	if (last.media_kind === 'voice') return '🎤 Voice message';
 	if (last.media_kind === 'audio') return '🎵 Audio file';
 	if (last.media_kind === 'media' && !last.body) return '📎 Media';

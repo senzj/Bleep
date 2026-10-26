@@ -20,6 +20,43 @@
             @endphp
             <meta name="user-avatar" content="{{ $userAvatar }}" />
         @endif
+
+        @php
+            // Unfurl metadata is public: anonymous bleeps must never expose the
+            // author's real name or avatar to crawlers.
+            $metaAuthor = $bleep->is_anonymous ? 'Anonymous' : ($bleep->user->dname ?? 'Unknown');
+            $metaTitle = $metaAuthor . ' on Bleep';
+
+            $metaDescription = trim((string) preg_replace('/\s+/u', ' ', (string) $bleep->message));
+            if ($metaDescription === '') {
+                $metaDescription = 'A bleep on Bleep.';
+            }
+            $metaDescription = \Illuminate\Support\Str::limit($metaDescription, 160);
+
+            $metaUrl = route('post', $bleep->id);
+
+            // NSFW bleeps must not leak their media into link previews.
+            $metaImage = null;
+            if (! $bleep->is_nsfw) {
+                $metaImage = $bleep->media->firstWhere('type', 'image')?->url();
+            }
+        @endphp
+
+        <link rel="canonical" href="{{ $metaUrl }}" />
+        <meta property="og:site_name" content="Bleep" />
+        <meta property="og:type" content="article" />
+        <meta property="og:title" content="{{ $metaTitle }}" />
+        <meta property="og:description" content="{{ $metaDescription }}" />
+        <meta property="og:url" content="{{ $metaUrl }}" />
+        @if ($metaImage)
+            <meta property="og:image" content="{{ $metaImage }}" />
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:image" content="{{ $metaImage }}" />
+        @else
+            <meta name="twitter:card" content="summary" />
+        @endif
+        <meta name="twitter:title" content="{{ $metaTitle }}" />
+        <meta name="twitter:description" content="{{ $metaDescription }}" />
     @endpush
 
     {{-- Report Bleep Modal --}}

@@ -83,13 +83,13 @@
             id="share-btn-{{ $bleep->id }}"
             data-bleep-id="{{ $bleep->id }}"
             onclick="window.dispatchEvent(new CustomEvent('open-share-modal', { detail: { bleepId: '{{ $bleep->id }}' } }))"
-            title="Share / Copy link"
+            title="Share"
             class="btn btn-ghost btn-xs h-8 min-h-8 leading-none whitespace-nowrap gap-1 group hover:bg-yellow-300/20 hover:text-yellow-600">
             <i data-lucide="forward" class="w-5 h-5 align-middle transition-transform duration-200 group-hover:scale-110 group-hover:text-yellow-600"></i>
-            <span class="inline sm:hidden text-xs align-middle" data-bleep-id="{{ $bleep->id }}">
+            <span class="inline sm:hidden text-xs align-middle share-count" data-bleep-id="{{ $bleep->id }}">
                 {{ $shareCount }}
             </span>
-            <span class="hidden sm:inline text-xs whitespace-nowrap align-middle" data-bleep-id="{{ $bleep->id }}">
+            <span class="hidden sm:inline text-xs whitespace-nowrap align-middle share-text" data-bleep-id="{{ $bleep->id }}">
                 {{ $shareCount }} {{ $shareCount === 1 ? 'Share' : 'Shares' }}
             </span>
         </button>

@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\Bleep;
 
+use App\Enums\NotificationType;
 use App\Http\Controllers\Controller;
 use App\Models\Bleep;
 use App\Models\Repost;
 use App\Models\Share;
+use App\Services\Notifications\NotificationData;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ShareController extends Controller
 {
+    public function __construct(private NotificationService $notifications) {}
+
     /**
      * create if user shares a bleep post
      */
@@ -19,7 +24,10 @@ class ShareController extends Controller
         abort_unless($bleep->isVisibleTo(Auth::user()), 404);
 
         $sessionKey = $request->session()->getId();
-        $day = now()->toDateString();
+        // Pass a Carbon instance so the `shared_on` date cast and the lookup
+        // bind the same datetime value. A plain `Y-m-d` string fails to match
+        // rows stored by SQLite (and therefore duplicates the daily share).
+        $day = now()->startOfDay();
 
         $share = Share::firstOrCreate(
             [
@@ -32,6 +40,10 @@ class ShareController extends Controller
         );
 
         $share->touch();
+
+        if ($share->wasRecentlyCreated) {
+            $this->notifyBleepAuthor($bleep);
+        }
 
         $shares = Share::where('bleep_id', $bleep->id)->count();
         $reposts = Repost::where('bleep_id', $bleep->id)->count();
@@ -49,6 +61,23 @@ class ShareController extends Controller
         }
 
         return back()->with($payload);
+    }
+
+    private function notifyBleepAuthor(Bleep $bleep): void
+    {
+        $bleep->loadMissing('user');
+
+        if (! $bleep->user) {
+            return;
+        }
+
+        $this->notifications->notify($bleep->user, NotificationType::BleepShared, [
+            'actor' => Auth::user(),
+            'subject' => $bleep,
+            'url' => route('post', $bleep->id),
+            'group_key' => 'share:bleep:'.$bleep->id,
+            'data' => NotificationData::bleep($bleep),
+        ]);
     }
 
     public function redirect(string $token)

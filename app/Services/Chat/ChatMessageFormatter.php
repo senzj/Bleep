@@ -3,6 +3,7 @@
 namespace App\Services\Chat;
 
 use App\Models\Message;
+use Illuminate\Support\Str;
 
 class ChatMessageFormatter
 {
@@ -19,10 +20,24 @@ class ChatMessageFormatter
             'deliveries.user:id,username,dname,profile_picture',
             'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
             'reactions.user:id,username,dname,profile_picture',
+            'sharedBleep' => function ($query) {
+                $query->withTrashed()->with([
+                    'user:id,username,dname,profile_picture',
+                    'user.preferences',
+                    'media',
+                ]);
+            },
             'replyTo' => function ($query) {
                 $query->withTrashed()->with([
                     'sender:id,username,dname,profile_picture',
                     'mediaItems:id,message_id,media_path,media_type,media_kind,media_duration',
+                    'sharedBleep' => function ($bleep) {
+                        $bleep->withTrashed()->with([
+                            'user:id,username,dname,profile_picture',
+                            'user.preferences',
+                            'media',
+                        ]);
+                    },
                 ]);
             },
         ];
@@ -90,6 +105,7 @@ class ChatMessageFormatter
                 ],
                 'body' => $replyToDeleted ? null : $replyToMsg->body,
                 'is_deleted' => $replyToDeleted,
+                'shared_bleep' => self::formatSharedBleep($replyToMsg, $viewerId, $replyToDeleted),
                 // Keep these single-media fields for backward compatibility in older clients.
                 'media_path' => ($replyToDeleted || ! $replyPrimaryMedia) ? null : ($replyPrimaryMedia['media_path'] ?? null),
                 'media_url' => ($replyToDeleted || ! $replyPrimaryMedia) ? null : ($replyPrimaryMedia['media_url'] ?? null),
@@ -165,7 +181,72 @@ class ChatMessageFormatter
             'updated_at' => optional($message->updated_at)?->toIso8601String(),
             'reply_to_id' => $message->reply_to_id,
             'reply_to' => $replyTo,
+            'shared_bleep' => self::formatSharedBleep($message, $viewerId, $isDeleted),
             'reactions' => $reactions,
         ];
+    }
+
+    /**
+     * Render snapshot of a bleep sent through "Send in chat".
+     *
+     * Returns `null` when the message carries no bleep, and a bare
+     * `available: false` card when the bleep is gone or hidden from this
+     * viewer, so the bubble never links to something that 404s.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function formatSharedBleep(Message $message, ?int $viewerId, bool $isDeleted): ?array
+    {
+        if (! $message->shared_bleep_id) {
+            return null;
+        }
+
+        $unavailable = ['id' => (int) $message->shared_bleep_id, 'available' => false];
+
+        if ($isDeleted) {
+            return $unavailable;
+        }
+
+        $bleep = $message->sharedBleep;
+
+        // Participants are already eager loaded by relations(), so visibility
+        // checks use the real viewer model without another query.
+        $viewer = $viewerId !== null
+            ? $message->conversation->participants->firstWhere('id', $viewerId)
+            : null;
+
+        if (! $bleep || ! $bleep->isVisibleTo($viewer)) {
+            return $unavailable;
+        }
+
+        $isAnonymous = (bool) $bleep->is_anonymous;
+
+        // NSFW posts never render a thumbnail inside chat.
+        $media = $bleep->is_nsfw ? null : $bleep->media->firstWhere('type', 'image');
+
+        return [
+            'id' => $bleep->id,
+            'available' => true,
+            'url' => route('post', $bleep->id),
+            'excerpt' => self::excerpt($bleep->message),
+            'is_anonymous' => $isAnonymous,
+            'is_nsfw' => (bool) $bleep->is_nsfw,
+            'author_name' => $isAnonymous ? 'Anonymous' : ($bleep->user?->dname ?? 'Unknown'),
+            'author_username' => $isAnonymous ? null : $bleep->user?->username,
+            'author_profile_picture_url' => $isAnonymous ? null : $bleep->user?->profile_picture_url,
+            'media_url' => $media?->url(),
+            'media_type' => $media?->type,
+        ];
+    }
+
+    private static function excerpt(?string $text, int $limit = 140): ?string
+    {
+        $text = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
+
+        if ($text === '') {
+            return null;
+        }
+
+        return Str::limit($text, $limit);
     }
 }

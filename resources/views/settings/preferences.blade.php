@@ -345,10 +345,51 @@
                 </div>
             </div>
 
-            {{-- Notification Preferences --}}
+            {{-- Notification Activity Preferences --}}
             <div class="border border-base-200 shadow-lg p-3 rounded-lg">
                 <h3 class="text-xl font-semibold text-base-content">Notifications</h3>
-                <p class="text-base-content/70 mb-4">Configure notification sounds for your account.</p>
+                <p class="text-base-content/70 mb-4">
+                    Choose what shows up in your bell and inbox. Bans, warnings, removed content and role changes are always delivered.
+                </p>
+
+                <div class="bg-base-200 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-1">
+                    @php
+                        $notificationToggles = [
+                            ['notify_likes', 'Likes on your bleeps', 'When someone likes a bleep you posted.'],
+                            ['notify_comments', 'Comments on your bleeps', 'When someone comments on a bleep you posted.'],
+                            ['notify_replies', 'Replies to your comments', 'When someone replies to a comment you wrote.'],
+                            ['notify_reposts', 'Reposts of your bleeps', 'When someone reposts one of your bleeps.'],
+                            ['notify_shares', 'Shares of your bleeps', 'When someone shares a bleep of yours as a link.'],
+                            ['notify_comment_likes', 'Likes on your comments', 'When someone likes a comment you wrote.'],
+                            ['notify_repost_likes', 'Likes on your reposts', 'When someone likes a bleep you reposted.'],
+                            ['notify_follows', 'New followers', 'Follows and accepted follow requests.'],
+                            ['notify_unfollows', 'Unfollows', 'When someone stops following you.'],
+                            ['notify_profile_visits', 'Profile visits', 'When someone opens your profile.'],
+                            ['notify_report_updates', 'Your report updates', 'When a report you submitted is resolved.'],
+                        ];
+
+                        if (auth()->user()->hasAdminAccess()) {
+                            $notificationToggles[] = ['notify_staff_reports', 'New reports (staff)', 'Reports waiting in the moderation queue.'];
+                            $notificationToggles[] = ['notify_staff_audit', 'Moderation audit (staff)', 'Reports resolved, bans, role changes and warnings issued by staff.'];
+                        }
+                    @endphp
+
+                    @foreach ($notificationToggles as [$key, $label, $description])
+                        <div class="form-control flex flex-col justify-center border border-base-200 p-3 rounded-lg">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="label-text">{{ $label }}</span>
+                                <input type="checkbox" class="toggle toggle-primary pref-toggle" data-pref="{{ $key }}" {{ $preferences->{$key} ? 'checked' : '' }}>
+                            </div>
+                            <p class="text-sm text-base-content/70">{{ $description }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Notification Sounds --}}
+            <div class="border border-base-200 shadow-lg p-3 rounded-lg">
+                <h3 class="text-xl font-semibold text-base-content">Notification sounds</h3>
+                <p class="text-base-content/70 mb-4">Configure the sounds played for your account.</p>
 
                 <div class="bg-base-200 rounded-lg p-4 space-y-1">
 

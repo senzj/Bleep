@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\NotificationType;
 use App\Models\Following;
 use App\Models\FollowRequest;
 use App\Models\User;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Http\Request;
 
 class FollowingController extends Controller
 {
+    public function __construct(private NotificationService $notifications) {}
+
     /**
      * Toggle follow/unfollow a user.
      */
@@ -35,6 +39,13 @@ class FollowingController extends Controller
         if ($existing) {
             $existing->delete();
 
+            $this->notifications->notify($user, NotificationType::UserUnfollowed, [
+                'actor' => $authUser,
+                'subject' => $authUser,
+                'url' => route('user.profile', ['username' => $authUser->username]),
+                'group_key' => 'unfollow:'.$authUser->id,
+            ]);
+
             return response()->json([
                 'following' => false,
                 'requested' => false,
@@ -60,6 +71,13 @@ class FollowingController extends Controller
             $followRequest->status = 'pending';
             $followRequest->save();
 
+            $this->notifications->notify($user, NotificationType::FollowRequested, [
+                'actor' => $authUser,
+                'subject' => $authUser,
+                'url' => route('follow.requests'),
+                'group_key' => 'followreq:'.$authUser->id,
+            ]);
+
             return response()->json([
                 'following' => false,
                 'requested' => true,
@@ -69,6 +87,13 @@ class FollowingController extends Controller
         Following::create([
             'follower_id' => $authUser->id,
             'followed_id' => $user->id,
+        ]);
+
+        $this->notifications->notify($user, NotificationType::UserFollowed, [
+            'actor' => $authUser,
+            'subject' => $authUser,
+            'url' => route('user.profile', ['username' => $authUser->username]),
+            'group_key' => 'follow:'.$authUser->id,
         ]);
 
         return response()->json([

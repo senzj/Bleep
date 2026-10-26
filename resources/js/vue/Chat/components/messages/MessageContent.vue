@@ -1,6 +1,6 @@
 <script setup>
 import MessageMedia from './MessageMedia.vue';
-import LucideIcons from '../../../LucideIcons.vue';
+import SharedBleepCard from './SharedBleepCard.vue';
 
 defineProps({
     message: {
@@ -19,6 +19,7 @@ defineProps({
     <!-- Normal message content -->
     <template v-else>
         <p v-if="message.body" class="text-md wrap-break-word">{{ message.body }}</p>
+        <SharedBleepCard v-if="message.shared_bleep" :bleep="message.shared_bleep" class="mt-2" />
         <MessageMedia :message="message" />
     </template>
 </template>

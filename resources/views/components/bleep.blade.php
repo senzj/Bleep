@@ -392,9 +392,6 @@
     {{-- Report Modal --}}
     <x-modals.posts.report />
 
-    {{-- Share Bleep Modal --}}
-    <x-modals.posts.share />
-
     @push('scripts')
         @vite([
             'resources/js/bleep/posts/like.js',
