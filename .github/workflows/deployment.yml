@@ -75,13 +75,34 @@ jobs:
           local-dir: ./
           state-name: .ftp-deploy-sync-state.json
           exclude: |
+              # Git and GitHub
               **/.git*
               **/.github/**
+
+              # IDE and Editor
+              **/.vscode/**
+              **/.idea/**
+              **/*.code-workspace
+
+              # Node development dependencies
               **/node_modules/**
+
+              # Laravel / PHP development dependencies
+              **/vendor/**
               **/tests/**
               **/storage/logs/**
               **/storage/framework/cache/**
               **/.ftp-deploy-sync-state.json
+
+              # Local environment / secrets
               **/.env
               **/.env.*
+
+              # AI Agents Tools
+              **/.agents/**
+              **/.omo/**
+              **/AGENTS.md
+              **/boost.json
+              **/opencode.json
+              **/skills-lock.json
           log-level: standard
