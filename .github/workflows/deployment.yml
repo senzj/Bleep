@@ -105,4 +105,5 @@ jobs:
               **/boost.json
               **/opencode.json
               **/skills-lock.json
+              **/docs/**
           log-level: standard
