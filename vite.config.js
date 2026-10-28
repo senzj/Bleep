@@ -14,6 +14,8 @@ export default defineConfig({
                 'resources/css/profile-crop.css',
                 'resources/css/profile.css',
                 'resources/js/app.js',
+                'resources/js/bulletin.js',
+                'resources/css/bulletin.css',
                 'resources/js/admin/dashboard.js',
                 'resources/js/admin/devices.js',
                 'resources/js/admin/reports.js',

@@ -18,6 +18,12 @@
         <span class="sidebar-text">Home</span>
     </a>
 
+    {{-- Bulletin --}}
+    <a href="{{ route('bulletin.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('bulletin.*') ? 'bg-primary text-primary-content' : '' }}">
+        <i data-lucide="scroll" class="w-5 h-5 shrink-0"></i>
+        <span class="sidebar-text">Bulletin</span>
+    </a>
+
     {{-- Messages --}}
     <a href="{{ route('messages') }}" class="relative flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('messages') ? 'bg-primary text-primary-content' : '' }}">
         <span class="relative shrink-0">

@@ -156,4 +156,38 @@ class MediaUploadService
 
         return Storage::disk('public')->delete($path);
     }
+
+    /**
+     * Save a single public bulletin attachment (image, GIF, video, or audio).
+     *
+     * @return array{path: string, mime: string, kind: string}
+     */
+    public static function saveBulletinMedia(UploadedFile $file, string $publicId): array
+    {
+        $mime = (string) $file->getMimeType();
+        $kind = str_starts_with($mime, 'image/')
+            ? 'image'
+            : (str_starts_with($mime, 'video/') ? 'video' : 'audio');
+
+        $filename = self::randomFilename($file, 12);
+        $path = $file->storeAs("bulletin/{$publicId}", $filename, 'public');
+
+        return [
+            'path' => $path,
+            'mime' => $mime,
+            'kind' => $kind,
+        ];
+    }
+
+    /**
+     * Delete a bulletin attachment from storage.
+     */
+    public static function deleteBulletinMedia(?string $path): bool
+    {
+        if (! $path || ! Storage::disk('public')->exists($path)) {
+            return false;
+        }
+
+        return Storage::disk('public')->delete($path);
+    }
 }

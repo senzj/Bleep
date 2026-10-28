@@ -13,6 +13,7 @@ use App\Http\Controllers\Bleep\RepostController;
 use App\Http\Controllers\Bleep\ShareController;
 use App\Http\Controllers\BleepController;
 use App\Http\Controllers\BlockedUsersController;
+use App\Http\Controllers\BulletinController;
 use App\Http\Controllers\Chat\ConversationController;
 use App\Http\Controllers\Chat\MediaUploadController;
 use App\Http\Controllers\Chat\MessageController;
@@ -61,6 +62,35 @@ Route::post('/logout', Logout::class)
 // Bleep Home page
 Route::get('/', [BleepController::class, 'index'])
     ->name('home');
+
+// Public anonymous bulletin board
+Route::prefix('bulletin')->name('bulletin.')->group(function () {
+    Route::get('/', [BulletinController::class, 'index'])
+        ->name('index');
+
+    Route::get('/posts', [BulletinController::class, 'posts'])
+        ->name('posts.index');
+
+    Route::post('/posts', [BulletinController::class, 'store'])
+        ->middleware('throttle:bulletin-posts')
+        ->name('posts.store');
+
+    Route::patch('/posts/{post}', [BulletinController::class, 'update'])
+        ->middleware('throttle:bulletin-edits')
+        ->name('posts.update');
+
+    Route::delete('/posts/{post}', [BulletinController::class, 'destroy'])
+        ->middleware('throttle:bulletin-edits')
+        ->name('posts.destroy');
+
+    Route::post('/posts/{post}/reactions', [BulletinController::class, 'react'])
+        ->middleware('throttle:bulletin-reactions')
+        ->name('posts.reactions.store');
+
+    Route::post('/posts/{post}/reports', [BulletinController::class, 'report'])
+        ->middleware('throttle:bulletin-reports')
+        ->name('posts.reports.store');
+});
 
 // Bleep views
 Route::post('/bleeps/{bleep}/view', [BleepController::class, 'recordView'])

@@ -7,11 +7,15 @@ use App\Models\Comments;
 use App\Models\Visits;
 use App\Policies\BleepPolicy;
 use App\Policies\CommentsPolicy;
+use App\Services\Bulletin\BulletinVisitor;
 use App\Services\FollowContext;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Http\Events\RequestHandled;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -41,6 +45,70 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('bulletin-posts', function (Request $request): array {
+            $visitor = app(BulletinVisitor::class);
+            $response = fn (Request $request, array $headers) => response()->json([
+                'message' => 'You are posting too quickly. Please try again in a few minutes.',
+            ], 429, $headers);
+
+            return [
+                Limit::perMinutes(10, 3)
+                    ->by('bulletin-post:visitor:'.$visitor->hash($request))
+                    ->response($response),
+                Limit::perMinutes(10, 30)
+                    ->by('bulletin-post:ip:'.$visitor->ipHash($request))
+                    ->response($response),
+            ];
+        });
+
+        RateLimiter::for('bulletin-edits', function (Request $request): array {
+            $visitor = app(BulletinVisitor::class);
+            $response = fn (Request $request, array $headers) => response()->json([
+                'message' => 'You are making changes too quickly. Please try again in a moment.',
+            ], 429, $headers);
+
+            return [
+                Limit::perMinute(20)
+                    ->by('bulletin-edit:visitor:'.$visitor->hash($request))
+                    ->response($response),
+                Limit::perMinute(60)
+                    ->by('bulletin-edit:ip:'.$visitor->ipHash($request))
+                    ->response($response),
+            ];
+        });
+
+        RateLimiter::for('bulletin-reactions', function (Request $request): array {
+            $visitor = app(BulletinVisitor::class);
+            $response = fn (Request $request, array $headers) => response()->json([
+                'message' => 'You are reacting too quickly. Give it a moment.',
+            ], 429, $headers);
+
+            return [
+                Limit::perMinute(60)
+                    ->by('bulletin-reaction:visitor:'.$visitor->hash($request))
+                    ->response($response),
+                Limit::perMinute(240)
+                    ->by('bulletin-reaction:ip:'.$visitor->ipHash($request))
+                    ->response($response),
+            ];
+        });
+
+        RateLimiter::for('bulletin-reports', function (Request $request): array {
+            $visitor = app(BulletinVisitor::class);
+            $response = fn (Request $request, array $headers) => response()->json([
+                'message' => 'You are reporting too quickly. Please try again later.',
+            ], 429, $headers);
+
+            return [
+                Limit::perMinute(5)
+                    ->by('bulletin-report:visitor:'.$visitor->hash($request))
+                    ->response($response),
+                Limit::perMinute(20)
+                    ->by('bulletin-report:ip:'.$visitor->ipHash($request))
+                    ->response($response),
+            ];
+        });
+
         // Admin or Moderator Gate
         Gate::define('is_admin', function ($user) {
             return $user->hasAdminAccess();
@@ -120,7 +188,7 @@ class AppServiceProvider extends ServiceProvider
                     $device = 'Mobile';
                 }
 
-                // Track visit with user_id (null for anonymous/unregistered users)
+                // Track visit with user_id (null for anonymous/unregistered visitors)
                 Visits::create([
                     'user_id' => Auth::id() ?? null,
                     'ip_address' => $req->ip() ?? '0.0.0.0',

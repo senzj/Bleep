@@ -1,0 +1,1301 @@
+/* Public bulletin board: cork surface, paper notes, horizontal world. */
+
+.bulletin-frame {
+    position: relative;
+    overflow: hidden;
+    border: 8px solid #7f5539;
+    border-radius: 0.5rem;
+    background-color: #b08968;
+    background-image:
+        radial-gradient(rgb(255 255 255 / 0.12) 1px, transparent 1px),
+        radial-gradient(rgb(0 0 0 / 0.12) 1px, transparent 1px),
+        radial-gradient(circle at 30% 20%, rgb(255 240 214 / 0.22), transparent 55%),
+        linear-gradient(135deg, rgb(255 255 255 / 0.05), rgb(0 0 0 / 0.07));
+    background-position: 0 0, 4px 5px, 0 0, 0 0;
+    background-size: 7px 7px, 11px 11px, 100% 100%, 100% 100%;
+    box-shadow:
+        inset 0 0 0 2px rgb(0 0 0 / 0.28),
+        inset 0 0 70px rgb(0 0 0 / 0.35),
+        0 24px 48px -28px rgb(0 0 0 / 0.65);
+}
+
+.bulletin-scroller {
+    overflow-x: auto;
+    overflow-y: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #c9a07c #5c3b25;
+    touch-action: pan-x pan-y;
+}
+
+.bulletin-scroller:focus-visible {
+    outline: 3px solid #fef08a;
+    outline-offset: -3px;
+}
+
+.bulletin-scroller::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.bulletin-scroller::-webkit-scrollbar-track {
+    background: #5c3b25;
+}
+
+.bulletin-scroller::-webkit-scrollbar-thumb {
+    border: 3px solid #5c3b25;
+    border-radius: 999px;
+    background: #c9a07c;
+}
+
+/* The cork surface lives on the world so it scrolls with the notes. */
+.bulletin-world {
+    position: relative;
+    min-width: 100%;
+    min-height: 100%;
+    background-color: #b08968;
+    background-image:
+        radial-gradient(rgb(255 255 255 / 0.12) 1px, transparent 1px),
+        radial-gradient(rgb(0 0 0 / 0.12) 1px, transparent 1px),
+        radial-gradient(circle at 30% 20%, rgb(255 240 214 / 0.22), transparent 55%),
+        linear-gradient(135deg, rgb(255 255 255 / 0.05), rgb(0 0 0 / 0.07));
+    background-position: 0 0, 4px 5px, 0 0, 0 0;
+    background-size: 7px 7px, 11px 11px, 100% 100%, 100% 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Paper
+   -------------------------------------------------------------------------- */
+
+.bulletin-paper {
+    --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)'/%3E%3C/svg%3E");
+    --edge-clip: none;
+    position: relative;
+    border-radius: 3px;
+    background-color: var(--paper, #fef9c3);
+    background-image: var(
+        --paper-texture,
+        linear-gradient(160deg, rgb(255 255 255 / 0.35), transparent 55%)
+    );
+    color: var(--paper-ink, #2b2412);
+    box-shadow:
+        1px 5px 12px rgb(0 0 0 / 0.28),
+        0 1px 2px rgb(0 0 0 / 0.18);
+}
+
+.bulletin-pin {
+    position: absolute;
+    top: -0.45rem;
+    left: var(--pin-x, 62%);
+    z-index: 3;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 999px;
+    background: radial-gradient(circle at 35% 30%, #ff9b9b, #c0392b 62%, #74190f);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 0.45);
+    transform: translateX(-50%);
+}
+
+.bulletin-note {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(10px, 3.5%, 16px) clamp(10px, 3.5%, 16px) 8px;
+    color: var(--paper-ink, #2b2412);
+    transform: rotate(var(--rot, 0deg));
+    transform-origin: var(--pin-x, 50%) 0;
+    transition: transform 180ms ease, filter 180ms ease;
+    animation: bulletin-note-in 480ms cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+    animation-delay: var(--delay, 0ms);
+    contain: layout style;
+    isolation: isolate;
+}
+
+.bulletin-note::before {
+    content: '';
+    position: absolute;
+    z-index: -2;
+    inset: 0;
+    border-radius: 3px;
+    background-color: var(--paper, #fef9c3);
+    background-image: var(
+        --paper-texture,
+        linear-gradient(160deg, rgb(255 255 255 / 0.35), transparent 55%)
+    );
+    box-shadow:
+        1px 5px 12px rgb(0 0 0 / 0.28),
+        0 1px 2px rgb(0 0 0 / 0.18),
+        inset 0 0 34px rgb(0 0 0 / 0.06),
+        inset 0 1px 0 rgb(255 255 255 / 0.35);
+    transition: box-shadow 180ms ease;
+}
+
+/* Paper grain and edge shading live on the overlay so every design shares the
+   same fibre texture, and the note stays readable because the grain is subtle. */
+.bulletin-note::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: 3px;
+    background-image: var(--paper-grain), linear-gradient(160deg, rgb(255 255 255 / 0.24), transparent 45%);
+    background-size: 140px 140px, 100% 100%;
+    mix-blend-mode: multiply;
+    opacity: 0.2;
+    pointer-events: none;
+}
+
+.bulletin-note:hover,
+.bulletin-note:focus-within {
+    z-index: 15;
+    transform: rotate(0deg) translateY(-4px) scale(1.012);
+}
+
+/* A note with an open menu must clear neighbouring notes and the in-board
+   header, which deliberately has no z-index of its own. */
+.bulletin-note.bulletin-note--menu-open {
+    z-index: 25;
+}
+
+.bulletin-note:hover::before,
+.bulletin-note:focus-within::before {
+    box-shadow:
+        2px 10px 22px rgb(0 0 0 / 0.34),
+        0 1px 2px rgb(0 0 0 / 0.18);
+}
+
+/* Ghost buttons sit directly on the paper, so they should use its ink. Filled
+   daisyUI buttons keep their own foreground colour and stay legible. */
+.bulletin-note .btn-ghost,
+.bulletin-paper .btn-ghost {
+    color: var(--paper-ink, inherit);
+}
+
+.bulletin-note .btn-ghost:hover,
+.bulletin-paper .btn-ghost:hover {
+    background: rgb(0 0 0 / 0.08);
+}
+
+/* Form controls use the theme surface, so their text must follow the theme,
+   not the paper ink. Without this, dark themes render dark-on-dark fields. */
+.bulletin-paper :is(input:not([type='color']), textarea, select) {
+    color: var(--color-base-content);
+}
+
+.bulletin-note summary,
+.bulletin-paper summary {
+    list-style: none;
+}
+
+.bulletin-note summary::-webkit-details-marker,
+.bulletin-paper summary::-webkit-details-marker {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bulletin-note,
+    .bulletin-note:hover,
+    .bulletin-note:focus-within {
+        transform: rotate(var(--rot, 0deg));
+    }
+}
+
+.bulletin-note--new {
+    animation: bulletin-note-arrive 900ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    animation-delay: 0ms;
+}
+
+.bulletin-note--new .bulletin-pin {
+    animation: bulletin-pin-drop 700ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
+@keyframes bulletin-note-in {
+    0% {
+        opacity: 0;
+        transform: rotate(var(--rot, 0deg)) translateY(10px) scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: rotate(var(--rot, 0deg)) translateY(0) scale(1);
+    }
+}
+
+@keyframes bulletin-note-arrive {
+    0% {
+        opacity: 0;
+        transform: rotate(var(--rot, 0deg)) translateY(-14px) scale(0.94);
+    }
+    100% {
+        opacity: 1;
+        transform: rotate(var(--rot, 0deg)) translateY(0) scale(1);
+    }
+}
+
+@keyframes bulletin-pin-drop {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-10px) scale(1.9);
+    }
+    60% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+    }
+    100% {
+        transform: translateX(-50%) translateY(0) scale(1);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Paper designs. Each one only changes the texture behind the note, so note
+   controls and dropdowns stay crisp and clickable.
+   -------------------------------------------------------------------------- */
+
+.bulletin-paper--plain {
+    --paper-texture:
+        radial-gradient(circle at 22% 16%, rgb(255 255 255 / 0.32), transparent 52%),
+        radial-gradient(circle at 80% 82%, rgb(0 0 0 / 0.03), transparent 48%),
+        linear-gradient(160deg, rgb(255 255 255 / 0.35), transparent 62%);
+}
+
+.bulletin-paper--torn {
+    --paper-texture:
+        repeating-linear-gradient(0deg, rgb(0 0 0 / 0.022) 0 1px, transparent 1px 5px),
+        linear-gradient(180deg, rgb(255 255 255 / 0.3), transparent 40%);
+}
+
+.bulletin-note.bulletin-paper--torn {
+    filter: drop-shadow(2px 6px 5px rgb(0 0 0 / 0.25));
+}
+
+.bulletin-paper--torn {
+    --edge-clip: polygon(
+        0 0,
+        100% 0,
+        100% calc(100% - 6px),
+        94% 100%,
+        88% calc(100% - 3px),
+        82% 100%,
+        76% calc(100% - 4px),
+        70% 100%,
+        64% calc(100% - 2px),
+        58% 100%,
+        52% calc(100% - 4px),
+        46% 100%,
+        40% calc(100% - 3px),
+        34% 100%,
+        28% calc(100% - 5px),
+        22% 100%,
+        16% calc(100% - 2px),
+        10% 100%,
+        4% calc(100% - 4px),
+        0 calc(100% - 1px)
+    );
+}
+
+.bulletin-note.bulletin-paper--torn::before,
+.bulletin-note.bulletin-paper--torn::after {
+    clip-path: var(--edge-clip);
+}
+
+.bulletin-note.bulletin-paper--torn::before {
+    border-radius: 3px 3px 0 0;
+    box-shadow: none;
+}
+
+.bulletin-note.bulletin-paper--torn:hover,
+.bulletin-note.bulletin-paper--torn:focus-within,
+.bulletin-note.bulletin-paper--torn-edges:hover,
+.bulletin-note.bulletin-paper--torn-edges:focus-within,
+.bulletin-note.bulletin-paper--zigzag:hover,
+.bulletin-note.bulletin-paper--zigzag:focus-within,
+.bulletin-note.bulletin-paper--folded:hover,
+.bulletin-note.bulletin-paper--folded:focus-within {
+    filter: drop-shadow(3px 10px 9px rgb(0 0 0 / 0.3));
+}
+
+.bulletin-paper--folded {
+    --fold-size: 18px;
+    --edge-clip: polygon(
+        0 0,
+        100% 0,
+        100% calc(100% - var(--fold-size)),
+        calc(100% - var(--fold-size)) 100%,
+        0 100%
+    );
+    --paper-texture:
+        linear-gradient(
+            to right,
+            transparent calc(50% - 2px),
+            rgb(0 0 0 / 0.07) calc(50% - 1px),
+            rgb(255 255 255 / 0.5) 50%,
+            rgb(0 0 0 / 0.05) calc(50% + 2px),
+            transparent calc(50% + 3px)
+        ),
+        linear-gradient(225deg, rgb(0 0 0 / 0.13) 0 min(18px, 30%), transparent 0),
+        linear-gradient(135deg, rgb(255 255 255 / 0.62) 0 min(18px, 30%), transparent 0),
+        linear-gradient(160deg, rgb(255 255 255 / 0.3), transparent 55%);
+}
+
+/* A folded sheet loses one random corner. The size and corner are chosen from
+   the note id in boardLayout.js, while the preview uses this default. */
+.bulletin-paper--folded-tr {
+    --edge-clip: polygon(
+        0 0,
+        calc(100% - var(--fold-size)) 0,
+        100% var(--fold-size),
+        100% 100%,
+        0 100%
+    );
+}
+
+.bulletin-paper--folded-tl {
+    --edge-clip: polygon(
+        var(--fold-size) 0,
+        100% 0,
+        100% 100%,
+        0 100%,
+        0 var(--fold-size)
+    );
+}
+
+.bulletin-paper--folded-bl {
+    --edge-clip: polygon(
+        0 0,
+        100% 0,
+        100% 100%,
+        var(--fold-size) 100%,
+        0 calc(100% - var(--fold-size))
+    );
+}
+
+.bulletin-paper--crumpled,
+.bulletin-paper--crumpled-1 {
+    --paper-texture:
+        linear-gradient(
+            63deg,
+            transparent 43%,
+            rgb(255 255 255 / 0.5) 45%,
+            rgb(0 0 0 / 0.05) 47%,
+            transparent 51%
+        ),
+        linear-gradient(
+            -52deg,
+            transparent 45%,
+            rgb(0 0 0 / 0.05) 47%,
+            rgb(255 255 255 / 0.42) 49%,
+            transparent 54%
+        ),
+        linear-gradient(118deg, transparent 39%, rgb(255 255 255 / 0.38) 41%, transparent 46%),
+        linear-gradient(
+            -22deg,
+            transparent 57%,
+            rgb(0 0 0 / 0.04) 59%,
+            rgb(255 255 255 / 0.4) 61%,
+            transparent 66%
+        ),
+        radial-gradient(circle at 22% 24%, rgb(255 255 255 / 0.45), transparent 30%),
+        radial-gradient(circle at 76% 68%, rgb(0 0 0 / 0.07), transparent 38%),
+        radial-gradient(circle at 55% 12%, rgb(255 255 255 / 0.3), transparent 24%),
+        linear-gradient(160deg, rgb(255 255 255 / 0.28), transparent 60%);
+}
+
+/* Crumpled variants: wide horizontal folds, a sharp fan, and a soft blotchy
+   sheet. The note hash picks one, so a board full of crumpled notes does not
+   repeat the same crease pattern. */
+.bulletin-paper--crumpled-2 {
+    --paper-texture:
+        linear-gradient(24deg, transparent 30%, rgb(255 255 255 / 0.5) 33%, rgb(0 0 0 / 0.06) 36%, transparent 42%),
+        linear-gradient(-18deg, transparent 58%, rgb(0 0 0 / 0.05) 61%, rgb(255 255 255 / 0.42) 64%, transparent 70%),
+        linear-gradient(74deg, transparent 44%, rgb(255 255 255 / 0.36) 47%, transparent 52%),
+        radial-gradient(ellipse at 18% 78%, rgb(0 0 0 / 0.06), transparent 46%),
+        radial-gradient(ellipse at 84% 18%, rgb(255 255 255 / 0.42), transparent 38%),
+        linear-gradient(160deg, rgb(255 255 255 / 0.28), transparent 60%);
+}
+
+.bulletin-paper--crumpled-3 {
+    --paper-texture:
+        linear-gradient(145deg, transparent 38%, rgb(255 255 255 / 0.55) 41%, rgb(0 0 0 / 0.09) 44%, transparent 49%),
+        linear-gradient(35deg, transparent 26%, rgb(0 0 0 / 0.05) 29%, rgb(255 255 255 / 0.4) 32%, transparent 37%),
+        linear-gradient(97deg, transparent 62%, rgb(255 255 255 / 0.34) 65%, transparent 69%),
+        radial-gradient(circle at 64% 52%, rgb(0 0 0 / 0.08), transparent 30%),
+        radial-gradient(circle at 26% 24%, rgb(255 255 255 / 0.4), transparent 33%),
+        linear-gradient(160deg, rgb(255 255 255 / 0.26), transparent 62%);
+}
+
+.bulletin-paper--crumpled-4 {
+    --paper-texture:
+        linear-gradient(172deg, transparent 24%, rgb(255 255 255 / 0.44) 27%, rgb(0 0 0 / 0.04) 30%, transparent 35%),
+        linear-gradient(8deg, transparent 66%, rgb(255 255 255 / 0.4) 69%, transparent 74%),
+        linear-gradient(90deg, transparent 47%, rgb(0 0 0 / 0.045) 49%, rgb(255 255 255 / 0.4) 51%, transparent 55%),
+        radial-gradient(ellipse at 78% 80%, rgb(0 0 0 / 0.06), transparent 40%),
+        radial-gradient(ellipse at 22% 58%, rgb(255 255 255 / 0.35), transparent 42%),
+        linear-gradient(160deg, rgb(255 255 255 / 0.28), transparent 60%);
+}
+
+.bulletin-paper--scratched,
+.bulletin-paper--scratched-1 {
+    --paper-texture:
+        repeating-linear-gradient(102deg, rgb(0 0 0 / 0.035) 0 1px, transparent 1px 14px),
+        repeating-linear-gradient(-78deg, rgb(255 255 255 / 0.28) 0 1px, transparent 1px 17px),
+        linear-gradient(160deg, rgb(255 255 255 / 0.32), transparent 55%);
+}
+
+/* Scratched variants: horizontal test scratches, a vertical crosshatch, and a
+   sparse set of deeper gouges. */
+.bulletin-paper--scratched-2 {
+    --paper-texture:
+        repeating-linear-gradient(2deg, rgb(0 0 0 / 0.04) 0 1px, transparent 1px 9px),
+        repeating-linear-gradient(-4deg, rgb(255 255 255 / 0.3) 0 1px, transparent 1px 13px),
+        linear-gradient(100deg, transparent 34%, rgb(0 0 0 / 0.05) 35%, transparent 38%),
+        linear-gradient(160deg, rgb(255 255 255 / 0.3), transparent 55%);
+}
+
+.bulletin-paper--scratched-3 {
+    --paper-texture:
+        repeating-linear-gradient(88deg, rgb(0 0 0 / 0.04) 0 1px, transparent 1px 10px),
+        repeating-linear-gradient(93deg, rgb(255 255 255 / 0.28) 0 1px, transparent 1px 15px),
+        repeating-linear-gradient(38deg, rgb(0 0 0 / 0.025) 0 1px, transparent 1px 19px),
+        linear-gradient(160deg, rgb(255 255 255 / 0.3), transparent 55%);
+}
+
+.bulletin-paper--scratched-4 {
+    --paper-texture:
+        repeating-linear-gradient(118deg, rgb(0 0 0 / 0.045) 0 1px, transparent 1px 23px),
+        repeating-linear-gradient(-68deg, rgb(255 255 255 / 0.32) 0 1px, transparent 1px 29px),
+        linear-gradient(75deg, transparent 40%, rgb(0 0 0 / 0.035) 41%, transparent 45%),
+        linear-gradient(160deg, rgb(255 255 255 / 0.32), transparent 55%);
+}
+
+/* Perforated tear-off edge: a dotted line and punched holes down the right
+   side, like a receipt or a tear-out page. */
+.bulletin-paper--perforated {
+    --paper-texture:
+        radial-gradient(circle at calc(100% - 11px) 8%, rgb(0 0 0 / 0.22) 0 2px, transparent 2.5px),
+        radial-gradient(circle at calc(100% - 11px) 20%, rgb(0 0 0 / 0.22) 0 2px, transparent 2.5px),
+        radial-gradient(circle at calc(100% - 11px) 32%, rgb(0 0 0 / 0.22) 0 2px, transparent 2.5px),
+        radial-gradient(circle at calc(100% - 11px) 44%, rgb(0 0 0 / 0.22) 0 2px, transparent 2.5px),
+        radial-gradient(circle at calc(100% - 11px) 56%, rgb(0 0 0 / 0.22) 0 2px, transparent 2.5px),
+        radial-gradient(circle at calc(100% - 11px) 68%, rgb(0 0 0 / 0.22) 0 2px, transparent 2.5px),
+        radial-gradient(circle at calc(100% - 11px) 80%, rgb(0 0 0 / 0.22) 0 2px, transparent 2.5px),
+        radial-gradient(circle at calc(100% - 11px) 92%, rgb(0 0 0 / 0.22) 0 2px, transparent 2.5px),
+        linear-gradient(
+            90deg,
+            transparent calc(100% - 14px),
+            rgb(0 0 0 / 0.07) calc(100% - 13px),
+            transparent calc(100% - 11px)
+        ),
+        linear-gradient(160deg, rgb(255 255 255 / 0.3), transparent 55%);
+}
+
+/* Scraps: overlapping torn strips and a bit of tape, like a collage. */
+.bulletin-paper--scraps,
+.bulletin-paper--scraps-1 {
+    --paper-texture:
+        linear-gradient(
+            115deg,
+            transparent 0 20%,
+            rgb(255 255 255 / 0.42) 20% 43%,
+            rgb(0 0 0 / 0.045) 43% 44%,
+            transparent 44%
+        ),
+        linear-gradient(
+            64deg,
+            transparent 0 58%,
+            rgb(255 255 255 / 0.32) 58% 77%,
+            rgb(0 0 0 / 0.05) 77% 78%,
+            transparent 78%
+        ),
+        linear-gradient(
+            -48deg,
+            transparent 0 10%,
+            rgb(0 0 0 / 0.04) 10% 31%,
+            transparent 31%
+        ),
+        linear-gradient(
+            92deg,
+            transparent 0 42%,
+            rgb(255 255 255 / 0.3) 42% 57%,
+            transparent 57%
+        ),
+        linear-gradient(160deg, rgb(255 255 255 / 0.34), transparent 55%);
+}
+
+/* Scraps variants: horizontal collage bands, vertical strips, and angled tape
+   pieces, so two scrap-paper notes never share the same layout. */
+.bulletin-paper--scraps-2 {
+    --paper-texture:
+        linear-gradient(3deg, transparent 0 16%, rgb(255 255 255 / 0.43) 16% 37%, rgb(0 0 0 / 0.05) 37% 38%, transparent 38%),
+        linear-gradient(-3deg, transparent 0 55%, rgb(255 255 255 / 0.34) 55% 76%, rgb(0 0 0 / 0.04) 76% 77%, transparent 77%),
+        linear-gradient(90deg, transparent 0 61%, rgb(255 255 255 / 0.3) 61% 79%, rgb(0 0 0 / 0.05) 79% 80%, transparent 80%),
+        linear-gradient(160deg, rgb(255 255 255 / 0.32), transparent 55%);
+}
+
+.bulletin-paper--scraps-3 {
+    --paper-texture:
+        linear-gradient(88deg, transparent 0 14%, rgb(255 255 255 / 0.42) 14% 31%, rgb(0 0 0 / 0.045) 31% 32%, transparent 32%),
+        linear-gradient(94deg, transparent 0 46%, rgb(255 255 255 / 0.33) 46% 63%, rgb(0 0 0 / 0.05) 63% 64%, transparent 64%),
+        linear-gradient(84deg, transparent 0 74%, rgb(255 255 255 / 0.3) 74% 90%, rgb(0 0 0 / 0.04) 90% 91%, transparent 91%),
+        linear-gradient(-22deg, transparent 0 40%, rgb(255 255 255 / 0.26) 40% 46%, transparent 46%),
+        linear-gradient(160deg, rgb(255 255 255 / 0.32), transparent 55%);
+}
+
+.bulletin-paper--scraps-4 {
+    --paper-texture:
+        linear-gradient(52deg, transparent 0 18%, rgb(255 255 255 / 0.34) 18% 30%, rgb(0 0 0 / 0.05) 30% 31%, transparent 31%),
+        linear-gradient(-36deg, transparent 0 62%, rgb(255 255 255 / 0.3) 62% 74%, rgb(0 0 0 / 0.04) 74% 75%, transparent 75%),
+        linear-gradient(8deg, transparent 0 44%, rgb(0 0 0 / 0.045) 44% 66%, transparent 66%),
+        linear-gradient(160deg, rgb(255 255 255 / 0.33), transparent 55%);
+}
+
+/* Notebook: ruled page, red margin and punched binder holes. */
+.bulletin-paper--notebook {
+    --paper-texture:
+        radial-gradient(circle at 12px 14%, rgb(0 0 0 / 0.16) 0 3.5px, transparent 4px),
+        radial-gradient(circle at 12px 38%, rgb(0 0 0 / 0.16) 0 3.5px, transparent 4px),
+        radial-gradient(circle at 12px 62%, rgb(0 0 0 / 0.16) 0 3.5px, transparent 4px),
+        radial-gradient(circle at 12px 86%, rgb(0 0 0 / 0.16) 0 3.5px, transparent 4px),
+        linear-gradient(
+            90deg,
+            transparent 0 25px,
+            rgb(239 68 68 / 0.4) 25px 26px,
+            transparent 26px
+        ),
+        repeating-linear-gradient(
+            180deg,
+            transparent 0 22px,
+            rgb(59 130 246 / 0.2) 22px 23px
+        ),
+        linear-gradient(160deg, rgb(255 255 255 / 0.32), transparent 55%);
+}
+
+/* Torn edges: irregular fibres on all four sides, both left and right included.
+   The paper itself is clipped, so the shadow follows the torn silhouette. */
+.bulletin-paper--torn-edges {
+    --paper-texture:
+        linear-gradient(90deg, rgb(255 255 255 / 0.55) 0 1px, rgb(0 0 0 / 0.14) 1px 3px, transparent 3px),
+        linear-gradient(270deg, rgb(255 255 255 / 0.55) 0 1px, rgb(0 0 0 / 0.14) 1px 3px, transparent 3px),
+        linear-gradient(180deg, rgb(255 255 255 / 0.45) 0 1px, rgb(0 0 0 / 0.08) 1px 2px, transparent 2px),
+        linear-gradient(0deg, rgb(255 255 255 / 0.45) 0 1px, rgb(0 0 0 / 0.08) 1px 2px, transparent 2px),
+        linear-gradient(160deg, rgb(255 255 255 / 0.3), transparent 55%);
+}
+
+.bulletin-paper--torn-edges {
+    --edge-clip: polygon(
+        0 2px,
+        4% 0,
+        8% 3px,
+        13% 0,
+        18% 4px,
+        23% 1px,
+        28% 2px,
+        33% 0,
+        38% 3px,
+        43% 1px,
+        48% 2px,
+        53% 0,
+        58% 4px,
+        63% 0,
+        68% 2px,
+        73% 1px,
+        78% 3px,
+        83% 0,
+        88% 2px,
+        93% 1px,
+        98% 3px,
+        100% 0,
+        calc(100% - 1px) 5%,
+        calc(100% - 4px) 10%,
+        100% 15%,
+        calc(100% - 2px) 20%,
+        100% 25%,
+        calc(100% - 4px) 30%,
+        100% 35%,
+        calc(100% - 1px) 40%,
+        100% 45%,
+        calc(100% - 3px) 50%,
+        100% 55%,
+        calc(100% - 1px) 60%,
+        100% 65%,
+        calc(100% - 4px) 70%,
+        100% 75%,
+        calc(100% - 2px) 80%,
+        100% 85%,
+        calc(100% - 3px) 90%,
+        100% 95%,
+        calc(100% - 1px) 100%,
+        94% calc(100% - 2px),
+        89% 100%,
+        84% calc(100% - 4px),
+        79% 100%,
+        74% calc(100% - 1px),
+        69% calc(100% - 3px),
+        64% 100%,
+        59% calc(100% - 2px),
+        54% 100%,
+        49% calc(100% - 4px),
+        44% calc(100% - 1px),
+        39% 100%,
+        34% calc(100% - 3px),
+        29% 100%,
+        24% calc(100% - 2px),
+        19% 100%,
+        14% calc(100% - 4px),
+        9% 100%,
+        4% calc(100% - 1px),
+        0 calc(100% - 3px),
+        2px 94%,
+        0 89%,
+        3px 84%,
+        0 79%,
+        2px 74%,
+        0 69%,
+        4px 64%,
+        1px 59%,
+        2px 54%,
+        0 49%,
+        3px 44%,
+        0 39%,
+        2px 34%,
+        1px 29%,
+        4px 24%,
+        0 19%,
+        2px 14%,
+        0 9%,
+        3px 4%,
+        1px 0
+    );
+}
+
+/* Zigzag: a regular sawtooth around the whole sheet. Fixed pixel teeth keep the
+   edge looking the same on small notes and tall notes. */
+.bulletin-paper--zigzag {
+    --paper-texture:
+        linear-gradient(180deg, rgb(0 0 0 / 0.04), transparent 6%),
+        linear-gradient(0deg, rgb(0 0 0 / 0.04), transparent 6%),
+        linear-gradient(160deg, rgb(255 255 255 / 0.32), transparent 55%);
+}
+
+.bulletin-paper--zigzag {
+    --edge-clip: polygon(
+        0 0,
+        6.25% var(--zigzag-tooth, 5px),
+        12.5% 0,
+        18.75% var(--zigzag-tooth, 5px),
+        25% 0,
+        31.25% var(--zigzag-tooth, 5px),
+        37.5% 0,
+        43.75% var(--zigzag-tooth, 5px),
+        50% 0,
+        56.25% var(--zigzag-tooth, 5px),
+        62.5% 0,
+        68.75% var(--zigzag-tooth, 5px),
+        75% 0,
+        81.25% var(--zigzag-tooth, 5px),
+        87.5% 0,
+        93.75% var(--zigzag-tooth, 5px),
+        100% 0,
+        calc(100% - var(--zigzag-tooth, 5px)) 6.25%,
+        100% 12.5%,
+        calc(100% - var(--zigzag-tooth, 5px)) 18.75%,
+        100% 25%,
+        calc(100% - var(--zigzag-tooth, 5px)) 31.25%,
+        100% 37.5%,
+        calc(100% - var(--zigzag-tooth, 5px)) 43.75%,
+        100% 50%,
+        calc(100% - var(--zigzag-tooth, 5px)) 56.25%,
+        100% 62.5%,
+        calc(100% - var(--zigzag-tooth, 5px)) 68.75%,
+        100% 75%,
+        calc(100% - var(--zigzag-tooth, 5px)) 81.25%,
+        100% 87.5%,
+        calc(100% - var(--zigzag-tooth, 5px)) 93.75%,
+        100% 100%,
+        93.75% 100%,
+        87.5% calc(100% - var(--zigzag-tooth, 5px)),
+        81.25% 100%,
+        75% calc(100% - var(--zigzag-tooth, 5px)),
+        68.75% 100%,
+        62.5% calc(100% - var(--zigzag-tooth, 5px)),
+        56.25% 100%,
+        50% calc(100% - var(--zigzag-tooth, 5px)),
+        43.75% 100%,
+        37.5% calc(100% - var(--zigzag-tooth, 5px)),
+        31.25% 100%,
+        25% calc(100% - var(--zigzag-tooth, 5px)),
+        18.75% 100%,
+        12.5% calc(100% - var(--zigzag-tooth, 5px)),
+        6.25% 100%,
+        0 100%,
+        var(--zigzag-tooth, 5px) 93.75%,
+        0 87.5%,
+        var(--zigzag-tooth, 5px) 81.25%,
+        0 75%,
+        var(--zigzag-tooth, 5px) 68.75%,
+        0 62.5%,
+        var(--zigzag-tooth, 5px) 56.25%,
+        0 50%,
+        var(--zigzag-tooth, 5px) 43.75%,
+        0 37.5%,
+        var(--zigzag-tooth, 5px) 31.25%,
+        0 25%,
+        var(--zigzag-tooth, 5px) 18.75%,
+        0 12.5%,
+        var(--zigzag-tooth, 5px) 6.25%,
+        0 0
+    );
+}
+
+.bulletin-note.bulletin-paper--torn,
+.bulletin-note.bulletin-paper--torn-edges,
+.bulletin-note.bulletin-paper--zigzag,
+.bulletin-note.bulletin-paper--folded {
+    filter: drop-shadow(2px 6px 5px rgb(0 0 0 / 0.25));
+}
+
+.bulletin-note.bulletin-paper--torn-edges::before,
+.bulletin-note.bulletin-paper--torn-edges::after,
+.bulletin-note.bulletin-paper--zigzag::before,
+.bulletin-note.bulletin-paper--zigzag::after,
+.bulletin-note.bulletin-paper--folded::before,
+.bulletin-note.bulletin-paper--folded::after {
+    clip-path: var(--edge-clip);
+}
+
+.bulletin-note.bulletin-paper--torn-edges::before,
+.bulletin-note.bulletin-paper--zigzag::before,
+.bulletin-note.bulletin-paper--folded::before {
+    box-shadow: none;
+}
+
+/* --------------------------------------------------------------------------
+   Random wear: a torn edge or a dog-eared corner. Wear sits behind the note
+   content (negative z-index) so text, signatures and actions stay untouched.
+   -------------------------------------------------------------------------- */
+
+.bulletin-note__wear {
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.28));
+}
+
+.bulletin-wear--tear-top {
+    inset: 0 0 auto;
+    height: 12px;
+    border-radius: 3px 3px 0 0;
+    background: linear-gradient(
+        180deg,
+        rgb(255 255 255 / 0.62),
+        rgb(255 255 255 / 0.16) 55%,
+        rgb(0 0 0 / 0.12)
+    );
+    clip-path: polygon(
+        0 0,
+        100% 0,
+        100% 34%,
+        93% 100%,
+        86% 40%,
+        79% 96%,
+        72% 36%,
+        65% 92%,
+        58% 32%,
+        51% 100%,
+        44% 42%,
+        37% 95%,
+        30% 38%,
+        23% 88%,
+        16% 34%,
+        9% 92%,
+        2% 44%,
+        0 74%
+    );
+}
+
+.bulletin-wear--tear-bottom {
+    inset: auto 0 0;
+    height: 13px;
+    border-radius: 0 0 3px 3px;
+    background: linear-gradient(
+        0deg,
+        rgb(255 255 255 / 0.62),
+        rgb(255 255 255 / 0.16) 55%,
+        rgb(0 0 0 / 0.12)
+    );
+    clip-path: polygon(
+        0 100%,
+        100% 100%,
+        100% 62%,
+        93% 0,
+        86% 58%,
+        79% 4%,
+        72% 56%,
+        65% 0,
+        58% 62%,
+        51% 6%,
+        44% 58%,
+        37% 0,
+        30% 54%,
+        23% 5%,
+        16% 60%,
+        9% 0,
+        2% 56%,
+        0 26%
+    );
+}
+
+.bulletin-wear--tear-left {
+    inset: 0 auto 0 0;
+    width: 12px;
+    border-radius: 3px 0 0 3px;
+    background: linear-gradient(
+        90deg,
+        rgb(255 255 255 / 0.62),
+        rgb(255 255 255 / 0.16) 55%,
+        rgb(0 0 0 / 0.12)
+    );
+    clip-path: polygon(
+        0 0,
+        0 100%,
+        38% 100%,
+        100% 93%,
+        36% 85%,
+        98% 77%,
+        40% 69%,
+        100% 61%,
+        38% 53%,
+        96% 45%,
+        42% 37%,
+        100% 29%,
+        40% 21%,
+        97% 13%,
+        36% 5%,
+        70% 0
+    );
+}
+
+.bulletin-wear--tear-right {
+    inset: 0 0 0 auto;
+    width: 12px;
+    border-radius: 0 3px 3px 0;
+    background: linear-gradient(
+        270deg,
+        rgb(255 255 255 / 0.62),
+        rgb(255 255 255 / 0.16) 55%,
+        rgb(0 0 0 / 0.12)
+    );
+    clip-path: polygon(
+        100% 0,
+        100% 100%,
+        62% 100%,
+        0 93%,
+        64% 85%,
+        2% 77%,
+        60% 69%,
+        0 61%,
+        62% 53%,
+        4% 45%,
+        58% 37%,
+        0 29%,
+        60% 21%,
+        3% 13%,
+        64% 5%,
+        30% 0
+    );
+}
+
+.bulletin-wear--fold-tl,
+.bulletin-wear--fold-tr,
+.bulletin-wear--fold-br,
+.bulletin-wear--fold-bl {
+    width: 22px;
+    height: 22px;
+    filter: drop-shadow(1px 1px 2px rgb(0 0 0 / 0.32));
+}
+
+.bulletin-wear--fold-tl {
+    top: -1px;
+    left: -1px;
+    background: linear-gradient(135deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.35) 58%, rgb(0 0 0 / 0.26));
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.bulletin-wear--fold-tr {
+    top: -1px;
+    right: -1px;
+    background: linear-gradient(225deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.35) 58%, rgb(0 0 0 / 0.26));
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.bulletin-wear--fold-br {
+    right: -1px;
+    bottom: -1px;
+    background: linear-gradient(315deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.35) 58%, rgb(0 0 0 / 0.26));
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.bulletin-wear--fold-bl {
+    bottom: -1px;
+    left: -1px;
+    background: linear-gradient(45deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.35) 58%, rgb(0 0 0 / 0.26));
+    clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
+
+/* --------------------------------------------------------------------------
+   Note content
+   -------------------------------------------------------------------------- */
+
+.bulletin-note__content {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.35rem;
+    overflow: hidden;
+}
+
+.bulletin-note__text {
+    display: -webkit-box;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: var(--line-clamp, 4);
+    white-space: pre-wrap;
+    font-size: var(--note-fs, 16px);
+    line-height: 1.4;
+    cursor: zoom-in;
+}
+
+.bulletin-note__media {
+    position: relative;
+    display: flex;
+    min-height: 0;
+    flex: 1 1 45%;
+    cursor: zoom-in;
+}
+
+.bulletin-note__media .bulletin-note__image {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    flex: 1 1 auto;
+    border-radius: 2px;
+    object-fit: cover;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+.bulletin-note__media-badge {
+    position: absolute;
+    right: 0.35rem;
+    bottom: 0.35rem;
+    display: grid;
+    width: 1.4rem;
+    height: 1.4rem;
+    place-items: center;
+    border-radius: 999px;
+    background: rgb(0 0 0 / 0.62);
+    color: #fff;
+    font-size: 0.6rem;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.bulletin-note__audio {
+    width: 100%;
+    height: 2.25rem;
+    flex: 0 0 auto;
+}
+
+.bulletin-note__link {
+    flex-shrink: 0;
+    overflow: hidden;
+    font-size: max(12px, calc(var(--note-fs, 16px) * 0.78));
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bulletin-note__link:hover {
+    text-decoration-thickness: 2px;
+}
+
+.bulletin-note__footer {
+    display: grid;
+    flex-shrink: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+    font-size: max(12px, calc(var(--note-fs, 16px) * 0.72));
+    line-height: 1.25;
+}
+
+.bulletin-note__footer > * {
+    min-width: 0;
+}
+
+.bulletin-note__footer .btn {
+    width: 100%;
+    min-height: 1.95rem;
+    height: 1.95rem;
+}
+
+.bulletin-note__action-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+    flex-shrink: 0;
+}
+
+.bulletin-note__signature {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    margin-top: auto;
+    border-top: 1px solid color-mix(in srgb, var(--paper-ink, #2b2412) 24%, transparent);
+    padding-top: 0.35rem;
+    font-size: max(11px, calc(var(--note-fs, 16px) * 0.7));
+    line-height: 1.3;
+}
+
+.bulletin-note__name {
+    overflow: hidden;
+    font-size: max(12px, calc(var(--note-fs, 16px) * 0.78));
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bulletin-note__signature time {
+    overflow-wrap: break-word;
+    opacity: 0.68;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+}
+
+/* --------------------------------------------------------------------------
+   Composer and empty board
+   -------------------------------------------------------------------------- */
+
+/* The in-board title is itself a pinned scrap: perforated edge, a fold and a
+   slight tilt so it belongs with the notes. It carries no z-index on purpose,
+   so reaction and action menus always paint above it. */
+.bulletin-board-header {
+    --paper: #fef9c3;
+    --paper-ink: #37341c;
+    --pin-x: 26%;
+    transform: rotate(-0.9deg);
+}
+
+.bulletin-board-header__fold {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 1.15rem;
+    height: 1.15rem;
+    border-bottom-right-radius: 3px;
+    background: linear-gradient(
+        45deg,
+        transparent 46%,
+        rgb(0 0 0 / 0.12) 48%,
+        rgb(255 255 255 / 0.55) 54%,
+        rgb(0 0 0 / 0.08)
+    );
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    pointer-events: none;
+}
+
+.bulletin-composer-slot {
+    position: absolute;
+    z-index: 11;
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.bulletin-strip {
+    /* Keep the chip overflow inside this scroll box. Without containment the
+       strips leak into the composer's scroll width, so focusing or scrolling a
+       chip into view can shift the whole form sideways. */
+    contain: paint;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--paper-ink, #2b2412) 32%, transparent) transparent;
+}
+
+.bulletin-strip::-webkit-scrollbar {
+    height: 5px;
+}
+
+.bulletin-strip::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.bulletin-strip::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--paper-ink, #2b2412) 32%, transparent);
+}
+
+.bulletin-composer-shell {
+    position: relative;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.bulletin-composer {
+    transform: rotate(-0.6deg);
+    animation: bulletin-composer-in 520ms cubic-bezier(0.2, 0.8, 0.3, 1) 140ms backwards;
+}
+
+.bulletin-composer-form {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--paper-ink, #2b2412) 28%, transparent) transparent;
+}
+
+.bulletin-composer-form::-webkit-scrollbar {
+    width: 8px;
+}
+
+.bulletin-composer-form::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.bulletin-composer-form::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--paper-ink, #2b2412) 28%, transparent);
+}
+
+/* A rainbow ring marks the native colour input as a custom colour picker, so it
+   does not read as just another paper swatch. */
+.bulletin-color-picker {
+    display: inline-grid;
+    place-items: center;
+    padding: 2px;
+    border-radius: 0.6rem;
+    background: conic-gradient(
+        from 210deg,
+        #ef4444,
+        #f97316,
+        #facc15,
+        #22c55e,
+        #06b6d4,
+        #3b82f6,
+        #a855f7,
+        #ec4899,
+        #ef4444
+    );
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+}
+
+.bulletin-color-picker:focus-within {
+    outline: 2px solid var(--paper-ink, #2b2412);
+    outline-offset: 2px;
+}
+
+.bulletin-color-input {
+    width: 100%;
+    height: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 0;
+    border: 0;
+    border-radius: 0.4rem;
+    background: transparent;
+    cursor: pointer;
+}
+
+.bulletin-color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.bulletin-color-input::-webkit-color-swatch {
+    border: 0;
+    border-radius: 0.4rem;
+}
+
+.bulletin-color-input::-moz-color-swatch {
+    border: 0;
+    border-radius: 0.4rem;
+}
+
+/* Tiny swatches make the paper designs recognisable at a glance. They inherit
+   --paper from the composer, so each swatch previews the chosen colour too.
+   The paper is painted on ::before so the silhouette clip only affects the
+   sheet, never the chip around it. */
+.bulletin-texture-swatch {
+    --fold-size: 6px;
+    --zigzag-tooth: 2.5px;
+    position: relative;
+    width: 1.15rem;
+    height: 1.3rem;
+    border-radius: 2px;
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+}
+
+.bulletin-texture-swatch::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 2px;
+    background-color: var(--paper, #fef9c3);
+    background-image: var(
+        --paper-texture,
+        linear-gradient(160deg, rgb(255 255 255 / 0.35), transparent 55%)
+    );
+    box-shadow:
+        inset 0 0 0 1px rgb(0 0 0 / 0.22),
+        0 1px 1px rgb(0 0 0 / 0.18);
+    clip-path: var(--edge-clip, none);
+}
+
+@keyframes bulletin-composer-in {
+    from {
+        opacity: 0;
+        transform: translateY(-14px) rotate(-2deg);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) rotate(-0.6deg);
+    }
+}
+
+.bulletin-pin-button {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    transform: rotate(-1deg);
+    cursor: pointer;
+    font-weight: 700;
+    transition: transform 160ms ease;
+}
+
+.bulletin-pin-button:hover {
+    transform: rotate(0deg) scale(1.02);
+}
+
+.bulletin-pin-button:focus-visible {
+    outline: 3px solid #2b2412;
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bulletin-note,
+    .bulletin-note--new,
+    .bulletin-note--new .bulletin-pin,
+    .bulletin-composer,
+    .bulletin-pin-button {
+        animation: none;
+        transition: none;
+    }
+}
+
+body.bulletin-dialog-open {
+    overflow: hidden;
+}

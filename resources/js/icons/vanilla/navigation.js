@@ -13,4 +13,5 @@ export {
     SearchX,
     Filter,
     Ellipsis,
+    Scroll,
 } from 'lucide';
