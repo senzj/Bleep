@@ -17,10 +17,21 @@ use App\Services\MediaUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 
 class BulletinController extends Controller
 {
+    /**
+     * Anonymous visitors may shuffle their display name a few times a day, with
+     * a short cooldown so the board cannot be renamed in a burst.
+     */
+    private const NAME_CHANGES_PER_DAY = 3;
+
+    private const NAME_CHANGES_PER_IP_PER_DAY = 30;
+
+    private const NAME_CHANGE_COOLDOWN = 300;
+
     public function __construct(
         private BulletinVisitor $visitor,
         private BulletinBoardService $board,
@@ -42,6 +53,8 @@ class BulletinController extends Controller
             'initialPosts' => BulletinPostResource::collection($result['posts'])->resolve(),
             'nextCursor' => $result['next_cursor'],
             'hasMore' => $result['has_more'],
+            'nameChangesLeft' => $this->remainingNameChanges($visitorHash),
+            'nameCooldown' => RateLimiter::availableIn($this->nameCooldownKey($visitorHash)),
         ]);
     }
 
@@ -105,6 +118,61 @@ class BulletinController extends Controller
         return redirect()
             ->route('bulletin.index')
             ->with('success', 'Your note is on the board.');
+    }
+
+    public function renameIdentity(Request $request): JsonResponse
+    {
+        $visitorHash = $this->visitor->hash($request);
+        $cooldownKey = $this->nameCooldownKey($visitorHash);
+        $dailyKey = $this->nameDailyKey($visitorHash);
+        $ipKey = $this->nameIpKey($this->visitor->ipHash($request));
+
+        if (RateLimiter::tooManyAttempts($cooldownKey, 1)) {
+            $seconds = RateLimiter::availableIn($cooldownKey);
+
+            return $this->tooManyNameChanges(
+                'You can change your name again in '.$this->humanizeSeconds($seconds).'.',
+                $seconds,
+                $this->remainingNameChanges($visitorHash),
+            );
+        }
+
+        if (RateLimiter::tooManyAttempts($dailyKey, self::NAME_CHANGES_PER_DAY)) {
+            $seconds = RateLimiter::availableIn($dailyKey);
+
+            return $this->tooManyNameChanges(
+                'You can change your name '.self::NAME_CHANGES_PER_DAY.' times a day. Try again in '
+                    .$this->humanizeSeconds($seconds).'.',
+                $seconds,
+                0,
+            );
+        }
+
+        if (RateLimiter::tooManyAttempts($ipKey, self::NAME_CHANGES_PER_IP_PER_DAY)) {
+            $seconds = RateLimiter::availableIn($ipKey);
+
+            return $this->tooManyNameChanges(
+                'Too many name changes from this network. Try again in '
+                    .$this->humanizeSeconds($seconds).'.',
+                $seconds,
+                $this->remainingNameChanges($visitorHash),
+            );
+        }
+
+        RateLimiter::hit($cooldownKey, self::NAME_CHANGE_COOLDOWN);
+        RateLimiter::hit($dailyKey, 86400);
+        RateLimiter::hit($ipKey, 86400);
+
+        $identity = $this->visitor->rotateIdentity($request);
+
+        return response()->json([
+            'data' => [
+                'identity' => $identity,
+                'changes_left' => $this->remainingNameChanges($visitorHash),
+                'retry_after' => self::NAME_CHANGE_COOLDOWN,
+            ],
+            'message' => 'Your name is now '.$identity.'. New notes will use it.',
+        ]);
     }
 
     public function update(UpdateBulletinPostRequest $request, string $post): JsonResponse
@@ -227,5 +295,57 @@ class BulletinController extends Controller
                 'already_reported' => ! $report->wasRecentlyCreated,
             ],
         ], $report->wasRecentlyCreated ? 201 : 200);
+    }
+
+    private function nameCooldownKey(string $visitorHash): string
+    {
+        return 'bulletin-name-cooldown:'.$visitorHash;
+    }
+
+    private function nameDailyKey(string $visitorHash): string
+    {
+        return 'bulletin-name-changes:'.$visitorHash;
+    }
+
+    private function nameIpKey(string $ipHash): string
+    {
+        return 'bulletin-name-changes-ip:'.$ipHash;
+    }
+
+    private function remainingNameChanges(string $visitorHash): int
+    {
+        return max(
+            0,
+            self::NAME_CHANGES_PER_DAY - RateLimiter::attempts($this->nameDailyKey($visitorHash)),
+        );
+    }
+
+    private function tooManyNameChanges(string $message, int $retryAfter, int $changesLeft): JsonResponse
+    {
+        return response()->json([
+            'message' => $message,
+            'retry_after' => $retryAfter,
+            'changes_left' => $changesLeft,
+        ], 429, ['Retry-After' => (string) $retryAfter]);
+    }
+
+    /**
+     * Short, human wording for a cooldown: "45 seconds", "5 minutes", "2 hours".
+     */
+    private function humanizeSeconds(int $seconds): string
+    {
+        if ($seconds < 60) {
+            return $seconds.' second'.($seconds === 1 ? '' : 's');
+        }
+
+        if ($seconds < 3600) {
+            $minutes = (int) ceil($seconds / 60);
+
+            return $minutes.' minute'.($minutes === 1 ? '' : 's');
+        }
+
+        $hours = (int) ceil($seconds / 3600);
+
+        return $hours.' hour'.($hours === 1 ? '' : 's');
     }
 }

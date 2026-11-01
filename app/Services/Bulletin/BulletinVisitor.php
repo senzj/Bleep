@@ -29,6 +29,28 @@ class BulletinVisitor
     }
 
     /**
+     * Replace the display name used for notes pinned from now on. Existing
+     * notes keep the name they were pinned with, and the visitor hash is
+     * unaffected, so ownership never changes.
+     */
+    public function rotateIdentity(Request $request): string
+    {
+        $session = $request->session();
+        $previous = $session->get(self::SESSION_KEY);
+        $identity = AnonymousName::randomBulletinIdentity();
+
+        // A "shuffle" should visibly change the name, so avoid handing the
+        // visitor the same one back.
+        for ($attempt = 0; $identity === $previous && $attempt < 5; $attempt++) {
+            $identity = AnonymousName::randomBulletinIdentity();
+        }
+
+        $session->put(self::SESSION_KEY, $identity);
+
+        return $identity;
+    }
+
+    /**
      * Stable per-session fingerprint used for reactions and reports.
      */
     public function hash(Request $request): string

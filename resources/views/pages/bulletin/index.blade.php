@@ -13,6 +13,9 @@
         data-home-url="{{ route('home') }}"
         data-endpoint-posts="{{ route('bulletin.posts.index') }}"
         data-endpoint-store="{{ route('bulletin.posts.store') }}"
+        data-endpoint-identity="{{ route('bulletin.identity.store') }}"
+        data-name-changes-left="{{ $nameChangesLeft }}"
+        data-name-cooldown="{{ $nameCooldown }}"
     ></div>
 
     <noscript>

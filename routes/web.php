@@ -75,6 +75,9 @@ Route::prefix('bulletin')->name('bulletin.')->group(function () {
         ->middleware('throttle:bulletin-posts')
         ->name('posts.store');
 
+    Route::post('/identity', [BulletinController::class, 'renameIdentity'])
+        ->name('identity.store');
+
     Route::patch('/posts/{post}', [BulletinController::class, 'update'])
         ->middleware('throttle:bulletin-edits')
         ->name('posts.update');

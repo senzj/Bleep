@@ -10,6 +10,7 @@ import {
     BOARD_PADDING,
     DESKTOP_MAX_ROWS,
     MIN_NOTE_CELL,
+    MOBILE_BOARD_GAP,
     NOTE_GAP,
     boardMetrics,
     composerRect,
@@ -22,6 +23,8 @@ const props = defineProps({
     nextCursor: { type: String, default: null },
     hasMore: { type: Boolean, default: false },
     identity: { type: String, default: '' },
+    nameChangesLeft: { type: Number, default: 0 },
+    nameCooldown: { type: Number, default: 0 },
     homeUrl: { type: String, default: '/' },
     endpoints: {
         type: Object,
@@ -30,6 +33,8 @@ const props = defineProps({
 });
 
 const notes = ref([...props.initialPosts]);
+const identityName = ref(props.identity);
+const nameState = ref({ left: props.nameChangesLeft, cooldown: props.nameCooldown });
 const selectedNoteId = ref(null);
 const selectedNote = computed(
     () => notes.value.find((note) => note.id === selectedNoteId.value) ?? null
@@ -130,6 +135,12 @@ const layout = computed(() =>
 const gridHeight = computed(() => rows.value * pitch.value - NOTE_GAP);
 
 const gridTop = computed(() => {
+    // Phones keep the pin button right under the header instead of centring the
+    // two rows, which used to leave a large empty band above the composer.
+    if (!isDesktop.value) {
+        return chromeHeight.value + MOBILE_BOARD_GAP;
+    }
+
     const leftover = Math.max(0, availableHeight.value - gridHeight.value);
 
     return chromeHeight.value + boardPadding.value + Math.round(leftover / 2);
@@ -495,6 +506,20 @@ const onUpdated = (note) => {
     showToast('Note updated.');
 };
 
+const onIdentityChanged = (payload) => {
+    if (!payload?.identity) {
+        return;
+    }
+
+    identityName.value = payload.identity;
+    nameState.value = {
+        left: Number(payload.changes_left ?? 0),
+        cooldown: Number(payload.retry_after ?? 0),
+    };
+
+    showToast(`You are now ${payload.identity}. New notes will use this name.`);
+};
+
 const onDeleted = (noteId) => {
     notes.value = notes.value.filter((item) => item.id !== noteId);
     deletingNoteId.value = null;
@@ -659,9 +684,13 @@ watch(layout, () => {
                     <div class="bulletin-composer-slot" :style="composerStyle">
                         <NoteComposer
                             v-if="isDesktop"
-                            :identity="identity"
+                            :identity="identityName"
+                            :identity-url="endpoints.identity"
+                            :name-changes-left="nameState.left"
+                            :name-cooldown="nameState.cooldown"
                             :store-url="endpoints.store"
                             @created="onCreated"
+                            @identity-changed="onIdentityChanged"
                         />
 
                         <button
@@ -771,9 +800,13 @@ watch(layout, () => {
             >
                 <NoteComposer
                     variant="modal"
-                    :identity="identity"
+                    :identity="identityName"
+                    :identity-url="endpoints.identity"
+                    :name-changes-left="nameState.left"
+                    :name-cooldown="nameState.cooldown"
                     :store-url="endpoints.store"
                     @created="onCreated"
+                    @identity-changed="onIdentityChanged"
                     @cancel="showMobileComposer = false"
                 />
             </div>

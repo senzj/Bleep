@@ -1,5 +1,6 @@
 export const NOTE_GAP = 14;
 export const BOARD_PADDING = 20;
+export const MOBILE_BOARD_GAP = 4;
 export const MAX_NOTE_WIDTH = 2;
 export const MAX_NOTE_HEIGHT = 4;
 export const DESKTOP_MAX_ROWS = 4;

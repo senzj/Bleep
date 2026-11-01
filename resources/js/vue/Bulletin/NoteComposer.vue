@@ -1,14 +1,18 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { Shuffle } from 'lucide-vue-next';
 import { PAPER_COLORS, PAPER_TEXTURES, inkForColor } from './boardLayout';
 
 const props = defineProps({
     identity: { type: String, default: '' },
+    identityUrl: { type: String, default: '' },
+    nameChangesLeft: { type: Number, default: 0 },
+    nameCooldown: { type: Number, default: 0 },
     storeUrl: { type: String, required: true },
     variant: { type: String, default: 'board' },
 });
 
-const emit = defineEmits(['created', 'cancel']);
+const emit = defineEmits(['created', 'cancel', 'identity-changed']);
 
 const SIZE_VALUES = ['1x1', '1x2', '1x3', '1x4', '2x1', '2x2', '2x3', '2x4'];
 
@@ -72,6 +76,108 @@ const errors = ref({});
 const formError = ref('');
 const mediaError = ref('');
 const justPinned = ref(false);
+const changesLeft = ref(props.nameChangesLeft);
+const cooldownSeconds = ref(props.nameCooldown);
+const renaming = ref(false);
+const renameError = ref('');
+let cooldownTimer = 0;
+
+const startCooldownTimer = () => {
+    window.clearInterval(cooldownTimer);
+    cooldownTimer = 0;
+
+    if (cooldownSeconds.value <= 0) {
+        return;
+    }
+
+    cooldownTimer = window.setInterval(() => {
+        cooldownSeconds.value = Math.max(0, cooldownSeconds.value - 1);
+
+        if (cooldownSeconds.value === 0) {
+            window.clearInterval(cooldownTimer);
+            cooldownTimer = 0;
+        }
+    }, 1000);
+};
+
+const formatCooldown = (total) => {
+    if (total >= 3600) {
+        return `${Math.floor(total / 3600)}h ${Math.ceil((total % 3600) / 60)}m`;
+    }
+
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+};
+
+const renameHint = computed(() => {
+    if (cooldownSeconds.value > 0) {
+        return `Next change in ${formatCooldown(cooldownSeconds.value)}`;
+    }
+
+    if (changesLeft.value <= 0) {
+        return 'Daily name change limit reached';
+    }
+
+    return `${changesLeft.value} name change${changesLeft.value === 1 ? '' : 's'} left today`;
+});
+
+const canRename = computed(
+    () =>
+        Boolean(props.identityUrl) &&
+        !renaming.value &&
+        cooldownSeconds.value <= 0 &&
+        changesLeft.value > 0
+);
+
+/**
+ * Shuffle the name used by new notes. Existing notes keep the name they were
+ * pinned with, so renaming never quietly rewrites the board's history.
+ */
+async function renameIdentity() {
+    if (!canRename.value) {
+        return;
+    }
+
+    renaming.value = true;
+    renameError.value = '';
+
+    try {
+        const response = await fetch(props.identityUrl, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (response.status === 429) {
+            renameError.value = payload.message ?? 'You cannot change your name yet.';
+            cooldownSeconds.value = Number(payload.retry_after) || 0;
+            changesLeft.value = Number(payload.changes_left ?? changesLeft.value);
+            startCooldownTimer();
+
+            return;
+        }
+
+        if (!response.ok || !payload?.data?.identity) {
+            renameError.value = 'Your name could not be changed. Please try again.';
+
+            return;
+        }
+
+        changesLeft.value = Number(payload.data.changes_left ?? changesLeft.value);
+        cooldownSeconds.value = Number(payload.data.retry_after) || 0;
+        startCooldownTimer();
+        emit('identity-changed', payload.data);
+    } catch {
+        renameError.value = 'Your name could not be changed. Check your connection and try again.';
+    } finally {
+        renaming.value = false;
+    }
+}
 
 const selectedSize = computed(
     () => SIZES.find((option) => option.value === size.value) ?? SIZES[0]
@@ -270,7 +376,25 @@ watch(formError, (message) => {
     });
 });
 
-onBeforeUnmount(releasePreview);
+/**
+ * The board owns the name state so a cooldown survives closing and reopening
+ * the mobile composer.
+ */
+watch(
+    () => [props.nameChangesLeft, props.nameCooldown],
+    ([left, seconds]) => {
+        changesLeft.value = Number(left) || 0;
+        cooldownSeconds.value = Number(seconds) || 0;
+        startCooldownTimer();
+    }
+);
+
+onMounted(startCooldownTimer);
+
+onBeforeUnmount(() => {
+    window.clearInterval(cooldownTimer);
+    releasePreview();
+});
 </script>
 
 <template>
@@ -309,11 +433,41 @@ onBeforeUnmount(releasePreview);
                 <div class="flex min-w-0 shrink items-start justify-end gap-2">
                     <div class="min-w-0 text-right">
                         <p class="text-xs leading-tight opacity-70">Pinning as</p>
+                        <div class="flex min-w-0 items-center justify-end gap-1">
+                            <p
+                                class="max-w-[9rem] truncate font-mono text-xs font-semibold leading-snug"
+                                :title="identity"
+                            >
+                                {{ identity }}
+                            </p>
+
+                            <button
+                                type="button"
+                                class="btn btn-ghost btn-xs h-5 min-h-0 shrink-0 gap-1 px-1 text-[10px] normal-case"
+                                :disabled="!canRename"
+                                :title="renameHint"
+                                :aria-label="`Change your anonymous name. ${renameHint}`"
+                                @click="renameIdentity"
+                            >
+                                <span
+                                    v-if="renaming"
+                                    class="loading loading-spinner loading-xs"
+                                ></span>
+                                <Shuffle v-else :size="12" aria-hidden="true" />
+                                <span class="hidden sm:inline">Shuffle</span>
+                            </button>
+                        </div>
+
+                        <p class="mt-0.5 text-[10px] leading-tight opacity-60">
+                            {{ renameHint }}
+                        </p>
+
                         <p
-                            class="max-w-[10rem] truncate font-mono text-xs font-semibold leading-snug"
-                            :title="identity"
+                            v-if="renameError"
+                            class="mt-0.5 text-[10px] font-semibold leading-tight text-error"
+                            role="alert"
                         >
-                            {{ identity }}
+                            {{ renameError }}
                         </p>
                     </div>
 

@@ -22,6 +22,9 @@ if (root) {
         endpoints: {
             posts: root.dataset.endpointPosts,
             store: root.dataset.endpointStore,
+            identity: root.dataset.endpointIdentity,
         },
+        nameChangesLeft: Number(root.dataset.nameChangesLeft || 0),
+        nameCooldown: Number(root.dataset.nameCooldown || 0),
     }).mount(root);
 }
