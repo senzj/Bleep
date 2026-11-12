@@ -1,9 +1,5 @@
 @once
     @push('scripts')
-        <script>
-            // Pass backend config to frontend (keep anonymity feature hidden if disabled)
-            window.isAnonymousEnabled = {{ env('ANONYMITY', true) ? 'true' : 'false' }};
-        </script>
         @vite([
             'resources/js/bleep/users/profile-lazyload.js',
             'resources/js/bleep/users/profile.js',
@@ -22,7 +18,7 @@
 <x-layout>
     <x-slot:title>Profile | {{ "@" . $user->username }}</x-slot:title>
 
-    <div class="container mx-auto px-4 max-w-4xl">
+    <div class="max-w-4xl mx-auto px-1 sm:px-4">
 
         {{-- Profile Header --}}
         <div class="bg-base-100 rounded-lg shadow-lg p-6 mb-4">
@@ -84,11 +80,18 @@
 
                         {{-- Edit/Follow/Message Button --}}
                         @if ($isOwnProfile)
-                            <a href="{{ route('settings') }}" class="btn btn-sm btn-outline gap-2 rounded-lg">
-                                <i data-lucide="settings" class="w-4 h-4"></i>
-                                Edit Profile
-                            </a>
-                        @else
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('profile.analytics', ['username' => $user->username]) }}"
+                                   class="btn btn-sm btn-outline gap-2 rounded-lg">
+                                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                                    Analytics
+                                </a>
+                                <a href="{{ route('settings') }}" class="btn btn-sm btn-outline gap-2 rounded-lg">
+                                    <i data-lucide="settings" class="w-4 h-4"></i>
+                                    Edit Profile
+                                </a>
+                            </div>
+                        @elseif (Auth::check())
                             <div class="gap-2 flex items-center">
                                 {{-- Blocked Button --}}
                                 @if ($isBlockedByCurrentUser)
@@ -104,20 +107,34 @@
                                         </button>
                                     </form>
                                 @elseif (!$isBlockedByUser)
-                                    {{-- Block User Button --}}
-                                    <form method="POST"
-                                        action="{{ route('blocked.users.block', ['user' => $user->id]) }}"
-                                        data-block-confirm="block"
-                                        data-username="{{ '@' . $user->username }}">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline gap-2 rounded-lg btn-error hover:btn-error-focus">
-                                            <i data-lucide="ban" class="w-4 h-4"></i>
-                                            Block User
-                                        </button>
-                                    </form>
-
                                     {{-- Follow/Unfollow + message Button --}}
                                     <x-button.follow :user="$user" :showMessage="$canViewContent" />
+
+                                    {{-- Collapsed account actions --}}
+                                    <div class="dropdown dropdown-end">
+                                        <button type="button" tabindex="0"
+                                            class="btn btn-sm btn-outline btn-circle rounded-lg"
+                                            aria-label="More account actions"
+                                            title="More actions">
+                                            <i data-lucide="more-vertical" class="w-4 h-4"></i>
+                                        </button>
+
+                                        <ul tabindex="0" class="dropdown-content z-10 mt-2 w-48 space-y-1 rounded-xl border border-base-200 bg-base-100 p-2 shadow-lg">
+                                            <li>
+                                                <form method="POST"
+                                                    action="{{ route('blocked.users.block', ['user' => $user->id]) }}"
+                                                    data-block-confirm="block"
+                                                    data-username="{{ '@' . $user->username }}">
+                                                    @csrf
+                                                    <button type="submit"
+                                                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-error transition hover:bg-error/10">
+                                                        <i data-lucide="ban" class="w-4 h-4"></i>
+                                                        <span>Block user</span>
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 @else
                                     <a href="{{ route('blocked.users') }}" class="btn btn-sm btn-outline gap-2 rounded-lg">
                                         <i data-lucide="ban" class="w-4 h-4"></i>
@@ -125,6 +142,12 @@
                                     </a>
                                 @endif
                             </div>
+                        @else
+                            {{-- Guests: no account actions, just a clear sign-in path --}}
+                            <a href="{{ route('login') }}" class="btn btn-sm btn-primary gap-2 rounded-lg">
+                                <i data-lucide="log-in" class="w-4 h-4"></i>
+                                Sign in to follow
+                            </a>
                         @endif
                     </div>
 
@@ -137,14 +160,25 @@
                                     <div class="text-xl font-bold">{{ $bleeps->total() }}</div>
                                     <div class="text-xs text-base-content/60">Bleeps</div>
                                 </div>
-                                <button type="button" class="text-center cursor-pointer hover:text-primary bg-transparent p-0 border-0" data-relationship-trigger="followers" data-username="{{ $user->username }}" data-display-name="{{ $user->dname ?? $user->username }}">
-                                    <div class="text-xl font-bold">{{ $followersCount }}</div>
-                                    <div class="text-xs text-base-content/60">Followers</div>
-                                </button>
-                                <button type="button" class="text-center cursor-pointer hover:text-primary bg-transparent p-0 border-0" data-relationship-trigger="following" data-username="{{ $user->username }}" data-display-name="{{ $user->dname ?? $user->username }}">
-                                    <div class="text-xl font-bold">{{ $followingCount }}</div>
-                                    <div class="text-xs text-base-content/60">Following</div>
-                                </button>
+                                @if ($canViewFollowLists)
+                                    <button type="button" class="text-center cursor-pointer hover:text-primary bg-transparent p-0 border-0" data-relationship-trigger="followers" data-username="{{ $user->username }}" data-display-name="{{ $user->dname ?? $user->username }}">
+                                        <div class="text-xl font-bold">{{ $followersCount }}</div>
+                                        <div class="text-xs text-base-content/60">Followers</div>
+                                    </button>
+                                    <button type="button" class="text-center cursor-pointer hover:text-primary bg-transparent p-0 border-0" data-relationship-trigger="following" data-username="{{ $user->username }}" data-display-name="{{ $user->dname ?? $user->username }}">
+                                        <div class="text-xl font-bold">{{ $followingCount }}</div>
+                                        <div class="text-xs text-base-content/60">Following</div>
+                                    </button>
+                                @else
+                                    <div class="text-center" title="This account keeps its follower lists private">
+                                        <div class="text-xl font-bold text-base-content/50">—</div>
+                                        <div class="text-xs text-base-content/60">Followers</div>
+                                    </div>
+                                    <div class="text-center" title="This account keeps its follower lists private">
+                                        <div class="text-xl font-bold text-base-content/50">—</div>
+                                        <div class="text-xs text-base-content/60">Following</div>
+                                    </div>
+                                @endif
                             </div>
 
                             {{-- Right: Account info --}}

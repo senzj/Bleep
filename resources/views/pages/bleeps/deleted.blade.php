@@ -2,10 +2,9 @@
     <x-slot:title>Bleep Deleted</x-slot:title>
 
     <div class="max-w-4xl mx-auto my-2">
-        <a href="/" class="text-md link link-ghost mb-4 inline-block">
-            <i data-lucide="arrow-left" class="w-5 h-5 inline-block"></i>
-            Back
-        </a>
+        <div class="mb-4">
+            <x-ui.back-button fallback="{{ route('home') }}" />
+        </div>
 
         <div class="bg-base-100/70 rounded-lg shadow-md p-12 text-center">
             <div class="flex flex-col items-center justify-center space-y-4">

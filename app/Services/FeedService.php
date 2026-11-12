@@ -44,7 +44,7 @@ class FeedService
             ->limit(500)
             ->get();
 
-        $sorted = $this->applyOrdering($bleeps, $preferences, $user, $followedIds, $page, $tab);
+        $sorted = $this->applyOrdering($bleeps, $preferences, $user, $followedIds, $friendIds, $page, $tab);
 
         $total = $sorted->count();
         $offset = max(0, ($page - 1) * $perPage);
@@ -181,7 +181,7 @@ class FeedService
         });
     }
 
-    protected function applyOrdering(Collection $bleeps, ?object $preferences, ?User $user, array $followedIds, int $page, string $tab): Collection
+    protected function applyOrdering(Collection $bleeps, ?object $preferences, ?User $user, array $followedIds, array $friendIds, int $page, string $tab): Collection
     {
         if ($bleeps->isEmpty()) {
             return collect();
@@ -192,6 +192,8 @@ class FeedService
 
         $sortMode = $preferences?->default_feed_sort ?? 'newest';
         $followedLookup = array_flip($followedIds);
+        $friendLookup = array_flip($friendIds);
+        $recommend = $tab === 'for-you' && $sortMode === 'newest';
 
         $buckets = $bleeps->groupBy(function ($bleep) use ($timezone) {
             return $bleep->created_at->timezone($timezone)->toDateString();
@@ -207,7 +209,16 @@ class FeedService
         foreach ($dayKeys as $day) {
             $bucket = $buckets->get($day, collect());
 
-            if ($sortMode === 'popular') {
+            if ($recommend) {
+                // For You scores every post on recency, real engagement, views,
+                // followed authors and media presence, then breaks up author runs
+                // so one person cannot dominate the feed.
+                $sortedBucket = $bucket
+                    ->sortByDesc(fn ($bleep) => $this->recommendationScore($bleep, $followedLookup, $friendLookup))
+                    ->values();
+
+                $sortedBucket = $this->diversifyByAuthor($sortedBucket);
+            } elseif ($sortMode === 'popular') {
                 $sortedBucket = $bucket->sort(function ($a, $b) {
                     if ($a->likes_count === $b->likes_count) {
                         return $b->created_at <=> $a->created_at;
@@ -230,12 +241,93 @@ class FeedService
             }
 
             $seed = ($user?->id ?? 'guest').':'.$day.':'.$page.':'.$tab;
-            $shuffled = $this->shuffleLightly($sortedBucket, $seed, 5);
+            $shuffled = $recommend
+                ? $sortedBucket
+                : $this->shuffleLightly($sortedBucket, $seed, 5);
 
             $ordered = $ordered->concat($shuffled);
         }
 
         return $ordered->values();
+    }
+
+    /**
+     * Dynamic "For You" score.
+     *
+     * Recency has the largest weight so the feed still feels live, while real
+     * engagement and view counts lift posts that are actually resonating.
+     * Following/friend signals add a personal layer, and media-rich posts get a
+     * tiny nudge without turning the feed into a media-only timeline.
+     *
+     * @param  array<int, int>  $followedLookup
+     * @param  array<int, int>  $friendLookup
+     */
+    protected function recommendationScore($bleep, array $followedLookup, array $friendLookup): float
+    {
+        $ageHours = max(0.0, (float) $bleep->created_at?->diffInSeconds(now()) / 3600);
+
+        // Smooth exponential-ish decay: today's posts beat last week's, but an
+        // older post with strong engagement can still surface.
+        $recency = 1 / (1 + (($ageHours / 24) ** 0.65));
+
+        $engagementRaw = (int) ($bleep->likes_count ?? 0)
+            + ((int) ($bleep->comments_count ?? 0) * 2)
+            + ((int) ($bleep->shares_count ?? 0) * 2)
+            + ((int) ($bleep->reposts_count ?? 0) * 3);
+
+        $engagement = min(1.0, log1p($engagementRaw) / log1p(80));
+        $reach = min(1.0, log1p(max(0, (int) ($bleep->views ?? 0))) / log1p(2000));
+
+        $score = ($recency * 0.50) + ($engagement * 0.28) + ($reach * 0.10);
+
+        if (isset($followedLookup[$bleep->user_id])) {
+            $score += 0.08;
+        }
+
+        if (isset($friendLookup[$bleep->user_id])) {
+            $score += 0.04;
+        }
+
+        if ($bleep->relationLoaded('media') ? $bleep->media->isNotEmpty() : false) {
+            $score += 0.02;
+        }
+
+        return $score;
+    }
+
+    /**
+     * Stop one prolific author from filling a whole page: at most two of their
+     * posts may appear back to back. Extra posts are deferred and appended.
+     *
+     * @param  Collection<int, Bleep>  $items
+     * @return Collection<int, Bleep>
+     */
+    protected function diversifyByAuthor(Collection $items): Collection
+    {
+        if ($items->count() <= 2) {
+            return $items;
+        }
+
+        $ordered = collect();
+        $deferred = collect();
+        $lastAuthor = null;
+        $run = 0;
+
+        foreach ($items as $item) {
+            $authorId = $item->user_id;
+
+            if ($authorId === $lastAuthor && $run >= 2) {
+                $deferred->push($item);
+
+                continue;
+            }
+
+            $run = $authorId === $lastAuthor ? $run + 1 : 1;
+            $lastAuthor = $authorId;
+            $ordered->push($item);
+        }
+
+        return $ordered->concat($deferred)->values();
     }
 
     protected function shuffleLightly(Collection $items, string $seed, int $chunkSize = 5): Collection

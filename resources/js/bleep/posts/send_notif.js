@@ -88,12 +88,10 @@ window.playSendSound = playSendSound;
 
 // ── Auto-hook the Blade post form
 function hookBleepForm() {
+    // Posts are submitted with AJAX now, so the `bleep:posted` event is the
+    // single source of truth for the send sound (a submit listener would play
+    // it twice and fire even when the request later fails).
     document.addEventListener('bleep:posted', () => playSendSound());
-
-    const form = document.getElementById('bleep-form');
-    if (form) {
-        form.addEventListener('submit', () => setTimeout(playSendSound, 50));
-    }
 }
 
 document.addEventListener('DOMContentLoaded', hookBleepForm);

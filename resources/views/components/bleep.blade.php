@@ -2,6 +2,7 @@
 @props([
     'bleep',
     'showCommentsButton' => true,
+    'justPosted' => false,
 ])
 
 @php
@@ -39,12 +40,19 @@
     $followedRepostCount = $followedReposts->count();
 
     $userProfileLink = $isAnonymous ? "#" : route('user.profile', ['username' => $bleep->user->username]);
+
+    $mediaExtensions = $bleep->media
+        ->map(fn ($media) => $media->extension())
+        ->filter()
+        ->unique()
+        ->take(3)
+        ->values();
 @endphp
 
 {{-- Container --}}
 
 <article
-    class="rounded-lg"
+    class="rounded-lg {{ $justPosted ? 'bleep-card-enter' : '' }}"
     data-bleep-card="{{ $bleep->id }}"
 >
 
@@ -58,7 +66,7 @@
                 @if($followedRepostCount === 1)
                     <span>
                         <a href="{{ route('user.profile', ['username' => $followedReposts->first()->user->username]) }}" class="font-semibold hover:underline">
-                            <img src="{{ $followedReposts->first()->user->profile_picture ? asset('storage/' . $followedReposts->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                            <img src="{{ $followedReposts->first()->user->profile_picture_url }}"
                                 alt="{{ $followedReposts->first()->user->username }}"
                                 class="w-4 h-4 rounded-full inline mr-0.5">
                             {{ $followedReposts->first()->user->username }}
@@ -67,12 +75,12 @@
                 @elseif($followedRepostCount === 2)
                     <span>
                         <a href="{{ route('user.profile', ['username' => $followedReposts->first()->user->username]) }}" class="font-semibold hover:underline">
-                            <img src="{{ $followedReposts->first()->user->profile_picture ? asset('storage/' . $followedReposts->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                            <img src="{{ $followedReposts->first()->user->profile_picture_url }}"
                                 alt="{{ $followedReposts->first()->user->username }}"
                                 class="w-4 h-4 rounded-full inline mr-0.5">
                             {{ $followedReposts->first()->user->username }}</a> and
                         <a href="{{ route('user.profile', ['username' => $followedReposts->skip(1)->first()->user->username]) }}" class="font-semibold hover:underline">
-                            <img src="{{ $followedReposts->skip(1)->first()->user->profile_picture ? asset('storage/' . $followedReposts->skip(1)->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                            <img src="{{ $followedReposts->skip(1)->first()->user->profile_picture_url }}"
                                 alt="{{ $followedReposts->skip(1)->first()->user->username }}"
                                 class="w-4 h-4 rounded-full inline mr-0.5">
                             {{ $followedReposts->skip(1)->first()->user->username }}</a> reposted
@@ -81,14 +89,14 @@
                     <div class="dropdown dropdown-bottom">
                         <button tabindex="0" class="hover:font-bold cursor-pointer">
                             {{-- recent reposter --}}
-                            <img src="{{ $followedReposts->first()->user->profile_picture ? asset('storage/' . $followedReposts->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                            <img src="{{ $followedReposts->first()->user->profile_picture_url }}"
                                 alt="{{ $followedReposts->first()->user->username }}"
                                 class="w-4 h-4 rounded-full inline">
                             {{-- other reposter --}}
-                            <img src="{{ $followedReposts->skip(1)->first()->user->profile_picture ? asset('storage/' . $followedReposts->skip(1)->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                            <img src="{{ $followedReposts->skip(1)->first()->user->profile_picture_url }}"
                                 alt="{{ $followedReposts->skip(1)->first()->user->username }}"
                                 class="w-4 h-4 rounded-full inline">
-                            <img src="{{ $followedReposts->skip(2)->first()->user->profile_picture ? asset('storage/' . $followedReposts->skip(2)->first()->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                            <img src="{{ $followedReposts->skip(2)->first()->user->profile_picture_url }}"
                                 alt="{{ $followedReposts->skip(2)->first()->user->username }}"
                                 class="w-4 h-4 rounded-full inline">
                             {{-- more reposter indicator --}}
@@ -109,7 +117,7 @@
                                             <div class="flex items-center gap-2 text-xs">
                                                 <div class="avatar">
                                                     <div class="w-6 h-6 rounded-full">
-                                                        <img src="{{ $repost->user->profile_picture ? asset('storage/' . $repost->user->profile_picture) : asset('images/avatar/default.jpg') }}"
+                                                        <img src="{{ $repost->user->profile_picture_url }}"
                                                             alt="{{ $repost->user->username }}">
                                                     </div>
                                                 </div>
@@ -261,7 +269,7 @@
             <div class="mb-4">
                 <div class="bleep-content-section">
                     @php
-                        $mediaItems = ($bleep->media ?? collect())->take(4);
+                        $mediaItems = ($bleep->media ?? collect())->take(9);
                         $hasMedia = $mediaItems->count() > 0;
                         $isNsfw = (bool) $bleep->is_nsfw;
                     @endphp
@@ -320,10 +328,34 @@
 
             {{-- Date + Views --}}
             <div class="text-xs text-gray-400 flex items-center justify-between min-h-5 min-w-0">
-                <time datetime="{{ $bleep->created_at->toIso8601String() }}" class="text-xs min-w-0 truncate" title="{{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y | g:i:s A') }}" aria-label="Posted {{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y | g:i:s A') }}">
-                    {{-- Short relative time on small screens, full absolute time on sm+ --}}
-                    <span>{{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y | g:i:s A') }}</span>
-                </time>
+                <div class="flex items-center gap-1.5 min-w-0">
+                    {{-- Timestamp - desktop only --}}
+                    <time datetime="{{ $bleep->created_at->toIso8601String() }}" class="text-xs min-w-0 truncate" title="{{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y | g:i:s A') }}" aria-label="Posted {{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y | g:i:s A') }}">
+                        {{-- Short relative time on small screens, full absolute time on sm+ --}}
+                        <span>{{ $bleep->created_at->timezone(Auth::user()->timezone ?? 'UTC')->format('M j, Y | g:i:s A') }}</span>
+                    </time>
+
+                    {{-- Media extensions --}}
+                    @foreach($mediaExtensions as $extension)
+                        <span
+                            tabindex="0"
+                            class="media-ext-badge badge badge-ghost badge-xs relative font-mono uppercase tracking-wide text-base-content/60"
+                            aria-label="This user posted media that contains a {{ strtoupper($extension) }} file"
+                            data-media-ext-badge
+                        >
+                            {{ $extension }}
+                            <span class="media-ext-tooltip card card-compact z-80 border border-base-300 bg-base-100 text-base-content shadow-2xl" role="tooltip">
+                                <span class="card-body gap-1 p-3">
+                                    <span class="media-ext-tooltip-title">Media attachment</span>
+                                    <span class="media-ext-tooltip-body">
+                                        This user has posted media that contains a
+                                        <strong>{{ strtoupper($extension) }}</strong> file.
+                                    </span>
+                                </span>
+                            </span>
+                        </span>
+                    @endforeach
+                </div>
 
                 <div class="flex items-center gap-1">
 
@@ -400,64 +432,8 @@
             'resources/js/bleep/posts/share.js',
             'resources/js/bleep/users/follow.js',
             'resources/js/bleep/modals/mediamodal.js',
+            'resources/js/ui/media-tooltip.js',
+            'resources/js/bleep/comments/comment-observer.js',
         ])
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                let activeObserver = null;
-                let selectedCard = null;
-
-                // lucide icon
-                if (window.lucide) window.lucide.createIcons();
-
-                // Listen for comment open
-                window.addEventListener('open-comments', (e) => {
-                    const bleepId = String(e.detail.bleepId);
-
-                    // Clear previous observer
-                    if (activeObserver) {
-                        activeObserver.disconnect();
-                        activeObserver = null;
-                    }
-
-                    // Clear previous selected
-                    if (selectedCard) {
-                        selectedCard.classList.remove('bleep-selected');
-                        selectedCard = null;
-                    }
-
-                    // Find the clicked bleep card
-                    const card = document.querySelector(`[data-bleep-card="${bleepId}"]`);
-                    if (!card) return;
-
-                    // Mark as selected
-                    card.classList.add('bleep-selected');
-                    selectedCard = card;
-
-                    // Set up observer — threshold 0.1 means close when 90% scrolled away
-                    activeObserver = new IntersectionObserver((entries) => {
-                        entries.forEach(entry => {
-                            if (!entry.isIntersecting) {
-                                window.dispatchEvent(new CustomEvent('close-comments'));
-                            }
-                        });
-                    }, { threshold: 0.1 });
-
-                    activeObserver.observe(card);
-                });
-
-                // Listen for comment close
-                window.addEventListener('close-comments', () => {
-                    if (activeObserver) {
-                        activeObserver.disconnect();
-                        activeObserver = null;
-                    }
-
-                    if (selectedCard) {
-                        selectedCard.classList.remove('bleep-selected');
-                        selectedCard = null;
-                    }
-                });
-            });
-        </script>
     @endpush
 @endonce

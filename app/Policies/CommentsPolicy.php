@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Comments;
 use App\Models\User;
+use App\Services\ContentWindowService;
 
 class CommentsPolicy
 {
@@ -20,7 +21,8 @@ class CommentsPolicy
      */
     public function update(User $user, Comments $comment): bool
     {
-        return $user->id === $comment->user_id;
+        return $user->id === $comment->user_id
+            && ContentWindowService::canEdit($comment->created_at);
     }
 
     /**
@@ -28,6 +30,7 @@ class CommentsPolicy
      */
     public function delete(User $user, Comments $comment): bool
     {
-        return $user->id === $comment->user_id;
+        return $user->id === $comment->user_id
+            && ContentWindowService::canDelete($comment->created_at);
     }
 }

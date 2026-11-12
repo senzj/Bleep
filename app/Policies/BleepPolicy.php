@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Bleep;
 use App\Models\User;
+use App\Services\ContentWindowService;
 
 class BleepPolicy
 {
@@ -36,7 +37,8 @@ class BleepPolicy
      */
     public function update(User $user, Bleep $bleep): bool
     {
-        return $bleep->user()->is($user);
+        return $bleep->user()->is($user)
+            && ContentWindowService::canEdit($bleep->created_at);
     }
 
     /**
@@ -44,7 +46,8 @@ class BleepPolicy
      */
     public function delete(User $user, Bleep $bleep): bool
     {
-        return $bleep->user()->is($user);
+        return $bleep->user()->is($user)
+            && ContentWindowService::canDelete($bleep->created_at);
     }
 
     /**
@@ -69,5 +72,13 @@ class BleepPolicy
     public function like(?User $user): bool
     {
         return $user !== null;
+    }
+
+    /**
+     * Determine whether the user can view analytics page of their own posts.
+     */
+    public function viewAnalytics(User $user, Bleep $bleep): bool
+    {
+        return $bleep->user()->is($user);
     }
 }

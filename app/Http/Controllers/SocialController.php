@@ -5,14 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Following;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class SocialController extends Controller
 {
     public function peoplePage(Request $request)
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return view('pages.social.people', [
                 'suggestedUsers' => collect(),
             ]);
@@ -110,10 +110,11 @@ class SocialController extends Controller
 
         $isOwnProfile = Auth::check() && Auth::id() === $profileUser->id;
         $isFollowing = Auth::check() ? $authUser->isFollowing($profileUser) : false;
-        $isPrivate = !$isOwnProfile && ($profileUser->preferences?->private_profile ?? false);
+        $isPrivate = ! $isOwnProfile && ($profileUser->preferences?->private_profile ?? false);
         $hasBlockingRelationship = Auth::check() && $authUser->isBlockedOrHasBlocked($profileUser);
 
-        abort_if($hasBlockingRelationship || ($isPrivate && !$isFollowing && !$isOwnProfile), 403);
+        abort_if($hasBlockingRelationship || ($isPrivate && ! $isFollowing && ! $isOwnProfile), 403);
+        abort_unless($profileUser->canViewFollowerLists($authUser), 403);
 
         if (! in_array($type, ['followers', 'following'], true)) {
             abort(404);
@@ -154,7 +155,7 @@ class SocialController extends Controller
     protected function getSuggestedUsers(User $user, array $graph, int $limit): Collection
     {
         $secondDegreeUsers = collect();
-        if (!empty($graph['second'])) {
+        if (! empty($graph['second'])) {
             $secondDegreeUsers = User::whereIn('id', $graph['second'])
                 ->with('preferences')
                 ->withCount('followers')
@@ -166,7 +167,7 @@ class SocialController extends Controller
         $remainingAfterSecond = max(0, $limit - $secondDegreeUsers->count());
 
         $thirdDegreeUsers = collect();
-        if ($remainingAfterSecond > 0 && !empty($graph['third'])) {
+        if ($remainingAfterSecond > 0 && ! empty($graph['third'])) {
             $thirdDegreeUsers = User::whereIn('id', $graph['third'])
                 ->with('preferences')
                 ->withCount('followers')

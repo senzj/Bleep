@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->cascadeOnDelete();
             $table->text('message')->nullable();
-            $table->string('media_path')->nullable();
             $table->integer('views')->default(0);
             $table->boolean('is_anonymous')->default(false);
             $table->boolean('is_nsfw')->default(false);

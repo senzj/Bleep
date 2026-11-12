@@ -1,3 +1,34 @@
+/**
+ * Unified share modal.
+ *
+ * One surface handles every way a bleep can be shared:
+ *  - copy the generated share link
+ *  - send it to one or more people / group chats (multi-select)
+ *  - open an external platform share intent
+ *
+ * Guests only get the link and the external platforms, because the chat list
+ * requires an authenticated session.
+ */
+
+const SHARE_PLATFORM_URLS = {
+    facebook: (url) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+    x: (url, text) => `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
+    whatsapp: (url, text) => `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`,
+    telegram: (url, text) => `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
+    linkedin: (url) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+    email: (url, text) => `mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(url)}`,
+};
+
+const shareIconMarkup = (target) => (target.isGroup
+    ? '<i data-lucide="users" class="h-4 w-4"></i>'
+    : '<i data-lucide="user" class="h-4 w-4"></i>');
+
+const renderShareIcons = (container) => {
+    if (container && typeof window.createLucideIcons === 'function') {
+        window.createLucideIcons(container);
+    }
+};
+
 const openShareModal = (bleepId) => {
     const modal = document.getElementById('share-modal');
     const overlay = document.getElementById('share-modal-overlay');
@@ -8,11 +39,8 @@ const openShareModal = (bleepId) => {
     const cancelBtn = document.getElementById('share-cancel-btn');
     const closeBtn = document.getElementById('share-close-btn');
     const nativeBtn = document.getElementById('share-native-btn');
-
-    const linkTab = document.getElementById('share-tab-link');
-    const chatTab = document.getElementById('share-tab-chat');
-    const linkPanel = document.getElementById('share-panel-link');
-    const chatPanel = document.getElementById('share-panel-chat');
+    const submitBtn = document.getElementById('share-submit-btn');
+    const selectedCount = document.getElementById('share-selected-count');
     const chatSearch = document.getElementById('share-chat-search');
     const chatList = document.getElementById('share-chat-list');
 
@@ -27,17 +55,17 @@ const openShareModal = (bleepId) => {
     }
 
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    const canUseChat = Boolean(linkTab && chatTab && chatPanel);
+    const canUseChat = Boolean(chatList && submitBtn);
     const canNativeShare = typeof navigator.share === 'function';
-
     const cleanups = [];
     const previouslyFocused = document.activeElement;
 
     let actionInFlight = false;
-    let sendingInChat = false;
     let shareUrl = null;
+    let shareUrlPromise = null;
     let chatTargets = [];
     let chatTargetsRequested = false;
+    const selectedKeys = new Set();
 
     const attach = (element, type, handler) => {
         if (!element) return;
@@ -79,13 +107,12 @@ const openShareModal = (bleepId) => {
         setTimeout(() => {
             t.style.opacity = '0';
             setTimeout(() => t.remove(), 250);
-        }, 1500);
+        }, 1800);
     };
 
     const close = () => {
         cleanup();
         actionInFlight = false;
-        sendingInChat = false;
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         document.body.style.overflow = '';
@@ -153,38 +180,94 @@ const openShareModal = (bleepId) => {
         urlDisplay.setAttribute('title', url);
     };
 
-    // Creates (or reuses) the link row so copy and native share share one POST.
+    // Creates (or reuses) the link row so copy, chat sends and external shares
+    // all count as a single share.
     const ensureShareUrl = async () => {
         if (shareUrl) return shareUrl;
+        if (shareUrlPromise) return shareUrlPromise;
 
-        const data = await requestJson(`/bleeps/${bleepId}/share`, { method: 'POST', body: {} });
+        shareUrlPromise = requestJson(`/bleeps/${bleepId}/share`, { method: 'POST', body: {} })
+            .then((data) => {
+                shareUrl = data.share_url || `${window.location.origin}/bleeps/${bleepId}`;
 
-        shareUrl = data.share_url || `${window.location.origin}/bleeps/${bleepId}`;
+                if (data.shares_count !== undefined) {
+                    updateShareCounts(bleepId, data.shares_count);
+                }
 
-        if (data.shares_count !== undefined) {
-            updateShareCounts(bleepId, data.shares_count);
+                setUrl(shareUrl);
+
+                return shareUrl;
+            })
+            .finally(() => {
+                shareUrlPromise = null;
+            });
+
+        return shareUrlPromise;
+    };
+
+    const setBusy = (busy, label) => {
+        if (!submitBtn) return;
+
+        submitBtn.disabled = busy || selectedKeys.size === 0;
+        submitBtn.classList.toggle('btn-disabled', submitBtn.disabled);
+        submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
+
+        if (busy && label) {
+            submitBtn.dataset.label = submitBtn.querySelector('span')?.textContent || '';
+            const span = submitBtn.querySelector('span');
+            if (span) span.textContent = label;
+        } else if (submitBtn.dataset.label) {
+            const span = submitBtn.querySelector('span');
+            if (span) span.textContent = submitBtn.dataset.label;
+        }
+    };
+
+    const syncSelectionUI = () => {
+        const count = selectedKeys.size;
+
+        if (selectedCount) {
+            selectedCount.textContent = `${count} selected`;
+            selectedCount.classList.toggle('text-primary', count > 0);
         }
 
-        setUrl(shareUrl);
+        chatList?.querySelectorAll('[data-target-key]').forEach((row) => {
+            const active = selectedKeys.has(row.dataset.targetKey);
+            row.setAttribute('aria-selected', String(active));
+            row.classList.toggle('bg-primary/30', active);
+            row.classList.toggle('border-primary/40', active);
 
-        return shareUrl;
+            const check = row.querySelector('[data-target-check]');
+            if (check) {
+                check.classList.toggle('hidden', !active);
+                check.innerHTML = active
+                    ? '<i data-lucide="check" class="h-3 w-3"></i>'
+                    : '';
+                renderShareIcons(check);
+            }
+        });
+
+        setBusy(actionInFlight, null);
+    };
+
+    const toggleTarget = (key) => {
+        if (selectedKeys.has(key)) {
+            selectedKeys.delete(key);
+        } else {
+            selectedKeys.add(key);
+        }
+
+        syncSelectionUI();
     };
 
     const copyHandler = async () => {
-        if (actionInFlight) return;
-        actionInFlight = true;
-
         try {
             const url = await ensureShareUrl();
             await copyToClipboard(url);
             showToast('Link copied to clipboard');
-            close();
         } catch (err) {
             if (err?.message === 'unauthenticated') return;
             console.error('Share copy failed', err);
             showToast(err?.message || 'Copy failed', 'error');
-        } finally {
-            actionInFlight = false;
         }
     };
 
@@ -199,30 +282,80 @@ const openShareModal = (bleepId) => {
         } catch (err) {
             // Cancelling the OS share sheet is not an error.
             if (err?.name === 'AbortError' || err?.message === 'unauthenticated') return;
-            if (err?.name !== 'AbortError') {
-                showToast(err?.message || 'Share failed', 'error');
-            }
+            showToast(err?.message || 'Share failed', 'error');
         } finally {
             actionInFlight = false;
         }
     };
 
-    const setTab = (tab) => {
-        if (!canUseChat) return;
+    const platformHandler = async (key) => {
+        if (actionInFlight) return;
+        actionInFlight = true;
 
-        const isChat = tab === 'chat';
+        // Open the tab synchronously so popup blockers do not cancel it while
+        // the share URL request is still in flight. Keep a handle (no
+        // `noopener` in the window features) so the blank tab can be reused or
+        // closed instead of being left behind on about:blank.
+        const isEmail = key === 'email';
+        const popup = isEmail ? null : window.open('about:blank', '_blank');
 
-        linkPanel.classList.toggle('hidden', isChat);
-        chatPanel.classList.toggle('hidden', !isChat);
+        if (popup) {
+            try {
+                popup.opener = null;
+            } catch {
+                /* cross-origin during navigation */
+            }
+        }
 
-        linkTab.classList.toggle('btn-active', !isChat);
-        chatTab.classList.toggle('btn-active', isChat);
-        linkTab.setAttribute('aria-selected', String(!isChat));
-        chatTab.setAttribute('aria-selected', String(isChat));
+        try {
+            const url = await ensureShareUrl();
+            const text = 'Check out this bleep on Bleep';
 
-        if (isChat) {
-            loadChatTargets();
-            requestAnimationFrame(() => chatSearch?.focus({ preventScroll: true }));
+            if (key === 'messenger') {
+                // Messenger has no stable web share endpoint without a
+                // registered app id, so copy the link and open Messenger in the
+                // same tab we already reserved.
+                await copyToClipboard(url);
+
+                if (popup) {
+                    popup.location.href = 'https://www.messenger.com/';
+                } else {
+                    window.open('https://www.messenger.com/', '_blank', 'noopener,noreferrer');
+                }
+
+                showToast('Link copied — paste it in Messenger');
+                close();
+                return;
+            }
+
+            const buildUrl = SHARE_PLATFORM_URLS[key];
+            if (!buildUrl) {
+                popup?.close();
+                return;
+            }
+
+            const target = buildUrl(url, text);
+
+            if (isEmail) {
+                window.location.href = target;
+                close();
+                return;
+            }
+
+            if (popup) {
+                popup.location.href = target;
+            } else {
+                window.open(target, '_blank', 'noopener,noreferrer');
+            }
+
+            close();
+        } catch (err) {
+            popup?.close();
+            if (err?.message !== 'unauthenticated') {
+                showToast(err?.message || 'Could not open that platform.', 'error');
+            }
+        } finally {
+            actionInFlight = false;
         }
     };
 
@@ -250,66 +383,66 @@ const openShareModal = (bleepId) => {
         }
 
         visible.forEach((target) => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-base-200';
-            button.dataset.targetKey = target.key;
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'relative flex shrink-0 items-center gap-2 rounded-full border border-base-300 bg-base-100 py-1 pl-1 pr-3 text-left text-sm transition hover:bg-base-200';
+            row.dataset.targetKey = target.key;
+            row.setAttribute('role', 'option');
+            row.setAttribute('aria-selected', String(selectedKeys.has(target.key)));
+            row.title = `${target.title} — ${targetMeta(target)}`;
 
-            const icon = document.createElement('span');
-            icon.className = 'flex size-9 shrink-0 items-center justify-center rounded-full bg-base-200 text-base-content/60';
-            icon.innerHTML = target.isGroup
-                ? '<i data-lucide="users" class="w-4 h-4"></i>'
-                : '<i data-lucide="user" class="w-4 h-4"></i>';
+            const avatar = document.createElement('span');
+            avatar.className = 'flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-200 text-base-content/60';
 
-            if (!target.isGroup && target.avatar) {
+            if (target.avatar) {
                 const img = document.createElement('img');
                 img.src = target.avatar;
                 img.alt = '';
-                img.className = 'size-9 shrink-0 rounded-full object-cover';
-                button.appendChild(img);
+                img.className = 'size-7 shrink-0 rounded-full object-cover';
+                avatar.appendChild(img);
             } else {
-                button.appendChild(icon);
+                avatar.innerHTML = shareIconMarkup(target);
             }
 
-            const text = document.createElement('span');
-            text.className = 'min-w-0 flex-1';
+            row.appendChild(avatar);
 
             const name = document.createElement('span');
-            name.className = 'block truncate text-sm font-medium';
+            name.className = 'max-w-32 truncate text-sm font-medium';
             name.textContent = target.title;
-            text.appendChild(name);
+            row.appendChild(name);
 
-            const meta = document.createElement('span');
-            meta.className = 'block truncate text-[11px] text-base-content/50';
-            meta.dataset.chatMeta = '1';
-            meta.textContent = targetMeta(target);
-            text.appendChild(meta);
+            const check = document.createElement('span');
+            check.dataset.targetCheck = '1';
+            check.className = 'pointer-events-none absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-primary-content shadow';
+            row.appendChild(check);
 
-            button.appendChild(text);
+            row.addEventListener('click', () => toggleTarget(target.key));
 
-            button.addEventListener('click', () => sendToChat(target, button));
-
-            chatList.appendChild(button);
+            chatList.appendChild(row);
         });
 
-        if (window.lucide?.replace) {
-            window.lucide.replace({ nodes: chatList.querySelectorAll('[data-lucide]') });
-        }
+        renderShareIcons(chatList);
+        syncSelectionUI();
     };
 
     const mergeChatTargets = (conversations, users) => {
-        const targets = [];
+        const conversationTargets = [];
+        const userTargets = [];
         const usersWithDm = new Set();
 
         conversations.forEach((conversation) => {
-            const participants = Array.isArray(conversation.participants) ? conversation.participants : [];
+            if (conversation.has_left) return;
 
-            targets.push({
+            const participants = Array.isArray(conversation.participants) ? conversation.participants : [];
+            const lastMessageAt = Date.parse(conversation.last_message_at || '') || 0;
+
+            conversationTargets.push({
                 key: `conversation-${conversation.id}`,
                 conversationId: Number(conversation.id),
                 title: conversation.title || (conversation.is_group ? 'Group chat' : 'Direct message'),
                 isGroup: Boolean(conversation.is_group),
-                avatar: null,
+                avatar: conversation.avatar || null,
+                sortScore: lastMessageAt,
             });
 
             if (!conversation.is_group) {
@@ -322,16 +455,22 @@ const openShareModal = (bleepId) => {
         users.forEach((user) => {
             if (usersWithDm.has(Number(user.id))) return;
 
-            targets.push({
+            userTargets.push({
                 key: `user-${user.id}`,
                 userId: Number(user.id),
                 title: user.dname || user.username || 'User',
                 isGroup: false,
                 avatar: user.profile_picture_url || null,
+                sortScore: Number(user.interaction_score || 0),
             });
         });
 
-        return targets;
+        // Chats you use most recently come first, then friends you interact
+        // with most through likes and comments.
+        conversationTargets.sort((a, b) => b.sortScore - a.sortScore);
+        userTargets.sort((a, b) => b.sortScore - a.sortScore || a.title.localeCompare(b.title));
+
+        return [...conversationTargets, ...userTargets];
     };
 
     const loadChatTargets = async () => {
@@ -363,47 +502,84 @@ const openShareModal = (bleepId) => {
         }
     };
 
-    const sendToChat = async (target, button) => {
-        if (sendingInChat) return;
-        sendingInChat = true;
-        button.disabled = true;
+    const openConversation = async (target) => {
+        if (target.conversationId) return target.conversationId;
 
-        const meta = button.querySelector('[data-chat-meta]');
-        const previousMeta = meta?.textContent || '';
-        if (meta) meta.textContent = 'Sending…';
+        const direct = await requestJson('/chat/conversations/direct', {
+            method: 'POST',
+            body: { user_id: target.userId },
+        });
+
+        const conversationId = Number(direct?.data?.id) || null;
+
+        if (!conversationId) {
+            throw new Error('Could not open that chat.');
+        }
+
+        target.conversationId = conversationId;
+
+        return conversationId;
+    };
+
+    const sendToSelected = async () => {
+        if (!canUseChat || actionInFlight || selectedKeys.size === 0) return;
+
+        const targets = chatTargets.filter((target) => selectedKeys.has(target.key));
+        if (!targets.length) return;
+
+        actionInFlight = true;
+        setBusy(true, 'Sending…');
 
         try {
-            let conversationId = target.conversationId;
+            // Make sure the share exists even if the viewer only sends to chats.
+            const url = await ensureShareUrl();
 
-            if (!conversationId) {
-                const direct = await requestJson('/chat/conversations/direct', {
-                    method: 'POST',
-                    body: { user_id: target.userId },
-                });
-                conversationId = Number(direct?.data?.id) || null;
+            let sent = 0;
+            const failed = [];
+
+            for (const target of targets) {
+                try {
+                    const conversationId = await openConversation(target);
+
+                    await requestJson('/messages', {
+                        method: 'POST',
+                        body: {
+                            conversation_id: conversationId,
+                            body: url,
+                            shared_bleep_id: Number(bleepId),
+                        },
+                    });
+
+                    sent += 1;
+                } catch (err) {
+                    if (err?.message === 'unauthenticated') return;
+                    failed.push(target.title);
+                }
             }
 
-            if (!conversationId) {
-                throw new Error('Could not open that chat.');
+            if (sent > 0) {
+                showToast(
+                    sent === 1
+                        ? `Sent to ${targets[0].title}`
+                        : `Sent to ${sent} chats`
+                );
             }
 
-            await requestJson('/messages', {
-                method: 'POST',
-                body: {
-                    conversation_id: conversationId,
-                    shared_bleep_id: Number(bleepId),
-                },
-            });
+            if (failed.length) {
+                showToast(`Could not send to ${failed.join(', ')}`, 'error');
+            }
 
-            showToast(`Sent to ${target.title}`);
-            close();
+            if (!failed.length) {
+                close();
+            }
         } catch (err) {
             if (err?.message !== 'unauthenticated') {
                 showToast(err?.message || 'Could not send.', 'error');
             }
-            button.disabled = false;
-            if (meta) meta.textContent = previousMeta;
-            sendingInChat = false;
+        } finally {
+            actionInFlight = false;
+            setBusy(false, null);
+            syncSelectionUI();
         }
     };
 
@@ -422,13 +598,15 @@ const openShareModal = (bleepId) => {
     });
 
     attach(nativeBtn, 'click', nativeHandler);
+    attach(submitBtn, 'click', sendToSelected);
     attach(cancelBtn, 'click', close);
     attach(closeBtn, 'click', close);
     attach(overlay, 'click', close);
-
-    attach(linkTab, 'click', () => setTab('link'));
-    attach(chatTab, 'click', () => setTab('chat'));
     attach(chatSearch, 'input', renderChatTargets);
+
+    modal.querySelectorAll('[data-share-platform]').forEach((button) => {
+        attach(button, 'click', () => platformHandler(button.dataset.sharePlatform));
+    });
 
     // Escape closes; Tab stays inside the dialog.
     attach(document, 'keydown', (event) => {
@@ -457,9 +635,9 @@ const openShareModal = (bleepId) => {
         }
     });
 
-    // Reset per-open state
+    // Reset per-open state.
     setUrl(`${window.location.origin}/bleeps/${bleepId}`);
-    setTab('link');
+    selectedKeys.clear();
 
     if (chatSearch) {
         chatSearch.value = '';
@@ -470,6 +648,12 @@ const openShareModal = (bleepId) => {
         nativeBtn.classList.toggle('hidden', !canNativeShare);
     }
 
+    syncSelectionUI();
+
+    if (canUseChat) {
+        loadChatTargets();
+    }
+
     // Show modal
     modal.removeAttribute('x-cloak');
     modal.classList.remove('hidden');
@@ -478,6 +662,7 @@ const openShareModal = (bleepId) => {
 
     requestAnimationFrame(() => {
         linkCard.focus({ preventScroll: true });
+        renderShareIcons(modal);
     });
 };
 

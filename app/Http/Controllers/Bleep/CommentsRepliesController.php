@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Bleep;
 use App\Enums\NotificationType;
 use App\Http\Controllers\Controller;
 use App\Models\Comments;
+use App\Services\ContentWindowService;
 use App\Services\MediaUploadService;
 use App\Services\Notifications\NotificationData;
 use App\Services\Notifications\NotificationService;
@@ -33,6 +34,12 @@ class CommentsRepliesController extends Controller
         $repliesQuery = $comment->replies()
             ->with(['user', 'bleep'])
             ->withCount(['likes', 'replies']);
+
+        $preferences = Auth::user()?->getPreferences();
+
+        if ($preferences && $preferences->show_anonymous_comments === false) {
+            $repliesQuery->where('is_anonymous', false);
+        }
 
         if (Auth::check()) {
             $repliesQuery->withExists([
@@ -68,7 +75,7 @@ class CommentsRepliesController extends Controller
             'media' => [
                 'nullable',
                 'file',
-                'mimes:jpg,jpeg,png,gif,webp,mp4,mov,webm,mp3,wav,ogg,m4a',
+                config('media.mimes_rule'),
                 'max:50480',
             ],
         ]);
@@ -200,8 +207,10 @@ class CommentsRepliesController extends Controller
             'is_anonymous' => (bool) $comment->is_anonymous,
             'is_nsfw' => (bool) $comment->is_nsfw,
             'display_name' => $displayName,
-            'canEdit' => Auth::check() && Auth::id() === $comment->user_id,
-            'canDelete' => Auth::check() && Auth::id() === $comment->user_id,
+            'canEdit' => Auth::check() && Auth::id() === $comment->user_id
+                && ContentWindowService::canEdit($comment->created_at),
+            'canDelete' => Auth::check() && Auth::id() === $comment->user_id
+                && ContentWindowService::canDelete($comment->created_at),
             'media' => $comment->media_path,
             'likes_count' => $likesCount !== null ? (int) $likesCount : $comment->likes()->count(),
             'liked' => $liked !== null ? (bool) $liked : (Auth::check() && $comment->likes()->where('user_id', Auth::id())->exists()),

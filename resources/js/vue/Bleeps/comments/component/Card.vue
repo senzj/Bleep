@@ -138,7 +138,7 @@ const isVerified = computed(() => {
 // ── Dynamic sizing
 const isReply = computed(() => props.depth > 0);
 const avatarSize = computed(() => isReply.value ? 'w-8 h-8' : 'w-10 h-10');
-const textSize = computed(() => isReply.value ? 'text-xs' : 'text-sm');
+const textSize = computed(() => isReply.value ? 'text-[13px]' : 'text-sm');
 const iconSize = computed(() => isReply.value ? 12 : 14);
 const componentClass = computed(() => isReply.value ? 'bg-base' : 'bg-base-100');
 const borderClass = computed(() => isReply.value ? 'border-base-300/50' : 'border-base-300');
@@ -228,7 +228,7 @@ const clearReplyMedia = () => {
 const handleMediaSelect = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/x-m4a';
+    input.accept = 'image/*,video/*,audio/*,.flac,.alac,.aac,.opus,.oga,.m4a,.aiff,.aif,.wma,.mkv,.mov,.m4v,.3gp';
     input.onchange = (e) => {
         const file = e.target.files?.[0];
         if (file) replyMedia.value = file;
@@ -337,7 +337,7 @@ const handleEdit = () => {
 const handleEditMediaSelect = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/x-m4a';
+    input.accept = 'image/*,video/*,audio/*,.flac,.alac,.aac,.opus,.oga,.m4a,.aiff,.aif,.wma,.mkv,.mov,.m4v,.3gp';
     input.onchange = (e) => {
         const file = e.target.files?.[0];
         if (file) editSelectedMedia.value = file;
@@ -453,6 +453,11 @@ const handleDelete = async () => {
 
 // ── Like
 const handleLike = async () => {
+    if (!props.authenticatedUserId) {
+        window.location.href = '/login';
+        return;
+    }
+
     try {
         const method = isLiked.value ? 'DELETE' : 'POST';
         const response = await fetch(`/bleeps/comments/${props.comment.id}/likes`, {
@@ -614,7 +619,7 @@ const reportComment = () => {
             </div>
 
             <!-- Body -->
-            <div class="ml-5">
+            <div>
                 <!-- Edit Form -->
                 <div v-if="isEditing" class="space-y-2">
                     <textarea
@@ -741,7 +746,7 @@ const reportComment = () => {
 
                 <!-- Display mode -->
                 <template v-else>
-                    <div class="ml-7.5 my-1.5">
+                    <div class="my-1.5">
 
                         <!-- NSFW Cover -->
                         <div v-if="isNSFW && !nsfwRevealed" class="rounded-lg border border-error/20 bg-error/10 p-4 text-center">
@@ -787,7 +792,7 @@ const reportComment = () => {
             </div>
 
             <!-- Footer Actions -->
-            <div class="grid grid-cols-3 items-center gap-1 mt-1.5 -ml-2 text-sm">
+            <div class="grid grid-cols-3 items-center gap-1 mt-1.5 text-sm">
                 <!-- Like -->
                 <button
                     class="comment-like-btn cursor-pointer flex items-center justify-center gap-1 px-2 py-1 text-xs rounded-md text-base-content/50 hover:text-error hover:bg-error/15 transition-colors"
@@ -824,41 +829,43 @@ const reportComment = () => {
             </div>
 
             <!-- Replies -->
-            <div v-if="comment.replies_count > 0 && props.depth < depthMax && showReplies" class="mt-2 border-l-2 border-primary space-y-3">
-                <div v-if="isLoadingReplies" class="flex justify-center py-3">
-                    <span class="loading loading-spinner loading-sm"></span>
+            <Transition name="comment-reveal">
+                <div v-if="comment.replies_count > 0 && props.depth < depthMax && showReplies" class="mt-3 space-y-2 border-l-2 border-primary/40 pl-2 sm:pl-3">
+                    <div v-if="isLoadingReplies" class="flex justify-center py-3">
+                        <span class="loading loading-spinner loading-sm"></span>
+                    </div>
+
+                    <Card
+                        v-for="reply in replies"
+                        :key="reply.id"
+                        :comment="reply"
+                        :bleep="bleep"
+                        :depth="props.depth + 1"
+                        :user-avatar="userAvatarForReply"
+                        :isAnonymousEnabled="isAnonEnabled"
+                        :isNSFW="isNSFW"
+                        :authenticatedUserId="authenticatedUserId"
+                        @reply="emit('reply', $event)"
+                        @edit="emit('edit', $event)"
+                        @delete="handleReplyDeleted"
+                        @like="emit('like', $event)"
+                    />
+
+                    <button
+                        v-if="hasMoreReplies && !isLoadingReplies"
+                        class="cursor-pointer text-xs text-primary hover:underline w-full text-center py-2"
+                        @click="handleLoadMoreReplies"
+                    >
+                        Load more replies
+                    </button>
                 </div>
-
-                <Card
-                    v-for="reply in replies"
-                    :key="reply.id"
-                    :comment="reply"
-                    :bleep="bleep"
-                    :depth="props.depth + 1"
-                    :user-avatar="userAvatarForReply"
-                    :isAnonymousEnabled="isAnonEnabled"
-                    :isNSFW="isNSFW"
-                    :authenticatedUserId="authenticatedUserId"
-                    @reply="emit('reply', $event)"
-                    @edit="emit('edit', $event)"
-                    @delete="handleReplyDeleted"
-                    @like="emit('like', $event)"
-                    class="ml-2"
-                />
-
-                <button
-                    v-if="hasMoreReplies && !isLoadingReplies"
-                    class="cursor-pointer text-xs text-primary hover:underline w-full text-center py-2"
-                    @click="handleLoadMoreReplies"
-                >
-                    Load more replies
-                </button>
-            </div>
+            </Transition>
         </div>
 
 
         <!-- Inline Reply Form -->
-        <div v-if="showReplyForm && props.depth < depthMax" :class="isReply ? 'mt-3 pt-3 space-y-2 border-t border-base-300/50' : 'mt-4 pt-4 space-y-3 border-t border-base-300'">
+        <Transition name="comment-reveal">
+            <div v-if="showReplyForm && props.depth < depthMax" :class="isReply ? 'mt-3 pt-3 space-y-2 border-t border-base-300/50' : 'mt-4 pt-4 space-y-3 border-t border-base-300'">
             <!-- Reply media preview -->
             <div v-if="replyMediaPreview?.url" class="relative inline-flex max-w-xs rounded-lg overflow-hidden bg-base-300 shadow">
                 <img v-if="replyMediaPreview.type.startsWith('image/')" :src="replyMediaPreview.url" :alt="replyMediaPreview.name" :class="isReply ? 'max-h-32' : 'max-h-45'" class="max-w-full object-contain" />
@@ -957,7 +964,8 @@ const reportComment = () => {
                 <progress class="progress progress-primary w-full" :value="replyUploadProgress" max="100"></progress>
                 <div class="text-xs text-base-content/60 text-right">Uploading {{ replyUploadProgress }}%</div>
             </div>
-        </div>
+            </div>
+        </Transition>
     </div>
 </template>
 
@@ -969,5 +977,16 @@ const reportComment = () => {
 @keyframes slideIn {
     from { opacity: 0; transform: translateY(-10px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+
+.comment-reveal-enter-active,
+.comment-reveal-leave-active {
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.comment-reveal-enter-from,
+.comment-reveal-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
 }
 </style>

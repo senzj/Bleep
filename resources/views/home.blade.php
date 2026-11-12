@@ -1,8 +1,4 @@
 @push('scripts')
-    <script>
-        // Pass backend config to frontend (keep anonymity feature hidden if disabled)
-        window.isAnonymousEnabled = {{ config('app.anonymity', true) ? 'true' : 'false' }};
-    </script>
     @vite([
         'resources/js/bleep/posts/post.js',
         'resources/js/bleep/modals/posts/edit.js',
@@ -32,7 +28,7 @@
 <x-layout>
     <x-slot:title>Home</x-slot:title>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 lg:gap-3">
+    <div class="grid grid-cols-1 gap-2 lg:grid-cols-12 lg:gap-3">
         {{-- Left panel - left navivation, hidden when vertical navbar --}}
         @php
             // Get user's nav layout preference, default to horizontal
@@ -42,13 +38,34 @@
             }
         @endphp
 
+        {{-- Left panel content --}}
         @if ($navLayout !== 'vertical')
-            <div class="lg:block lg:col-span-3" id="left-panel">
+            <div class="order-1 lg:col-span-3" id="left-panel"
+                 x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
+                {{-- Mobile: stacked, collapsed by default --}}
+                <button type="button"
+                        class="flex w-full items-center justify-between gap-2 rounded-lg border border-base-200 bg-base-100 px-3 py-2 text-sm font-semibold shadow-sm lg:hidden"
+                        @click="open = !open"
+                        :aria-expanded="open"
+                        aria-controls="left-panel-content">
+                    <span class="flex items-center gap-2">
+                        <i data-lucide="megaphone" class="w-4 h-4"></i>
+                        Announcements
+                    </span>
+                    <span class="transition-transform duration-200" :class="open ? 'rotate-180' : ''">
+                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </span>
+                </button>
+
+                <div id="left-panel-content" x-show="open" x-transition.opacity.duration.200ms x-cloak class="mt-1 lg:mt-0">
+                    {{-- Server Announcement --}}
+                    <x-announcement.system />
+                </div>
             </div>
         @endif
 
         {{-- Center panel - main content --}}
-        <div class="lg:block {{ $navLayout === 'vertical' ? 'lg:col-span-8 lg:ml-45' : 'lg:col-span-6' }}" id="center-panel">
+        <div class="order-3 lg:order-2 lg:col-span-6 {{ $navLayout === 'vertical' ? 'lg:col-span-6 lg:ml-45' : '' }}" id="center-panel">
 
             {{-- Feed panel: post form + bleeps (toggled as a single unit on mobile) --}}
             <div id="feed-panel">
@@ -76,7 +93,7 @@
                                     name="media[]"
                                     class="hidden"
                                     multiple
-                                    accept="image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/mp3"
+                                    accept="{{ config('media.accept') }}"
                                 />
 
                                 {{-- preview grid --}}
@@ -87,8 +104,12 @@
                                     <div class="flex items-center gap-2">
                                         <progress id="upload-progress-bar" class="progress progress-primary flex-1" value="0" max="100"></progress>
                                         <span id="upload-progress-percent" class="text-xs w-10 text-right">0%</span>
+                                        <button type="button" id="upload-cancel-btn" class="btn btn-ghost btn-xs gap-1 text-error">
+                                            <i data-lucide="x" class="h-3.5 w-3.5"></i>
+                                            Cancel
+                                        </button>
                                     </div>
-                                    <div id="upload-status" class="text-xs mt-1 text-base-content/60">Starting upload...</div>
+                                    <div id="upload-status" class="text-xs mt-1 text-base-content/60">Starting upload</div>
                                 </div>
 
                                 <div class="mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -163,7 +184,7 @@
                 <div>
                     {{-- Sticky top Bleep Sort --}}
                     @auth
-                        <div class="sticky {{ $navLayout === 'horizontal' ? 'top-20' : 'top-1' }} z-20 mt-3 border border-base-200 px-1 py-1 bg-base-100/95 backdrop-blur rounded-sm shadow-sm">
+                        <div class="feed-tabs sticky {{ $navLayout === 'horizontal' ? 'top-20' : 'top-1' }} z-20 mt-3 border border-base-200 px-1 py-1 bg-base-100/95 backdrop-blur rounded-sm shadow-sm">
                             <div class="flex gap-2 w-full" role="tablist" aria-label="Main tabs">
                                 {{-- Shows For You Page --}}
                                 <button type="button" class="flex-1 btn btn-sm btn-ghost data-tab-active" data-tab="bleep" aria-controls="bleeps-container" aria-selected="true">For You</button>
@@ -196,25 +217,26 @@
                         @endforelse
                     </div>
 
-                    {{-- Following --}}
+                    {{-- Following — fetched on first visit to keep the home payload small --}}
                     <div id="following-container" class="space-y-4 mt-1 hidden" data-tab-panel="following" aria-hidden="true"
-                        data-page="{{ $followingBleeps ? $followingBleeps->currentPage() + 1 : 2 }}"
-                        data-has-more="{{ $followingBleeps && $followingBleeps->hasMorePages() ? 'true' : 'false' }}">
+                        @auth data-tab-lazy="true" data-page="1" data-has-more="true" @endauth>
                         @auth
-                            @if ($followingBleeps && $followingBleeps->count())
-                                @foreach ($followingBleeps as $bleep)
-                                    <x-bleep :bleep="$bleep" />
-                                @endforeach
-                            @else
-                                <div class="hero py-12">
-                                    <div class="hero-content text-center">
-                                        <div>
-                                            <i data-lucide="users" class="w-16 h-16 mx-auto text-base-content-100"></i>
-                                            <p class="mt-4 text-base-content">No posts from people you follow yet.</p>
-                                        </div>
+                            <div class="hero py-12" data-tab-loading>
+                                <div class="hero-content text-center">
+                                    <div>
+                                        <span class="loading loading-spinner loading-lg text-primary"></span>
+                                        <p class="mt-3 text-base-content/60">Fetching posts from people you follow...</p>
                                     </div>
                                 </div>
-                            @endif
+                            </div>
+                            <div class="hero py-12 hidden" data-tab-empty>
+                                <div class="hero-content text-center">
+                                    <div>
+                                        <i data-lucide="users" class="w-16 h-16 mx-auto text-base-content-100"></i>
+                                        <p class="mt-4 text-base-content">No posts from people you follow yet.</p>
+                                    </div>
+                                </div>
+                            </div>
                         @else
                             <div class="hero py-12">
                                 <div class="hero-content text-center">
@@ -227,25 +249,26 @@
                         @endauth
                     </div>
 
-                    {{-- Friends --}}
+                    {{-- Friends — fetched on first visit --}}
                     <div id="friends-container" class="space-y-4 mt-1 hidden" data-tab-panel="friends" aria-hidden="true"
-                        data-page="{{ $friendsBleeps ? $friendsBleeps->currentPage() + 1 : 2 }}"
-                        data-has-more="{{ $friendsBleeps && $friendsBleeps->hasMorePages() ? 'true' : 'false' }}">
+                        @auth data-tab-lazy="true" data-page="1" data-has-more="true" @endauth>
                         @auth
-                            @if ($friendsBleeps && $friendsBleeps->count())
-                                @foreach ($friendsBleeps as $bleep)
-                                    <x-bleep :bleep="$bleep" />
-                                @endforeach
-                            @else
-                                <div class="hero py-12">
-                                    <div class="hero-content text-center">
-                                        <div>
-                                            <i data-lucide="user-check" class="w-16 h-16 mx-auto text-base-content-100"></i>
-                                            <p class="mt-4 text-base-content">No posts from mutuals yet.</p>
-                                        </div>
+                            <div class="hero py-12" data-tab-loading>
+                                <div class="hero-content text-center">
+                                    <div>
+                                        <span class="loading loading-spinner loading-lg text-primary"></span>
+                                        <p class="mt-3 text-base-content/60">Fetching posts from your mutuals...</p>
                                     </div>
                                 </div>
-                            @endif
+                            </div>
+                            <div class="hero py-12 hidden" data-tab-empty>
+                                <div class="hero-content text-center">
+                                    <div>
+                                        <i data-lucide="user-check" class="w-16 h-16 mx-auto text-base-content-100"></i>
+                                        <p class="mt-4 text-base-content">No posts from mutuals yet.</p>
+                                    </div>
+                                </div>
+                            </div>
                         @else
                             <div class="hero py-12">
                                 <div class="hero-content text-center">
@@ -266,8 +289,13 @@
 
                     {{-- End of content indicator --}}
                     <div id="end-of-content" class="hidden text-center py-8">
-                        <i data-lucide="circle-check" class="w-8 h-8 mx-auto text-base-content/40"></i>
-                        <p class="mt-2 text-base-content/60">You've reached the end of the bleeps!</p>
+                        <i data-lucide="party-popper" class="w-8 h-8 mx-auto text-base-content/40"></i>
+                        <button
+                            type="button"
+                            data-end-message
+                            class="mt-2 text-base-content/60 hover:text-base-content transition-colors"
+                            title="Show another ending"
+                        >That is everything for now.</button>
                     </div>
 
                     {{-- Infinite scroll trigger --}}
@@ -277,15 +305,38 @@
 
         </div>
 
-        {{-- Right panel - announcement & notifications --}}
-        <div class="hidden lg:block lg:col-span-3" id="right-panel">
-            {{-- Server Announcement --}}
-            <x-announcement.system />
+        {{-- Right panel - quick notifications --}}
+        @auth
+            <div class="order-2 lg:order-3 lg:col-span-3" id="right-panel"
+                 x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
+                {{-- Mobile: stacked above the feed, collapsed by default --}}
+                <button type="button"
+                        class="flex w-full items-center justify-between gap-2 rounded-lg border border-base-200 bg-base-100 px-3 py-2 text-sm font-semibold shadow-sm lg:hidden"
+                        @click="open = !open"
+                        :aria-expanded="open"
+                        aria-controls="right-panel-content">
+                    <span class="flex items-center gap-2">
+                        <span class="relative inline-flex" aria-hidden="true">
+                            <i data-lucide="bell" class="w-4 h-4"></i>
+                            <span
+                                data-quick-notification-badge
+                                data-count="0"
+                                class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white hidden"
+                            ></span>
+                        </span>
+                        Notifications
+                    </span>
+                    <span class="transition-transform duration-200" :class="open ? 'rotate-180' : ''">
+                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </span>
+                </button>
 
-            {{-- Quick Few Notifications --}}
-            <x-notifications.quick />
-
-        </div>
+                <div id="right-panel-content" x-show="open" x-transition.opacity.duration.200ms x-cloak class="mt-1 lg:mt-0">
+                    {{-- Quick Few Notifications --}}
+                    <x-notifications.quick />
+                </div>
+            </div>
+        @endauth
     </div>
 
 </x-layout>

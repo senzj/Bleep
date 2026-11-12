@@ -107,7 +107,7 @@ const handleTextareaInput = () => {
 const handleMediaSelect = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/x-m4a';
+    input.accept = 'image/*,video/*,audio/*,.flac,.alac,.aac,.opus,.oga,.m4a,.aiff,.aif,.wma,.mkv,.mov,.m4v,.3gp';
 
     input.onchange = (e) => {
         const file = e.target.files?.[0];

@@ -103,19 +103,53 @@
             $displayName = $bleep->user->dname ?? 'Unknown';
             $username = "@" . ($bleep->user->username ?? 'Unknown');
         }
+
+        // NSFW posts need an age check on every visit unless the signed-in
+        // viewer has confirmed their age and opted into unblurred NSFW media.
+        $nsfwViewer = Auth::user();
+        $nsfwPreferences = $nsfwViewer?->getPreferences();
+        $nsfwEligible = $nsfwViewer !== null
+            && $nsfwViewer->age_confirmed_at !== null
+            && (bool) $nsfwPreferences?->show_nsfw
+            && ! (bool) $nsfwPreferences?->blur_nsfw_media;
+        $showNsfwAgeGate = (bool) $bleep->is_nsfw && ! $nsfwEligible;
     @endphp
 
     <x-slot:title>{{ $displayName ?? 'Unknown' }}'s Bleep | {{ $bleep->message ?? '' }}</x-slot:title>
 
     {{-- Bleep Posts Page Content --}}
     <div class="max-w-4xl mx-auto">
-        <a href="/" class="text-md link link-ghost mb-4 inline-block">
-            <i data-lucide="arrow-left" class="w-5 h-5 inline-block"></i>
-            Back
-        </a>
+        <div class="mb-4">
+            <x-ui.back-button fallback="{{ route('home') }}" />
+        </div>
+
+        @if ($showNsfwAgeGate)
+            <div
+                data-nsfw-age-gate
+                class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-center"
+                role="alert"
+            >
+                <i data-lucide="shield-alert" class="mx-auto mb-2 h-8 w-8 text-red-500"></i>
+                <p class="text-lg font-semibold">Age check required</p>
+                <p class="mx-auto mt-1 max-w-md text-sm text-base-content/70">
+                    This post is marked NSFW. Confirm that you are of legal age in your region
+                    to view sensitive content.
+                </p>
+                <button
+                    type="button"
+                    data-nsfw-age-accept
+                    class="btn btn-error btn-sm mt-3 text-white"
+                >
+                    I am of legal age — show post
+                </button>
+            </div>
+        @endif
 
         {{-- Bleep Post --}}
-        <div class="space-y-4">
+        <div
+            class="space-y-4 {{ $showNsfwAgeGate ? 'hidden' : '' }}"
+            @if ($showNsfwAgeGate) data-nsfw-age-content @endif
+        >
             <x-bleep :bleep="$bleep" />
         </div>
 

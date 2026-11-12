@@ -6,6 +6,7 @@ use App\Enums\NotificationType;
 use App\Http\Controllers\Controller;
 use App\Models\Bleep;
 use App\Models\Comments;
+use App\Services\ContentWindowService;
 use App\Services\MediaUploadService;
 use App\Services\Notifications\NotificationData;
 use App\Services\Notifications\NotificationService;
@@ -35,6 +36,12 @@ class CommentsController extends Controller
             ->latest()
             ->take(20);
 
+        $preferences = Auth::user()?->getPreferences();
+
+        if ($preferences && $preferences->show_anonymous_comments === false) {
+            $commentsQuery->where('is_anonymous', false);
+        }
+
         if (Auth::check()) {
             $commentsQuery->withExists([
                 'likes as liked' => fn ($query) => $query->where('user_id', Auth::id()),
@@ -62,11 +69,11 @@ class CommentsController extends Controller
             'media' => [
                 'nullable',
                 'file',
-                'mimetypes:image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,audio/mpeg,audio/wav,audio/mp3',
+                config('media.mimes_rule'),
                 'max:50480',
             ],
         ], [
-            'media.mimetypes' => 'Only image, video, or audio files are allowed for comments.',
+            'media.mimes' => 'Only image, video, or audio files are allowed for comments.',
         ]);
 
         if (! $request->filled('message') && ! $request->hasFile('media')) {
@@ -144,12 +151,12 @@ class CommentsController extends Controller
             'media' => [
                 'nullable',
                 'file',
-                'mimetypes:image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/wav,audio/mp3,audio/ogg,audio/x-m4a',
+                config('media.mimes_rule'),
                 'max:50480',
             ],
             'remove_media' => 'boolean',
         ], [
-            'media.mimetypes' => 'Only image, video, or audio files are allowed for comments.',
+            'media.mimes' => 'Only image, video, or audio files are allowed for comments.',
         ]);
 
         // Handle media removal
@@ -329,8 +336,10 @@ class CommentsController extends Controller
             'is_anonymous' => (bool) $comment->is_anonymous,
             'is_nsfw' => (bool) $comment->is_nsfw,
             'display_name' => $displayName,
-            'canEdit' => Auth::check() && Auth::id() === $comment->user_id,
-            'canDelete' => Auth::check() && Auth::id() === $comment->user_id,
+            'canEdit' => Auth::check() && Auth::id() === $comment->user_id
+                && ContentWindowService::canEdit($comment->created_at),
+            'canDelete' => Auth::check() && Auth::id() === $comment->user_id
+                && ContentWindowService::canDelete($comment->created_at),
             'media' => $comment->media_path,
             'likes_count' => $likesCount !== null ? (int) $likesCount : $comment->likes()->count(),
             'liked' => $liked !== null ? (bool) $liked : (Auth::check() && $comment->likes()->where('user_id', Auth::id())->exists()),

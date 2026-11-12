@@ -16,6 +16,18 @@
         @if ($slot->isNotEmpty())
             {{ $slot }}
         @elseif ($bleep)
+            {{-- view analytics --}}
+            @can('viewAnalytics', $bleep)
+                <li>
+                    <a href="{{ route('bleeps.analytics', ['bleep' => $bleep->id]) }}"
+                       class="cursor-pointer flex items-center gap-2 w-full px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
+                        <i data-lucide="chart-line" class="w-4 h-4"></i>
+                        <span>Analytics</span>
+                    </a>
+                </li>
+            @endcan
+
+            {{-- Update --}}
             @can('update', $bleep)
                 <li>
                     <button type="button"
@@ -29,6 +41,8 @@
                     </button>
                 </li>
             @endcan
+
+            {{-- Delete --}}
             @can('delete', $bleep)
                 <li>
                     <form method="POST" action="/bleeps/{{ $bleep->id }}/delete">

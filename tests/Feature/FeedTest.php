@@ -75,6 +75,45 @@ it('returns followed users bleeps on the following feed', function () {
         ->assertSee('Followed user bleep');
 });
 
+it('defers the following and friends tabs until they are opened', function () {
+    $viewer = User::factory()->create();
+    $author = User::factory()->create();
+
+    // Mutual follow so both scoped tabs include the author's bleep.
+    Following::create(['follower_id' => $viewer->id, 'followed_id' => $author->id]);
+    Following::create(['follower_id' => $author->id, 'followed_id' => $viewer->id]);
+
+    Bleep::factory()->for($author)->create([
+        'message' => 'Deferred tab bleep',
+        'is_anonymous' => false,
+    ]);
+
+    $html = $this->actingAs($viewer)->get('/')->assertOk()->getContent();
+
+    preg_match('/<div id="following-container".*?<div id="friends-container"/s', $html, $followingBlock);
+    preg_match('/<div id="friends-container".*?<div id="loading-indicator"/s', $html, $friendsBlock);
+
+    expect($followingBlock[0] ?? '')
+        ->toContain('data-tab-lazy="true"')
+        ->toContain('data-tab-loading')
+        ->not->toContain('data-bleep-card')
+        ->and($friendsBlock[0] ?? '')
+        ->toContain('data-tab-lazy="true"')
+        ->toContain('data-tab-loading')
+        ->not->toContain('data-bleep-card');
+
+    // The deferred panels are fetched on first visit instead.
+    $this->actingAs($viewer)
+        ->getJson('/bleeps/lazy-load?page=1&tab=following')
+        ->assertOk()
+        ->assertSee('Deferred tab bleep');
+
+    $this->actingAs($viewer)
+        ->getJson('/bleeps/lazy-load?page=1&tab=friends')
+        ->assertOk()
+        ->assertSee('Deferred tab bleep');
+});
+
 it('returns the liked state and fresh count from the like endpoint', function () {
     $user = User::factory()->create();
     $bleep = Bleep::factory()->create();

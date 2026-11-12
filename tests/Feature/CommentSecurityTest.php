@@ -64,3 +64,71 @@ it('hides comments for private profile bleeps from non-followers', function () {
         ->getJson("/bleeps/comments/{$bleep->id}/comments")
         ->assertNotFound();
 });
+
+it('lets owners edit a comment inside the ten minute window', function () {
+    $owner = User::factory()->create();
+    $bleep = Bleep::factory()->create();
+    $comment = Comments::factory()->create([
+        'bleep_id' => $bleep->id,
+        'user_id' => $owner->id,
+        'message' => 'Original comment',
+        'created_at' => now()->subMinutes(5),
+    ]);
+
+    $this->actingAs($owner)
+        ->postJson("/bleeps/comments/{$comment->id}/update", ['message' => 'Edited comment'])
+        ->assertOk()
+        ->assertJsonPath('success', true);
+
+    expect($comment->fresh()->message)->toBe('Edited comment');
+});
+
+it('stops owners from editing a comment after ten minutes', function () {
+    $owner = User::factory()->create();
+    $bleep = Bleep::factory()->create();
+    $comment = Comments::factory()->create([
+        'bleep_id' => $bleep->id,
+        'user_id' => $owner->id,
+        'message' => 'Original comment',
+        'created_at' => now()->subMinutes(11),
+    ]);
+
+    $this->actingAs($owner)
+        ->postJson("/bleeps/comments/{$comment->id}/update", ['message' => 'Edited comment'])
+        ->assertForbidden();
+
+    expect($comment->fresh()->message)->toBe('Original comment');
+});
+
+it('lets owners delete a comment inside the one week window', function () {
+    $owner = User::factory()->create();
+    $bleep = Bleep::factory()->create();
+    $comment = Comments::factory()->create([
+        'bleep_id' => $bleep->id,
+        'user_id' => $owner->id,
+        'created_at' => now()->subDays(2),
+    ]);
+
+    $this->actingAs($owner)
+        ->deleteJson("/bleeps/comments/{$comment->id}/delete")
+        ->assertOk()
+        ->assertJsonPath('success', true);
+
+    $this->assertSoftDeleted('comments', ['id' => $comment->id]);
+});
+
+it('stops owners from deleting a comment after one week', function () {
+    $owner = User::factory()->create();
+    $bleep = Bleep::factory()->create();
+    $comment = Comments::factory()->create([
+        'bleep_id' => $bleep->id,
+        'user_id' => $owner->id,
+        'created_at' => now()->subDays(8),
+    ]);
+
+    $this->actingAs($owner)
+        ->deleteJson("/bleeps/comments/{$comment->id}/delete")
+        ->assertForbidden();
+
+    $this->assertNotSoftDeleted('comments', ['id' => $comment->id]);
+});

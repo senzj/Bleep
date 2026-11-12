@@ -2,11 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\Bleep;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Bleep>
+ * @extends Factory<Bleep>
  */
 class BleepFactory extends Factory
 {
@@ -86,7 +87,6 @@ class BleepFactory extends Factory
         return [
             'user_id' => User::factory(),
             'message' => fake()->randomElement($messages),
-            'media_path' => null,
             'views' => fake()->numberBetween(0, 10000),
             'is_anonymous' => fake()->boolean(20), // 20% chance of being anonymous
             'deleted_by_author' => false,

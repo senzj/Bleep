@@ -38,10 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const icon = btn.querySelector('.follow-icon');
 
             if (following) {
-                // Following state
-                btn.classList.add('bg-blue-100', 'text-blue-700', 'shadow-sm');
-                btn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-blue-50', 'hover:text-blue-600');
-                btn.classList.add('hover:bg-red-100', 'hover:text-red-600');
+                // Following state: filled primary until hover turns it red.
+                btn.classList.add('btn-primary');
+                btn.classList.remove('btn-outline');
 
                 if (followText) followText.textContent = 'Following';
                 if (icon) {
@@ -49,9 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     lucide.createIcons(); // Re-render lucide icons
                 }
             } else {
-                // Not following state
-                btn.classList.remove('bg-blue-100', 'text-blue-700', 'hover:bg-red-100', 'hover:text-red-600');
-                btn.classList.add('bg-gray-200', 'text-gray-700', 'shadow-sm', 'hover:bg-blue-50', 'hover:text-blue-600');
+                // Not following state: outlined call to action.
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline');
 
                 if (followText) followText.textContent = 'Follow';
                 if (icon) {
