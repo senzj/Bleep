@@ -4,9 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-
+use App\Models\UserPreferences;
 use App\Services\MediaUploadService;
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -23,10 +22,14 @@ class Register extends Controller
                 'string',
                 'confirmed',
                 'min:8',
-                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]+$/'
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]+$/',
             ],
             'timezone' => 'nullable|string|max:64',
             'profile_picture' => 'nullable|image|mimes:png,jpg,jpeg,gif,webp|max:5120',
+            'accept_terms' => 'accepted',
+            'accept_privacy' => 'accepted',
+            'accept_cookies' => 'accepted',
+            'confirm_age' => 'accepted',
         ], [
             // Display Name
             'display_name.required' => 'Please enter your display name.',
@@ -54,6 +57,12 @@ class Register extends Controller
             'profile_picture.image' => 'File must be an image.',
             'profile_picture.mimes' => 'Image must be PNG, JPG, JPEG, GIF, or WEBP.',
             'profile_picture.max' => 'Image must not exceed 5MB.',
+
+            // Policies + age consent
+            'accept_terms.accepted' => 'You must agree to the Terms of Service.',
+            'accept_privacy.accepted' => 'You must accept the Privacy Policy.',
+            'accept_cookies.accepted' => 'You must accept the Cookie Policy.',
+            'confirm_age.accepted' => 'You must confirm that you are old enough to use Bleep.',
         ]);
 
         // Create user
@@ -63,10 +72,14 @@ class Register extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'timezone' => $validated['timezone'] ?? 'UTC',
+            'terms_accepted_at' => now(),
+            'privacy_accepted_at' => now(),
+            'cookies_accepted_at' => now(),
+            'age_confirmed_at' => now(),
         ]);
 
         // create user preferences with defaults
-        $user->preferences()->create([]);
+        $user->preferences()->create(UserPreferences::defaults());
 
         // Handle profile picture upload
         if ($request->hasFile('profile_picture') && $request->file('profile_picture')->isValid()) {
@@ -74,7 +87,7 @@ class Register extends Controller
                 'profile_picture' => MediaUploadService::saveProfileImage(
                     $request->file('profile_picture'),
                     $user->id
-                )
+                ),
             ]);
         }
 

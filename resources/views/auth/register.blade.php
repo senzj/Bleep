@@ -87,7 +87,7 @@
                         <div class="card-body p-6 sm:p-8">
                             <h2 class="card-title text-xl mb-6">Account Information</h2>
 
-                            <form id="register-form" method="POST" action="{{ route('register') }}" enctype="multipart/form-data">
+                            <form id="register-form" method="POST" action="{{ route('register') }}" enctype="multipart/form-data" data-loading-curtain-trigger="Creating account">
                                 @csrf
 
                                 {{-- Hidden timezone field --}}
@@ -274,6 +274,17 @@
                                         </div>
                                     </div>
 
+                                    {{-- Policies + age consent --}}
+                                    <div class="mt-6">
+                                        <h3 class="mb-2 text-sm font-semibold">Before you join</h3>
+                                        <x-auth.consents />
+                                        @if ($errors->has('accept_terms') || $errors->has('accept_privacy') || $errors->has('accept_cookies') || $errors->has('confirm_age'))
+                                            <p class="mt-2 text-xs text-error">
+                                                Please accept the Terms, Privacy Policy and Cookie Policy and confirm your age to continue.
+                                            </p>
+                                        @endif
+                                    </div>
+
                                     {{-- Submit Button --}}
                                     <div class="form-control mt-8">
                                         <button type="submit" class="btn btn-primary btn-lg w-full transition-all duration-200 hover:-translate-y-1 hover:shadow-lg active:translate-y-0 btn-disabled opacity-50 cursor-not-allowed" disabled>
@@ -282,7 +293,7 @@
                                         </button>
                                         <p class="text-xs text-center text-base-content/60 mt-2">
                                             <i data-lucide="info" class="w-3 h-3 inline"></i>
-                                            Complete all fields with valid information to enable registration
+                                            Complete all fields, accept the policies and confirm your age to enable registration
                                         </p>
                                     </div>
                                 </div>

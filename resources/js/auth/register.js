@@ -652,6 +652,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const confirm = passwordConfirmInput?.value;
         if (password !== confirm) isValid = false;
 
+        // Policies + age consent
+        const consents = document.querySelectorAll('#register-form [data-policy-consent]');
+        if (consents.length === 0 || !Array.from(consents).every((checkbox) => checkbox.checked)) {
+            isValid = false;
+        }
+
         return isValid;
     }
 
@@ -690,10 +696,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!validateAllFields()) {
                 e.preventDefault();
-                showToast('Please fix all errors before submitting', 'error');
+
+                const consentsOk = Array.from(
+                    document.querySelectorAll('#register-form [data-policy-consent]')
+                ).every((checkbox) => checkbox.checked);
+
+                showToast(
+                    consentsOk
+                        ? 'Please fix all errors before submitting'
+                        : 'Please accept the Terms, Privacy Policy and Cookie Policy and confirm your age.',
+                    'error'
+                );
             }
         });
     }
+
+    // Re-evaluate the submit button whenever a consent toggle changes
+    document.querySelectorAll('#register-form [data-policy-consent]').forEach((checkbox) => {
+        checkbox.addEventListener('change', updateSubmitButton);
+    });
 
     // Initialize button state on page load
     updateSubmitButton();

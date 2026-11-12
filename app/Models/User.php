@@ -34,6 +34,10 @@ class User extends Authenticatable
         'ban_reason',
         'profile_picture',
         'last_strike_at',
+        'terms_accepted_at',
+        'privacy_accepted_at',
+        'cookies_accepted_at',
+        'age_confirmed_at',
     ];
 
     protected $casts = [
@@ -65,6 +69,10 @@ class User extends Authenticatable
             'is_verified' => 'boolean',
             'is_banned' => 'boolean',
             'banned_until' => 'datetime',
+            'terms_accepted_at' => 'datetime',
+            'privacy_accepted_at' => 'datetime',
+            'cookies_accepted_at' => 'datetime',
+            'age_confirmed_at' => 'datetime',
         ];
     }
 
@@ -155,6 +163,56 @@ class User extends Authenticatable
     public function hasAdminAccess(): bool
     {
         return in_array($this->role, ['admin', 'moderator']);
+    }
+
+    /**
+     * Whether a viewer may see this user's follower/following lists.
+     *
+     * Owners and staff always can. Otherwise the account's
+     * follower_list_visibility preference decides.
+     */
+    public function canViewFollowerLists(?User $viewer): bool
+    {
+        if ($viewer && (int) $viewer->id === (int) $this->id) {
+            return true;
+        }
+
+        if ($viewer && $viewer->hasAdminAccess()) {
+            return true;
+        }
+
+        $visibility = $this->preferences?->follower_list_visibility ?? 'everyone';
+
+        return match ($visibility) {
+            'only_me' => false,
+            'friends' => $viewer !== null && $viewer->isFriend($this),
+            default => true,
+        };
+    }
+
+    /**
+     * Whether another user may open a new direct conversation with this user.
+     *
+     * dm_privacy values: everyone, followers (the sender follows this user),
+     * friends (mutual follow). Staff are not exempt here; DM privacy is personal.
+     */
+    public function canReceiveDirectMessageFrom(?User $sender): bool
+    {
+        if (! $sender || (int) $sender->id === (int) $this->id) {
+            return false;
+        }
+
+        if ($this->isBlockedOrHasBlocked($sender)) {
+            return false;
+        }
+
+        $privacy = $this->preferences?->dm_privacy ?? 'everyone';
+
+        return match ($privacy) {
+            'followers' => $sender->isFollowing($this),
+            'friends' => $sender->isFriend($this),
+            default => true,
+        };
     }
 
     /**
@@ -313,6 +371,7 @@ class User extends Authenticatable
             ->withPivot([
                 'role',
                 'last_read_at',
+                'left_at',
                 'joined_at',
                 'is_muted',
                 'muted_until',

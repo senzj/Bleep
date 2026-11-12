@@ -1,29 +1,5 @@
 @push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Password toggle functionality for login page
-            const passwordInput = document.getElementById('login_password');
-            const togglePassword = document.getElementById('toggle_login_password');
-
-            if (togglePassword && passwordInput) {
-                togglePassword.addEventListener('click', () => {
-                    const type = passwordInput.type === 'password' ? 'text' : 'password';
-                    passwordInput.type = type;
-
-                    const eyeIcon = document.getElementById('login_eye_icon');
-                    const eyeOffIcon = document.getElementById('login_eye_off_icon');
-
-                    if (type === 'text') {
-                        eyeIcon.classList.add('hidden');
-                        eyeOffIcon.classList.remove('hidden');
-                    } else {
-                        eyeIcon.classList.remove('hidden');
-                        eyeOffIcon.classList.add('hidden');
-                    }
-                });
-            }
-        });
-    </script>
+    @vite('resources/js/auth/login.js')
 @endpush
 
 <x-layout>
@@ -37,7 +13,7 @@
                 <div class="card-body p-6 sm:p-8">
                     <h1 class="text-2xl sm:text-3xl font-bold text-center mb-4 sm:mb-6">Welcome Back</h1>
 
-                    <form method="POST" action="/login">
+                    <form method="POST" action="/login" data-loading-curtain-trigger="Signing in">
                         @csrf
 
                         {{-- Username --}}
@@ -85,15 +61,22 @@
                         </div>
 
                         {{-- Remember Me --}}
-                        <div class="form-control mb-6">
+                        <div class="form-control mb-4">
                             <label class="label cursor-pointer justify-start gap-2">
                                 <input type="checkbox"
+                                       id="login_remember"
                                        name="remember"
                                        value="1"
                                        class="checkbox checkbox-sm"
                                        {{ old('remember') ? 'checked' : '' }}>
                                 <span class="label-text text-sm">Remember me</span>
                             </label>
+                        </div>
+
+                        {{-- Policies + age consent --}}
+                        <div class="mb-4">
+                            <p class="mb-2 text-xs font-semibold text-base-content/80">Policies</p>
+                            <x-auth.consents compact />
                         </div>
 
                         {{-- Submit Button --}}
@@ -109,6 +92,10 @@
                     <p class="text-center text-sm">
                         Don't have an account?
                         <a href="{{ route('register') }}" class="link link-primary font-medium">Create account</a>
+                    </p>
+                    <p class="mt-2 text-center text-sm">
+                        Just browsing?
+                        <a href="{{ route('bulletin.index') }}" class="link link-hover font-medium">Read the bulletin board</a>
                     </p>
                 </div>
             </div>

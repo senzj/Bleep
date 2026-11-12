@@ -3,15 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-
-use App\Models\RememberedDevice;
 use App\Models\Logs;
-
+use App\Models\RememberedDevice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 class Login extends Controller
 {
@@ -34,8 +31,29 @@ class Login extends Controller
             $request->session()->regenerate();
             $user = Auth::user();
 
+            // Re-accepting the policies at sign-in records the consent timestamps
+            // for accounts created before the policy fields existed.
+            $consentColumns = [
+                'terms_accepted_at' => 'accept_terms',
+                'privacy_accepted_at' => 'accept_privacy',
+                'cookies_accepted_at' => 'accept_cookies',
+                'age_confirmed_at' => 'confirm_age',
+            ];
+
+            $consentUpdates = [];
+
+            foreach ($consentColumns as $column => $input) {
+                if ($request->boolean($input) && $user->{$column} === null) {
+                    $consentUpdates[$column] = now();
+                }
+            }
+
+            if ($consentUpdates !== []) {
+                $user->update($consentUpdates);
+            }
+
             // Log successful login
-            Logs::record($user->id, 'login', ['username' => $user->username, 'remember' => (bool)$remember], $request);
+            Logs::record($user->id, 'login', ['username' => $user->username, 'remember' => (bool) $remember], $request);
 
             // If "Remember Me" is checked, create/update device token
             if ($remember) {
