@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Api\Auth\ValidationController;
 use App\Http\Controllers\Auth\Login;
 use App\Http\Controllers\Auth\Logout;
 use App\Http\Controllers\Auth\Register;
+use App\Http\Controllers\Bleep\BleepAnalyticsController;
 use App\Http\Controllers\Bleep\CommentsController;
 use App\Http\Controllers\Bleep\CommentsLikesController;
 use App\Http\Controllers\Bleep\CommentsRepliesController;
@@ -20,14 +22,17 @@ use App\Http\Controllers\Chat\MessageController;
 use App\Http\Controllers\Chat\MessageReactionController;
 use App\Http\Controllers\FollowingController;
 use App\Http\Controllers\FollowRequestController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SocialController;
 use App\Http\Controllers\UserPreferencesController;
+use App\Http\Controllers\Users\ProfileAnalyticsController;
 use App\Http\Controllers\Users\ProfileController;
 use App\Http\Controllers\WarningsController;
+use App\Http\Middleware\EnsureRegistrationIsEnabled;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -36,13 +41,22 @@ use Illuminate\Support\Facades\Route;
 //     phpinfo();
 // });
 
+// Route::get('/php-memory', function () {
+//     return [
+//         'memory_limit' => ini_get('memory_limit'),
+//         'php_ini' => php_ini_loaded_file(),
+//         'current_usage' => memory_get_usage(true),
+//         'peak_usage' => memory_get_peak_usage(true),
+//     ];
+// });
+
 // REGISTER
 Route::view('/register', 'auth.register')
-    ->middleware('guest')
+    ->middleware(['guest', EnsureRegistrationIsEnabled::class])
     ->name('register');
 
 Route::post('/register', Register::class)
-    ->middleware('guest', 'progressive.lockout:register');
+    ->middleware(['guest', EnsureRegistrationIsEnabled::class, 'progressive.lockout:register']);
 
 // LOGIN
 Route::view('/login', 'auth.login')
@@ -56,6 +70,11 @@ Route::post('/login', Login::class)
 Route::post('/logout', Logout::class)
     ->middleware('auth')
     ->name('logout');
+
+// LEGAL
+Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
+Route::get('/cookies', [LegalController::class, 'cookies'])->name('legal.cookies');
 
 // PUBLIC ROUTES
 
@@ -120,6 +139,11 @@ Route::post('/bleeps/{bleep}/share', [ShareController::class, 'store']);
 
 Route::get('/s/{token}', [ShareController::class, 'redirect'])->name('shares.redirect');
 
+// Bleep analytics (owner only)
+Route::get('/bleeps/{bleep}/analytics', [BleepAnalyticsController::class, 'show'])
+    ->middleware('auth')
+    ->name('bleeps.analytics');
+
 // Bleep Posts (with soft-deleted support)
 Route::get('/bleeps/{id}', [PostController::class, 'index'])
     ->name('post');
@@ -130,6 +154,11 @@ Route::get('/bleeps/{id}/comments/load-more', [PostController::class, 'loadMoreP
 // Profile page
 Route::get('/bleeper/{username}', [ProfileController::class, 'index'])
     ->name('user.profile');
+
+// Profile analytics (owner only)
+Route::get('/bleeper/{username}/analytics', [ProfileAnalyticsController::class, 'show'])
+    ->middleware('auth')
+    ->name('profile.analytics');
 
 // Lazy fragments (AJAX)
 Route::get('/users/{username}/bleeps', [ProfileController::class, 'bleeps'])->name('user.bleeps');
@@ -167,6 +196,8 @@ Route::middleware('auth')->group((function () {
         ->name('chat.conversations.direct');
     Route::post('/chat/conversations/group', [ConversationController::class, 'createGroup'])
         ->name('chat.conversations.group');
+    Route::post('/chat/conversations/{conversation}/leave', [ConversationController::class, 'leave'])
+        ->name('chat.conversations.leave');
     Route::get('/chat/conversations/{conversation}/messages', [ConversationController::class, 'messages'])
         ->name('chat.conversations.messages');
 
@@ -199,7 +230,10 @@ Route::middleware('auth')->group((function () {
     // Bleep Resource Routes
     Route::post('/bleeps', [BleepController::class, 'store']);
     Route::match(['put', 'post'], '/bleeps/{bleep}/update', [BleepController::class, 'update']);
-    Route::delete('/bleeps/{bleep}/delete', [BleepController::class, 'destroy']);
+    Route::delete('/bleeps/{bleep}/delete', [BleepController::class, 'destroy'])
+        ->name('bleeps.destroy');
+    Route::post('/bleeps/media/{media}/duration', [BleepController::class, 'mediaDuration'])
+        ->name('bleeps.media.duration');
 
     // Likes Routes (require auth)
     Route::post('/bleeps/{bleep}/like', [LikesController::class, 'toggle']);
@@ -298,6 +332,9 @@ Route::middleware('auth')->group((function () {
     Route::get('/settings/logs', [SettingsController::class, 'logs'])
         ->name('settings.logs');
 
+    Route::get('/settings/system', [SettingsController::class, 'system'])
+        ->name('settings.system');
+
     // User report submission
     Route::post('/reports', [ReportsController::class, 'store'])
         ->middleware('progressive.lockout:report')
@@ -369,6 +406,16 @@ Route::middleware('auth')->group((function () {
         Route::get('/admin/visits/data', [AdminController::class, 'visitsData'])
             ->name('admin.visits.data');
 
+        // Server information, health statuses, and system configuration
+        Route::get('/admin/system', [SystemController::class, 'index'])
+            ->name('admin.system');
+
+        Route::post('/admin/system', [SystemController::class, 'update'])
+            ->name('admin.system.update');
+
+        Route::post('/admin/system/apply-defaults', [SystemController::class, 'applyDefaults'])
+            ->name('admin.system.defaults');
+
     });
 }));
 
@@ -394,62 +441,5 @@ Route::post('/generate-username', [ValidationController::class, 'generateRandomU
     ->middleware(['throttle:60,1', 'guest'])
     ->name('generate.username');
 
-// MEDIA STREAMING ROUTE
-// use Illuminate\Http\Request;
-// use Symfony\Component\HttpFoundation\StreamedResponse;
-
-Route::get('/media/stream/{path}', function ($path) {
-    $publicRoot = realpath(storage_path('app/public'));
-    $fullPath = realpath(storage_path('app/public/'.$path));
-
-    $isInsidePublicDisk = $publicRoot !== false
-        && $fullPath !== false
-        && str_starts_with($fullPath, $publicRoot.DIRECTORY_SEPARATOR)
-        && is_file($fullPath);
-
-    abort_unless($isInsidePublicDisk, 404);
-
-    $mimeType = mime_content_type($fullPath);
-    $fileSize = filesize($fullPath);
-
-    // Support range requests for video/audio streaming
-    $headers = [
-        'Content-Type' => $mimeType,
-        'Accept-Ranges' => 'bytes',
-        'X-Content-Type-Options' => 'nosniff',
-    ];
-
-    // Check if client sent a Range header
-    if (request()->hasHeader('Range')) {
-        $range = request()->header('Range');
-        preg_match('/bytes=(\d+)-(\d*)/', $range, $matches);
-
-        if (! isset($matches[1])) {
-            abort(416);
-        }
-
-        $start = max(0, min((int) $matches[1], $fileSize - 1));
-        $end = ($matches[2] ?? '') !== ''
-            ? min((int) $matches[2], $fileSize - 1)
-            : $fileSize - 1;
-
-        abort_if($end < $start, 416);
-
-        $length = $end - $start + 1;
-
-        $headers['Content-Range'] = "bytes $start-$end/$fileSize";
-        $headers['Content-Length'] = $length;
-
-        $file = fopen($fullPath, 'rb');
-        fseek($file, $start);
-        $data = fread($file, $length);
-        fclose($file);
-
-        return response($data, 206, $headers);
-    }
-
-    // No range request, send entire file
-    $headers['Content-Length'] = $fileSize;
-
-    return response()->file($fullPath, $headers);
-})->name('media.stream')->where('path', '.*');
+// Resumable (chunked) media uploads
+require __DIR__.'/upload.php';
