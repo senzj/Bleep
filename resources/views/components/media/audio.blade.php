@@ -9,18 +9,33 @@
 @props([
     'src',
     'mime',
-    'audioId'      => null,
-    'downloadUrl'  => null,
-    'downloadName' => null,
-    'alt'          => '',
-    'nsfw'         => false,
+    'audioId'         => null,
+    'downloadUrl'     => null,
+    'downloadName'    => null,
+    'alt'             => '',
+    'nsfw'            => false,
+    'mediaId'         => null,
+    'duration'        => null,
+    'durationSeconds' => null,
+    'miniTitle'       => null,
+    'miniSubtitle'    => null,
+    'posterName'      => null,
+    'posterHandle'    => null,
+    'posterAvatar'    => null,
+    'allowDownload'   => false,
 ])
 
 @php
     $audioId = $audioId ?: ('audio-' . uniqid());
 @endphp
 
-<div class="mt-2 rounded-xl border border-base-300 bg-base-200" data-bleep-media data-audio-player>
+<div class="mt-2 rounded-xl border border-base-300 bg-base-200" data-bleep-media data-audio-player
+    @if($miniTitle) data-media-title="{{ $miniTitle }}" @endif
+    @if($miniSubtitle) data-media-subtitle="{{ $miniSubtitle }}" @endif
+    @if($posterName) data-media-poster="{{ $posterName }}" @endif
+    @if($posterHandle) data-media-poster-handle="{{ $posterHandle }}" @endif
+    @if($posterAvatar) data-media-poster-avatar="{{ $posterAvatar }}" @endif
+>
     <div class="p-4">
 
         {{-- Progress Bar --}}
@@ -55,7 +70,7 @@
             </div>
 
             {{-- Right: Speed + Download + Volume --}}
-            <div class="flex items-center gap-3 min-w-[70px] justify-end">
+            <div class="flex items-center gap-3 min-w-[70px] justify-end" data-audio-actions>
 
                 {{-- Speed --}}
                 <div class="relative" x-data="{ open: false }">
@@ -79,20 +94,23 @@
                     </div>
                 </div>
 
-                {{-- Download — mirrors Vue: always uses $src, derives filename by stripping the query string then taking the last path segment. `download` attribute always present so browser saves instead of navigates. --}}
-                @php
-                    $dlName = $downloadName ?: (
-                        ($base = strtok($src, '?')) && ($parts = explode('/', $base))
-                            ? (end($parts) ?: 'audio')
-                            : 'audio'
-                    );
-                @endphp
-                <a href="{{ $src }}"
-                   download="{{ $dlName }}"
-                   class="btn btn-ghost btn-xs btn-circle hidden sm:flex"
-                   title="Download">
-                    <i data-lucide="download" class="w-4 h-4"></i>
-                </a>
+                {{-- Download — only rendered when the viewer has media downloads enabled. --}}
+                @if ($allowDownload)
+                    @php
+                        $dlHref = $downloadUrl ?: $src;
+                        $dlName = $downloadName ?: (
+                            ($base = strtok($dlHref, '?')) && ($parts = explode('/', $base))
+                                ? (end($parts) ?: 'audio')
+                                : 'audio'
+                        );
+                    @endphp
+                    <a href="{{ $dlHref }}"
+                       download="{{ $dlName }}"
+                       class="btn btn-ghost btn-xs btn-circle hidden sm:flex"
+                       title="Download">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                    </a>
+                @endif
 
                 {{-- Volume — horizontal slider popup, fully reactive via Alpine --}}
                 <div class="relative"
@@ -170,7 +188,9 @@
         <audio class="hidden audio-element"
                id="{{ $audioId }}"
                preload="none"
-               data-src="{{ $src }}">
+               data-src="{{ $src }}"
+               @if($mediaId) data-media-id="{{ $mediaId }}" @endif
+               @if($durationSeconds) data-duration-seconds="{{ $durationSeconds }}" @endif>
         </audio>
     </div>
 </div>

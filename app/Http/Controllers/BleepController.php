@@ -3,15 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bleep;
+use App\Models\BleepMedia;
 use App\Models\BleepViews;
 use App\Models\Logs;
+use App\Models\MediaUpload;
 use App\Services\FeedService;
 use App\Services\MediaUploadService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class BleepController extends Controller
 {
@@ -29,22 +34,17 @@ class BleepController extends Controller
      */
     public function index(Request $request)
     {
+        // Only the active tab is rendered server-side. The Following and
+        // Friends tabs are fetched on demand from /bleeps/lazy-load, which
+        // keeps the first payload (and its icon/media hydration) small.
         $bleeps = $this->fetchBleeps($request);
-
-        $followingBleeps = Auth::check()
-            ? $this->fetchBleeps($request, null, null, 'following')
-            : null;
-
-        $friendsBleeps = Auth::check()
-            ? $this->fetchBleeps($request, null, null, 'friends')
-            : null;
 
         $this->recordBleepsViews($bleeps);
 
         return view('home', [
             'bleeps' => $bleeps,
-            'followingBleeps' => $followingBleeps,
-            'friendsBleeps' => $friendsBleeps,
+            'followingBleeps' => null,
+            'friendsBleeps' => null,
         ]);
     }
 
@@ -70,19 +70,38 @@ class BleepController extends Controller
      */
     public function store(Request $request)
     {
+        $this->guardPhpUploadLimits($request);
+
+        if ($request->hasFile('media')) {
+            @set_time_limit(0);
+        }
+
+        $maxFileKb = (int) config('media.max_bleep_file_kb', 2 * 1024 * 1024);
+        $maxFileLabel = $this->formatFileSizeLimit($maxFileKb);
+
         $validated = $request->validate([
-            'message' => 'max:255|required_without:media',
+            'message' => 'max:255|required_without_all:media,upload_ids',
             'is_anonymous' => 'nullable|boolean',
             'is_nsfw' => 'nullable|boolean',
-            'media' => 'nullable|array|max:4|required_without:message',
-            'media.*' => 'file|max:102400|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mp3,audio/mpeg,audio/wav',
+            'media' => 'nullable|array|max:9|required_without_all:message,upload_ids',
+            'media.*' => 'file|max:'.$maxFileKb.'|'.config('media.mimes_rule'),
+            'upload_ids' => 'nullable|array|max:9',
+            'upload_ids.*' => 'string|max:64',
         ], [
-            'message.required_without' => 'Write something or attach media.',
-            'media.required_without' => 'Attach media or write a message.',
-            'media.max' => 'You can upload up to 4 files.',
+            'message.required_without_all' => 'Write something or attach media.',
+            'media.required_without_all' => 'Attach media or write a message.',
+            'media.max' => 'You can upload up to 9 files.',
             'media.*.mimetypes' => 'Only images (jpg, png, webp, gif), videos (mp4, webm), or audio (mp3, wav) are allowed.',
-            'media.*.max' => 'Each file must be at most 100MB.',
+            'media.*.max' => "Each file must be at most {$maxFileLabel}.",
         ]);
+
+        $uploads = $this->resolveCompletedUploads($validated['upload_ids'] ?? []);
+        $files = $request->file('media', []);
+        $newTypes = array_merge(
+            array_map(fn ($file) => MediaUploadService::mediaTypeFromMime((string) $file->getMimeType()), $files),
+            $uploads->map(fn (MediaUpload $upload) => MediaUploadService::mediaTypeFromMime((string) $upload->mime_type))->all(),
+        );
+        $this->assertBleepMediaRules($newTypes);
 
         $user = Auth::user();
         $bleep = $user->bleeps()->create([
@@ -91,19 +110,35 @@ class BleepController extends Controller
             'is_nsfw' => $request->boolean('is_nsfw'),
         ]);
 
-        if ($request->hasFile('media')) {
-            foreach ($request->file('media') as $file) {
-                if (! $file->isValid()) {
-                    continue;
-                }
-                $bleep->media()->create(
-                    MediaUploadService::saveBleepMedia($file, $bleep->id)
-                );
+        foreach ($files as $file) {
+            if (! $file->isValid()) {
+                continue;
             }
+
+            $media = MediaUploadService::saveBleepMedia($file, $bleep->id);
+            $bleep->media()->create([
+                'path' => $media['path'],
+                'type' => $media['type'],
+                'mime_type' => $media['mime'],
+                'original_name' => $file->getClientOriginalName(),
+                'size' => $file->getSize(),
+            ]);
         }
 
+        $this->claimUploads($bleep, $uploads);
+
         if ($request->ajax() || $request->wantsJson()) {
-            return response()->json(['success' => true, 'bleep_id' => $bleep->id]);
+            $bleep->load(['user.preferences', 'media']);
+
+            return response()->json([
+                'success' => true,
+                'bleep_id' => $bleep->id,
+                'html' => view('components.bleep', [
+                    'bleep' => $bleep,
+                    'justPosted' => true,
+                ])->render(),
+                'undo_url' => route('bleeps.destroy', ['bleep' => $bleep->id]),
+            ]);
         }
 
         return redirect('/')->with('success', 'Your bleep has been posted!');
@@ -151,24 +186,37 @@ class BleepController extends Controller
     public function update(Request $request, Bleep $bleep)
     {
         $this->authorize('update', $bleep);
+        $this->guardPhpUploadLimits($request);
+
+        if ($request->hasFile('media')) {
+            @set_time_limit(0);
+        }
+
+        $maxFileKb = (int) config('media.max_bleep_file_kb', 2 * 1024 * 1024);
+        $maxFileLabel = $this->formatFileSizeLimit($maxFileKb);
 
         $validated = $request->validate([
             'message' => 'nullable|string|max:255',
             'is_anonymous' => 'nullable|boolean',
             'is_nsfw' => 'nullable|boolean',
-            'media' => 'nullable|array|max:4',
-            'media.*' => 'file|max:102400|mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mp3,audio/mpeg,audio/wav',
+            'media' => 'nullable|array|max:9',
+            'media.*' => 'file|max:'.$maxFileKb.'|'.config('media.mimes_rule'),
+            'upload_ids' => 'nullable|array|max:9',
+            'upload_ids.*' => 'string|max:64',
             'remove_media_ids' => 'nullable|array',
             'remove_media_ids.*' => 'nullable|integer',  // integers only, nulls filtered in JS
         ], [
             'message.max' => 'Your bleep is too long! Keep it under 255 characters.',
-            'media.max' => 'You can upload up to 4 files.',
+            'media.max' => 'You can upload up to 9 files.',
             'media.*.mimetypes' => 'Only images (jpg, png, webp, gif), videos (mp4, webm), or audio (mp3, wav) are allowed.',
-            'media.*.max' => 'Each file must be at most 100MB.',
+            'media.*.max' => "Each file must be at most {$maxFileLabel}.",
         ]);
 
+        $uploads = $this->resolveCompletedUploads($validated['upload_ids'] ?? []);
+        $files = $request->file('media', []);
+        $hasNewMedia = ! empty($files) || $uploads->isNotEmpty();
+
         // Must have at least a message OR existing/new media
-        $hasNewMedia = $request->hasFile('media');
         $removeIds = array_filter(
             array_map('intval', $validated['remove_media_ids'] ?? []),
             fn ($id) => $id > 0
@@ -191,42 +239,36 @@ class BleepController extends Controller
                 MediaUploadService::deleteBleepMedia($media->path);
                 $media->delete();
             }
+
+            $bleep->unsetRelation('media');
         }
 
         // Add new media
         if ($hasNewMedia) {
-            $existingCount = $bleep->media()->count();
-            $files = $request->file('media');
-            $audioFiles = array_filter($files, fn ($f) => str_starts_with($f->getMimeType(), 'audio/'));
-            $otherFiles = array_filter($files, fn ($f) => ! str_starts_with($f->getMimeType(), 'audio/'));
+            $existingTypes = $bleep->media()->pluck('type')->all();
+            $newTypes = array_merge(
+                array_map(fn ($file) => MediaUploadService::mediaTypeFromMime((string) $file->getMimeType()), $files),
+                $uploads->map(fn (MediaUpload $upload) => MediaUploadService::mediaTypeFromMime((string) $upload->mime_type))->all(),
+            );
 
-            if (count($audioFiles) > 0 && (count($otherFiles) > 0 || $existingCount > 0)) {
-                return response()->json([
-                    'errors' => ['media' => ['Audio cannot be combined with other media.']],
-                ], 422);
-            }
-
-            if (count($audioFiles) > 1) {
-                return response()->json([
-                    'errors' => ['media' => ['Only one audio file is allowed.']],
-                ], 422);
-            }
-
-            $cap = count($audioFiles) > 0 ? 1 : 4;
-            if (($existingCount + count($files)) > $cap) {
-                return response()->json([
-                    'errors' => ['media' => ["You can upload up to {$cap} file(s)."]],
-                ], 422);
-            }
+            $this->assertBleepMediaRules($newTypes, $existingTypes);
 
             foreach ($files as $file) {
                 if (! $file->isValid()) {
                     continue;
                 }
-                $bleep->media()->create(
-                    MediaUploadService::saveBleepMedia($file, $bleep->id)
-                );
+
+                $media = MediaUploadService::saveBleepMedia($file, $bleep->id);
+                $bleep->media()->create([
+                    'path' => $media['path'],
+                    'type' => $media['type'],
+                    'mime_type' => $media['mime'],
+                    'original_name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                ]);
             }
+
+            $this->claimUploads($bleep, $uploads);
         }
 
         $bleep->update([
@@ -316,7 +358,170 @@ class BleepController extends Controller
         ]);
     }
 
+    /**
+     * Persist the measured duration of a post's audio/video so the player can
+     * show the real length before metadata loads on later visits.
+     */
+    public function mediaDuration(Request $request, BleepMedia $media): JsonResponse
+    {
+        abort_unless((int) $media->bleep?->user_id === (int) Auth::id(), 403);
+
+        $validated = $request->validate([
+            'duration_seconds' => ['required', 'numeric', 'min:0', 'max:86400'],
+        ]);
+
+        $media->update([
+            'duration_seconds' => (int) round($validated['duration_seconds']),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'duration_seconds' => $media->duration_seconds,
+            'duration_label' => $media->durationLabel(),
+        ]);
+    }
+
     // Private helpers
+
+    /**
+     * Resolve completed chunk uploads that belong to the current user.
+     *
+     * @param  array<int, string>  $uploadIds
+     * @return Collection<int, MediaUpload>
+     */
+    private function resolveCompletedUploads(array $uploadIds): Collection
+    {
+        $uploadIds = array_values(array_unique(array_filter(array_map('strval', $uploadIds))));
+
+        if ($uploadIds === []) {
+            return collect();
+        }
+
+        $uploads = MediaUpload::query()
+            ->where('user_id', Auth::id())
+            ->whereIn('upload_id', $uploadIds)
+            ->where('status', MediaUpload::STATUS_COMPLETE)
+            ->where('expires_at', '>', now())
+            ->get();
+
+        if ($uploads->count() !== count($uploadIds)) {
+            throw ValidationException::withMessages([
+                'upload_ids' => ['One or more uploads are missing or expired. Please attach the file again.'],
+            ]);
+        }
+
+        return collect($uploadIds)
+            ->map(fn (string $id) => $uploads->firstWhere('upload_id', $id))
+            ->filter()
+            ->values();
+    }
+
+    /**
+     * Move completed uploads into the bleep's media directory.
+     *
+     * @param  Collection<int, MediaUpload>  $uploads
+     */
+    private function claimUploads(Bleep $bleep, Collection $uploads): void
+    {
+        foreach ($uploads as $upload) {
+            $media = MediaUploadService::saveBleepMediaFromUpload($upload, $bleep->id);
+
+            $bleep->media()->create([
+                'path' => $media['path'],
+                'type' => $media['type'],
+                'mime_type' => $media['mime'],
+                'original_name' => $media['original_name'],
+                'size' => $media['size'],
+            ]);
+
+            MediaUploadService::deleteUploadTemp($upload);
+            $upload->delete();
+        }
+    }
+
+    /**
+     * Enforce the audio-only and four-file limits across new and existing media.
+     *
+     * @param  array<int, string>  $newTypes
+     * @param  array<int, string>  $existingTypes
+     */
+    private function assertBleepMediaRules(array $newTypes, array $existingTypes = []): void
+    {
+        $allTypes = array_merge($existingTypes, $newTypes);
+        $audioCount = count(array_filter($allTypes, fn (string $type) => $type === 'audio'));
+        $total = count($allTypes);
+
+        if ($audioCount > 0 && $total > 1) {
+            throw ValidationException::withMessages([
+                'media' => ['Audio cannot be combined with other media.'],
+            ]);
+        }
+
+        if ($audioCount > 1) {
+            throw ValidationException::withMessages([
+                'media' => ['Only one audio file is allowed.'],
+            ]);
+        }
+
+        $cap = $audioCount > 0 ? 1 : 9;
+
+        if ($total > $cap) {
+            throw ValidationException::withMessages([
+                'media' => ["You can upload up to {$cap} file(s)."],
+            ]);
+        }
+    }
+
+    /**
+     * PHP silently drops the request body when it is larger than post_max_size.
+     * Surface a useful message instead of the generic "attach media" error.
+     */
+    private function guardPhpUploadLimits(Request $request): void
+    {
+        $contentLength = (int) $request->server('CONTENT_LENGTH');
+        $postMax = $this->phpSizeToBytes((string) ini_get('post_max_size'));
+
+        if ($contentLength <= 0 || $postMax <= 0 || $contentLength <= $postMax) {
+            return;
+        }
+
+        if (! empty($_POST) || ! empty($_FILES)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'media' => [
+                'This upload is larger than the server accepts (post_max_size = '.ini_get('post_max_size').'). '
+                .'Increase post_max_size and upload_max_filesize in php.ini. See the README section "Large media uploads".',
+            ],
+        ]);
+    }
+
+    private function phpSizeToBytes(string $value): int
+    {
+        $value = trim($value);
+
+        if ($value === '' || $value === '-1') {
+            return 0;
+        }
+
+        $unit = strtolower($value[strlen($value) - 1]);
+        $number = (int) $value;
+
+        return match ($unit) {
+            'g' => $number * 1024 * 1024 * 1024,
+            'm' => $number * 1024 * 1024,
+            'k' => $number * 1024,
+            default => $number,
+        };
+    }
+
+    private function formatFileSizeLimit(int $kilobytes): string
+    {
+        return $kilobytes >= 1024 * 1024
+            ? rtrim(rtrim(number_format($kilobytes / (1024 * 1024), 1), '0'), '.').' GB'
+            : round($kilobytes / 1024).' MB';
+    }
 
     /**
      * Build display name / username / avatar / role / verified payload.

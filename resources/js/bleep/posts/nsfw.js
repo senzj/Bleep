@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const tag = el.tagName.toLowerCase();
             const src = el.getAttribute('data-media-src') || el.getAttribute('data-src');
             if (!src) return;
+
+            // NSFW media bypasses the lazy loader, so clear its skeleton here.
+            window.clearMediaPending?.(el);
+
             if (tag === 'img') el.setAttribute('src', src);
             if (tag === 'source') {
                 const parentVideo = el.closest('video');
@@ -77,12 +81,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear image sources (images don't cache the same way as videos)
         container.querySelectorAll('img[data-media-src], img[data-src]').forEach(el => {
             el.removeAttribute('src');
+            // The tile is hidden now; show its skeleton again on re-reveal.
+            el.closest('[data-media-index]')?.classList.add('media-pending');
         });
     }
 
     function revealNsfw(bleepId, sourceElement = null, wrapperElement = null) {
         if (!bleepId) return;
-        if (!prefs.showNsfw) return;
 
         // Priority: direct wrapper > find from source element > document-wide search
         let wrapper = wrapperElement;
@@ -95,6 +100,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!wrapper) {
             wrapper = document.querySelector(`.nsfw-wrapper[data-bleep-id="${bleepId}"], .bleep-nsfw-wrapper[data-bleep-id="${bleepId}"]`);
         }
+
+        // The account preference normally decides, but a one-off age check on a
+        // post page lets a visitor reveal this specific bleep after confirming.
+        if (!prefs.showNsfw && wrapper?.dataset?.ageAccepted !== '1') return;
 
         if (!wrapper) {
             console.error('NSFW wrapper not found for bleepId:', bleepId);
@@ -214,6 +223,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 gallery.querySelectorAll('[data-media-src]').forEach(el => {
                     const src = el.getAttribute('data-media-src');
                     if (!src) return;
+
+                    window.clearMediaPending?.(el);
+
                     const tag = el.tagName.toLowerCase();
                     if (tag === 'img' && !el.getAttribute('src')) el.setAttribute('src', src);
                     if (tag === 'source' && !el.getAttribute('src')) el.setAttribute('src', src);
@@ -223,8 +235,25 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // click handlers
-    // click handlers
     document.addEventListener('click', (e) => {
+        const ageAccept = e.target.closest('[data-nsfw-age-accept]');
+        if (ageAccept) {
+            const gate = ageAccept.closest('[data-nsfw-age-gate]');
+            const content = document.querySelector('[data-nsfw-age-content]');
+
+            gate?.remove();
+            content?.classList.remove('hidden');
+
+            content?.querySelectorAll('.bleep-nsfw-wrapper[data-bleep-id]').forEach((wrapper) => {
+                wrapper.dataset.ageAccepted = '1';
+                revealNsfw(wrapper.getAttribute('data-bleep-id'), null, wrapper);
+            });
+
+            if (window.lucide) window.lucide.createIcons();
+
+            return;
+        }
+
         const reveal = e.target.closest('.nsfw-reveal-btn');
         if (reveal) {
             if (!prefs.showNsfw) return;

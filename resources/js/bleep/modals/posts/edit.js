@@ -3,7 +3,7 @@
  * Handles the edit-bleep modal:
  *  - Populates form with current bleep data (message, toggles, existing media)
  *  - Lets user remove existing media items
- *  - Lets user add new media (images/videos up to 4, or 1 audio, not mixed)
+ *  - Lets user add new media (images/videos up to 9, or 1 audio, not mixed)
  *  - Submits via XHR FormData (supports file upload + progress)
  *  - Updates the bleep card in-place without page reload
  */
@@ -238,7 +238,7 @@ function validateNewFiles(incomingFiles, currentMediaCount) {
         return 'Only one audio file is allowed.';
     }
 
-    const cap = audio.length > 0 ? 1 : 4;
+    const cap = audio.length > 0 ? 1 : 9;
     if ((currentMediaCount + all.length) > cap) {
         return `You can only attach up to ${cap} ${audio.length > 0 ? 'audio file' : 'files'}.`;
     }
@@ -406,9 +406,9 @@ function updateCardMedia(wrapper, mediaItems) {
         let gridEl;
 
         if (count === 1) {
-            // Single item — flex centered, max-h-64
+            // Single item — flex centered, capped to the shared h-72 media height
             gridEl = document.createElement('div');
-            gridEl.className = 'flex items-center justify-center object-cover bg-base-100 max-h-64';
+            gridEl.className = 'flex items-center justify-center object-cover bg-base-100 max-h-72';
 
             const clickWrap = makeClickWrap(visualItems[0], 0);
             const media     = makeMediaEl(visualItems[0], 'h-64 w-full object-contain');
@@ -417,14 +417,14 @@ function updateCardMedia(wrapper, mediaItems) {
 
         } else if (count === 2) {
             gridEl = document.createElement('div');
-            gridEl.className = 'grid grid-cols-2 gap-1 bg-base-200 max-h-64';
+            gridEl.className = 'grid grid-cols-2 gap-1 bg-base-200 h-72';
 
             visualItems.forEach((item, idx) => {
                 const cell      = document.createElement('div');
                 cell.className  = 'flex items-center justify-center overflow-hidden';
                 const clickWrap = makeClickWrap(item, idx);
                 clickWrap.classList.add('w-full');
-                const media     = makeMediaEl(item, 'h-64 w-full object-cover');
+                const media     = makeMediaEl(item, 'h-full w-full object-cover');
                 clickWrap.appendChild(media);
                 cell.appendChild(clickWrap);
                 gridEl.appendChild(cell);
@@ -432,7 +432,7 @@ function updateCardMedia(wrapper, mediaItems) {
 
         } else if (count === 3) {
             gridEl = document.createElement('div');
-            gridEl.className = 'grid grid-cols-2 grid-rows-2 gap-1 bg-base-200 max-h-64';
+            gridEl.className = 'grid grid-cols-2 grid-rows-2 gap-1 bg-base-200 h-72';
 
             visualItems.forEach((item, idx) => {
                 const cell     = document.createElement('div');
@@ -449,17 +449,37 @@ function updateCardMedia(wrapper, mediaItems) {
             });
 
         } else {
-            // 4+ items — 2-col grid, h-64
+            // 4+ items — 2x2 with a +N overlay on the fourth cell. Extra items
+            // stay in the DOM (hidden) so the media viewer can page through them.
             gridEl = document.createElement('div');
-            gridEl.className = 'grid grid-cols-2 gap-1 bg-base-200 h-64';
+            gridEl.className = 'grid grid-cols-2 gap-1 bg-base-200 h-72';
 
-            visualItems.slice(0, 4).forEach((item, idx) => {
+            visualItems.forEach((item, idx) => {
+                if (idx >= 4) {
+                    const stash = document.createElement('div');
+                    stash.className = 'hidden';
+                    stash.setAttribute('aria-hidden', 'true');
+                    stash.appendChild(makeClickWrap(item, idx));
+                    gridEl.appendChild(stash);
+
+                    return;
+                }
+
                 const cell      = document.createElement('div');
                 cell.className  = 'relative overflow-hidden';
                 const clickWrap = makeClickWrap(item, idx);
                 const media     = makeMediaEl(item, 'h-full w-full object-cover');
                 clickWrap.appendChild(media);
                 cell.appendChild(clickWrap);
+
+                if (idx === 3 && count > 4) {
+                    const overlay = document.createElement('div');
+                    overlay.className = 'absolute inset-0 z-10 flex items-center justify-center bg-black/55 text-2xl font-bold text-white pointer-events-none';
+                    overlay.setAttribute('aria-hidden', 'true');
+                    overlay.textContent = `+${count - 3}`;
+                    cell.appendChild(overlay);
+                }
+
                 gridEl.appendChild(cell);
             });
         }

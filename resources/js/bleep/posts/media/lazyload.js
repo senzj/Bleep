@@ -1,12 +1,68 @@
-// Load media asynchronously after page is interactive - doesn't block page render
-// This script ONLY runs on initial page load, not for infinite scroll content
-(function() {
+// Media loading runs after the page has finished loading its assets and
+// components, then only fetches media that is visible or about to be visible.
+// Nothing here loops over the whole document up front, so a feed with hundreds
+// of posts never blocks the UI while it warms up.
+(function () {
     'use strict';
+
+    const ROOT_MARGIN = '400px 0px';
+    const observed = new WeakSet();
+    const pendingFallback = new Set();
+    let observer = null;
+    let fallbackTicking = false;
+
+    // Stop the skeleton as soon as the element has something to paint. Shared
+    // with the NSFW reveal path, which sets sources outside the lazy loader.
+    const clearPendingWhenReady = (el) => {
+        const frame = el.closest?.('.media-pending');
+        if (!frame) return;
+
+        let cleared = false;
+        const clear = () => {
+            if (cleared) return;
+
+            cleared = true;
+            frame.classList.remove('media-pending');
+        };
+
+        if (el.tagName === 'IMG') {
+            if (el.complete && el.naturalWidth > 0) {
+                clear();
+            } else {
+                el.addEventListener('load', clear, { once: true });
+                el.addEventListener('error', clear, { once: true });
+            }
+
+            return;
+        }
+
+        const video = el.tagName === 'VIDEO' ? el : el.closest('video');
+        if (!video) return;
+
+        if (video.readyState >= 1) {
+            clear();
+        } else {
+            // `loadeddata` may never fire for metadata-only videos, which left
+            // the shimmer running forever. Metadata is enough to stop it; the
+            // first frame paints right after.
+            video.addEventListener('loadedmetadata', clear, { once: true });
+            video.addEventListener('loadeddata', clear, { once: true });
+            video.addEventListener('canplay', clear, { once: true });
+            video.addEventListener('error', clear, { once: true });
+            window.setTimeout(clear, 8000);
+        }
+    };
+
+    // NSFW media is loaded by nsfw.js after the age gate, so it needs the same
+    // skeleton cleanup without going through the IntersectionObserver.
+    window.clearMediaPending = clearPendingWhenReady;
 
     // Load a single image
     const loadImage = (img) => {
         const src = img.getAttribute('data-src');
         if (src && !img.src) {
+            clearPendingWhenReady(img);
+
             img.src = src;
             img.removeAttribute('data-src');
         }
@@ -15,7 +71,7 @@
     // Load a single video
     const loadVideo = (video) => {
         const sources = video.querySelectorAll('source[data-src], source[data-media-src]');
-        sources.forEach(source => {
+        sources.forEach((source) => {
             const src = source.getAttribute('data-src') || source.getAttribute('data-media-src');
             if (src && !source.src) {
                 source.src = src;
@@ -23,6 +79,9 @@
                 source.removeAttribute('data-media-src');
             }
         });
+
+        clearPendingWhenReady(video);
+
         if (video.load) {
             video.load();
         }
@@ -37,122 +96,176 @@
         }
     };
 
-    // Load media that's currently visible in viewport first
-    const loadVisibleMedia = (images, videos, audios) => {
-        const viewportTop = window.scrollY;
-        const viewportBottom = viewportTop + window.innerHeight;
+    const load = (el) => {
+        if (el.tagName === 'IMG') {
+            loadImage(el);
+        } else if (el.tagName === 'VIDEO') {
+            loadVideo(el);
+        } else if (el.tagName === 'AUDIO') {
+            loadAudio(el);
+        }
 
-        images.forEach(img => {
-            const rect = img.getBoundingClientRect();
-            const top = rect.top + window.scrollY;
-            const bottom = top + rect.height;
+        observer?.unobserve(el);
+        observed.delete(el);
+    };
 
-            if (bottom >= viewportTop - 300 && top <= viewportBottom + 300) {
-                loadImage(img);
+    // True when the element still has something left to fetch.
+    const needsLoading = (el) => {
+        if (el.tagName === 'IMG') {
+            return el.hasAttribute('data-src');
+        }
+        if (el.tagName === 'VIDEO') {
+            return el.querySelector('source[data-src], source[data-media-src]') !== null;
+        }
+        if (el.tagName === 'AUDIO') {
+            return el.hasAttribute('data-src');
+        }
+
+        return false;
+    };
+
+    const mediaIn = (root) => {
+        const nodes = [];
+
+        if (root.matches?.('img[data-src], video, audio[data-src]')) {
+            nodes.push(root);
+        }
+
+        root.querySelectorAll?.('img[data-src], video, audio[data-src]').forEach((el) => nodes.push(el));
+
+        return nodes;
+    };
+
+    const ensureObserver = () => {
+        if (observer || !('IntersectionObserver' in window)) {
+            return observer;
+        }
+
+        observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) {
+                        return;
+                    }
+
+                    const el = entry.target;
+                    observed.delete(el);
+
+                    if (needsLoading(el)) {
+                        load(el);
+                    } else {
+                        observer.unobserve(el);
+                    }
+                });
+            },
+            { rootMargin: ROOT_MARGIN }
+        );
+
+        return observer;
+    };
+
+    // Watch media in a container (the whole page on first load, or a freshly
+    // appended feed page for infinite scroll).
+    const watchMedia = (root = document) => {
+        const io = ensureObserver();
+
+        mediaIn(root).forEach((el) => {
+            if (!needsLoading(el) || observed.has(el)) {
+                return;
             }
-        });
 
-        videos.forEach(video => {
-            const rect = video.getBoundingClientRect();
-            const top = rect.top + window.scrollY;
-            const bottom = top + rect.height;
+            observed.add(el);
 
-            if (bottom >= viewportTop - 300 && top <= viewportBottom + 300) {
-                loadVideo(video);
-            }
-        });
-
-        audios.forEach(audio => {
-            const rect = audio.getBoundingClientRect();
-            const top = rect.top + window.scrollY;
-            const bottom = top + rect.height;
-
-            if (bottom >= viewportTop - 300 && top <= viewportBottom + 300) {
-                loadAudio(audio);
+            if (io) {
+                io.observe(el);
+            } else {
+                // Very old browsers: load only what the viewport can reach.
+                pendingFallback.add(el);
+                flushFallback();
             }
         });
     };
 
-    // Load remaining media in background without blocking
-    const loadRemainingMedia = (images, videos, audios) => {
-        const remainingImages = Array.from(images).filter(img => img.getAttribute('data-src'));
-        const remainingVideos = Array.from(videos).filter(video =>
-            video.querySelector('source[data-src], source[data-media-src]')
-        );
-        const remainingAudios = Array.from(audios).filter(audio => audio.getAttribute('data-src'));
+    const flushFallback = () => {
+        if (observer) {
+            return;
+        }
 
-        if (remainingImages.length === 0 && remainingVideos.length === 0 && remainingAudios.length === 0) return;
+        fallbackTicking = false;
 
-        let imageIndex = 0;
-        let videoIndex = 0;
-        let audioIndex = 0;
-
-        const loadNextBatch = () => {
-            for (let i = 0; i < 3 && imageIndex < remainingImages.length; i++) {
-                const img = remainingImages[imageIndex++];
-                if (img.getAttribute('data-src')) {
-                    loadImage(img);
-                }
+        pendingFallback.forEach((el) => {
+            if (!el.isConnected) {
+                pendingFallback.delete(el);
+                return;
             }
 
-            for (let i = 0; i < 2 && videoIndex < remainingVideos.length; i++) {
-                const video = remainingVideos[videoIndex++];
-                if (video.querySelector('source[data-src], source[data-media-src]')) {
-                    loadVideo(video);
-                }
+            const rect = el.getBoundingClientRect();
+
+            if (rect.bottom >= -300 && rect.top <= window.innerHeight + 300) {
+                pendingFallback.delete(el);
+                load(el);
+            }
+        });
+    };
+
+    window.addEventListener(
+        'scroll',
+        () => {
+            if (observer || pendingFallback.size === 0) {
+                return;
             }
 
-            for (let i = 0; i < 2 && audioIndex < remainingAudios.length; i++) {
-                const audio = remainingAudios[audioIndex++];
-                if (audio.getAttribute('data-src')) {
-                    loadAudio(audio);
-                }
+            if (fallbackTicking) {
+                return;
             }
 
-            if (imageIndex < remainingImages.length || videoIndex < remainingVideos.length || audioIndex < remainingAudios.length) {
-                setTimeout(loadNextBatch, 50);
+            fallbackTicking = true;
+            window.requestAnimationFrame(flushFallback);
+        },
+        { passive: true }
+    );
+
+    // Export function globally for infinite scroll to use. New content is
+    // watched rather than force-loaded, so a long feed cannot freeze the page.
+    window.loadNewMedia = (container) => {
+        if (container) {
+            watchMedia(container);
+        }
+    };
+
+    // A safety net for media that finished before its listener was attached
+    // (cached images, videos with metadata only). Prevents a shimmer frame
+    // from being left behind after the page has visibly finished loading.
+    const clearResolvedShimmers = () => {
+        document.querySelectorAll('.media-pending').forEach((frame) => {
+            const image = frame.querySelector('img');
+            const video = frame.querySelector('video');
+
+            if ((image?.complete && image.naturalWidth > 0) || (video && video.readyState >= 1)) {
+                frame.classList.remove('media-pending');
             }
+        });
+    };
+
+    const start = () => {
+        const begin = () => {
+            clearResolvedShimmers();
+            watchMedia(document);
         };
 
-        loadNextBatch();
-    };
-
-    // Main function to load all media
-    const loadMediaAsynchronously = () => {
-        const images = document.querySelectorAll('img[data-src]');
-        const videos = document.querySelectorAll('video');
-        const audios = document.querySelectorAll('audio[data-src]');
-
-        loadVisibleMedia(images, videos, audios);
-        loadRemainingMedia(images, videos, audios);
-    };
-
-    // Export function globally for infinite scroll to use
-    window.loadNewMedia = (container) => {
-        const images = container.querySelectorAll('img[data-src]');
-        const videos = container.querySelectorAll('video');
-        const audios = container.querySelectorAll('audio[data-src]');
-
-        // Load all new media immediately (no delay for infinite scroll content)
-        images.forEach(loadImage);
-        videos.forEach(loadVideo);
-        audios.forEach(loadAudio);
-    };
-
-    // Run ONLY on initial page load - use requestIdleCallback for best performance
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            if ('requestIdleCallback' in window) {
-                requestIdleCallback(loadMediaAsynchronously, { timeout: 1000 });
-            } else {
-                setTimeout(loadMediaAsynchronously, 0);
-            }
-        });
-    } else {
         if ('requestIdleCallback' in window) {
-            requestIdleCallback(loadMediaAsynchronously, { timeout: 1000 });
+            requestIdleCallback(begin, { timeout: 1200 });
         } else {
-            setTimeout(loadMediaAsynchronously, 0);
+            window.setTimeout(begin, 0);
         }
+    };
+
+    // Wait for every script, stylesheet and image the page needs before we
+    // start pulling media. `load` already implies the document is complete;
+    // an idle callback keeps the first media request off the critical path.
+    if (document.readyState === 'complete') {
+        start();
+    } else {
+        window.addEventListener('load', start, { once: true });
     }
 })();

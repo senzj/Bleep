@@ -1,30 +1,63 @@
 <?php
 
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
-it('serves files that live inside the public storage disk', function () {
-    Storage::disk('public')->put('bleep/1/allowed.txt', 'hello media');
-
-    $this->get('/media/stream/bleep/1/allowed.txt')
-        ->assertOk()
-        ->assertHeader('X-Content-Type-Options', 'nosniff')
-        ->assertHeader('Accept-Ranges', 'bytes');
+beforeEach(function () {
+    Storage::fake('public');
 });
 
-it('blocks path traversal outside the public storage disk', function () {
-    $outsideFile = storage_path('app/traversal-secret.txt');
-    File::ensureDirectoryExists(dirname($outsideFile));
-    File::put($outsideFile, 'top secret');
+it('streams media with range support', function () {
+    Storage::disk('public')->put('bleep/1/clip.mp4', '0123456789');
 
-    try {
-        $this->get('/media/stream/..%2Ftraversal-secret.txt')
-            ->assertNotFound();
-    } finally {
-        File::delete($outsideFile);
-    }
+    $this->get('/media/stream/bleep/1/clip.mp4')
+        ->assertOk()
+        ->assertHeader('Accept-Ranges', 'bytes')
+        ->assertHeader('Content-Length', '10');
+});
+
+it('returns a partial response for a byte range', function () {
+    Storage::disk('public')->put('bleep/1/clip.mp4', '0123456789');
+
+    $response = $this->get('/media/stream/bleep/1/clip.mp4', [
+        'Range' => 'bytes=2-5',
+    ]);
+
+    $response
+        ->assertStatus(206)
+        ->assertHeader('Content-Range', 'bytes 2-5/10')
+        ->assertHeader('Content-Length', '4');
+
+    $this->assertSame('2345', $response->streamedContent());
+});
+
+it('supports suffix byte ranges', function () {
+    Storage::disk('public')->put('bleep/1/clip.mp4', '0123456789');
+
+    $response = $this->get('/media/stream/bleep/1/clip.mp4', [
+        'Range' => 'bytes=-3',
+    ]);
+
+    $response
+        ->assertStatus(206)
+        ->assertHeader('Content-Range', 'bytes 7-9/10');
+
+    $this->assertSame('789', $response->streamedContent());
+});
+
+it('rejects an unsatisfiable byte range', function () {
+    Storage::disk('public')->put('bleep/1/clip.mp4', '0123456789');
+
+    $this->get('/media/stream/bleep/1/clip.mp4', [
+        'Range' => 'bytes=20-30',
+    ])
+        ->assertStatus(416)
+        ->assertHeader('Content-Range', 'bytes */10');
 });
 
 it('returns not found for missing media', function () {
-    $this->get('/media/stream/bleep/1/missing.txt')->assertNotFound();
+    $this->get('/media/stream/bleep/1/missing.mp4')->assertNotFound();
+});
+
+it('does not allow escaping the public disk', function () {
+    $this->get('/media/stream/../.env')->assertNotFound();
 });

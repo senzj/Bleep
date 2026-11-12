@@ -1,5 +1,86 @@
 let activeAudio = null;
 const VOLUME_STORAGE_KEY = 'bleepAudioVolume';
+const POSITION_STORAGE_PREFIX = 'bleepMediaPosition:';
+
+const rememberPositions = () =>
+    document.body?.dataset?.rememberMediaPosition === '1';
+
+const positionKey = (src) => `${POSITION_STORAGE_PREFIX}${src}`;
+
+function getStoredPosition(src) {
+    if (!src) return null;
+
+    try {
+        const value = parseFloat(localStorage.getItem(positionKey(src)));
+
+        return Number.isFinite(value) && value > 0 ? value : null;
+    } catch {
+        return null;
+    }
+}
+
+function setStoredPosition(src, seconds) {
+    if (!src) return;
+
+    try {
+        if (!Number.isFinite(seconds) || seconds <= 0) {
+            localStorage.removeItem(positionKey(src));
+            return;
+        }
+
+        localStorage.setItem(positionKey(src), String(seconds));
+    } catch { /* no-op */ }
+}
+
+function clearStoredPosition(src) {
+    try {
+        localStorage.removeItem(positionKey(src));
+    } catch { /* no-op */ }
+}
+
+function restoreStoredAudioPosition(audioEl) {
+    if (!rememberPositions() || audioEl.dataset.positionRestored === '1') return;
+
+    const src = audioEl.currentSrc || audioEl.dataset.src;
+    const saved = getStoredPosition(src);
+
+    if (
+        saved &&
+        Number.isFinite(audioEl.duration) &&
+        saved < audioEl.duration - 2
+    ) {
+        audioEl.dataset.positionRestored = '1';
+        audioEl.currentTime = saved;
+    }
+}
+
+function postDuration(audioEl, seconds) {
+    const mediaId = audioEl.dataset.mediaId;
+    if (!mediaId || !Number.isFinite(seconds) || seconds <= 0) return;
+
+    const known = Number(audioEl.dataset.durationSeconds || 0);
+    if (known > 0 && Math.abs(known - seconds) <= 1) return;
+    if (audioEl.dataset.durationPosted === '1') return;
+
+    audioEl.dataset.durationPosted = '1';
+
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (!csrf) return;
+
+    fetch(`/bleeps/media/${mediaId}/duration`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrf,
+            'X-Requested-With': 'XMLHttpRequest',
+            Accept: 'application/json',
+        },
+        body: JSON.stringify({ duration_seconds: Math.round(seconds) }),
+        keepalive: true,
+    }).catch(() => {
+        audioEl.dataset.durationPosted = '';
+    });
+}
 
 function formatTime(seconds) {
     if (!Number.isFinite(seconds)) return '0:00';
@@ -61,6 +142,21 @@ function initAudioPlayers(container = document) {
         const loadingIcon = btnPlay.querySelector('.loading-icon');
         if (!playIcon || !pauseIcon || !loadingIcon) return;
 
+        // Off-screen mode + mini-player controls live next to speed/volume.
+        // Audio can be mounted from Vue (comments, chat) on pages where the
+        // policy script was not loaded as its own entry, so load it on demand.
+        const attachMediaControls = () => {
+            window.bleepMediaPolicy?.attachPlayerControls(audioEl, {
+                host: wrapper.querySelector('[data-audio-actions]'),
+            });
+        };
+
+        if (window.bleepMediaPolicy) {
+            attachMediaControls();
+        } else {
+            import('./visibility.js').then(attachMediaControls).catch(() => {});
+        }
+
         // ── Volume ─────────────────────────────────────────────────────────────
         const storedVolume = getStoredVolume();
         audioEl.volume = storedVolume;
@@ -89,25 +185,29 @@ function initAudioPlayers(container = document) {
          * - For Vue: Vue listens to the same event and updates its reactive ref.
          * - Also directly sets data-lucide on any static <i data-lucide> elements and re-renders.
          */
+        let lastVolumeIcon = null;
+        let volumeFrame = 0;
+
         function syncVolumeIcon(vol01) {
             const iconName = volumeIconName(vol01);
 
-            // Dispatch a custom event so Alpine (Blade) and Vue can react declaratively
+            // Dispatch a custom event so Alpine (Blade) and Vue can react declaratively.
             wrapper.dispatchEvent(new CustomEvent('bleep:volume-icon', {
                 detail: { icon: iconName, volume: vol01, volumePct: Math.round(vol01 * 100) },
                 bubbles: false,
             }));
 
-            // Also imperatively update any static data-lucide <i> elements
-            // (covers Blade when Alpine hasn't re-rendered yet)
+            // Re-rendering an SVG on every slider pixel is what caused the
+            // stutter. Only touch the DOM when the icon bucket changes.
+            if (iconName === lastVolumeIcon) return;
+            lastVolumeIcon = iconName;
+
             wrapper.querySelectorAll('[data-audio-volume-icon]').forEach(el => {
                 el.setAttribute('data-lucide', iconName);
             });
-            // Re-render via lucide if available
-            if (window.lucide?.createIcons) {
-                wrapper.querySelectorAll('[data-audio-volume-icon]').forEach(el => {
-                    window.lucide.createIcons({ el });
-                });
+
+            if (typeof window.createLucideIcons === 'function') {
+                window.createLucideIcons(wrapper);
             }
         }
 
@@ -115,8 +215,14 @@ function initAudioPlayers(container = document) {
             audioEl.volume = vol01;
             if (vol01 > 0) lastVolume = vol01;
             setStoredVolume(vol01);
-            syncSliderUI(vol01);
-            syncVolumeIcon(vol01);
+
+            // Batch visual updates into one frame so dragging stays smooth.
+            if (volumeFrame) cancelAnimationFrame(volumeFrame);
+            volumeFrame = requestAnimationFrame(() => {
+                volumeFrame = 0;
+                syncSliderUI(vol01);
+                syncVolumeIcon(vol01);
+            });
         }
 
         // Listen to native range slider input (works for both Blade and Vue)
@@ -210,18 +316,35 @@ function initAudioPlayers(container = document) {
 
         // ── Play / Pause ───────────────────────────────────────────────────────
         btnPlay.addEventListener('click', () => {
+            let loadedSource = false;
+
             if (!audioEl.src && audioEl.dataset.src) {
                 setLoadingState();
                 audioEl.src = audioEl.dataset.src;
                 audioEl.removeAttribute('data-src');
                 audioEl.load();
+                loadedSource = true;
             }
 
-            if (audioEl.paused) {
+            const startPlayback = () => {
                 if (activeAudio && activeAudio !== audioEl) activeAudio.pause();
                 if (window.pauseAllVideos) window.pauseAllVideos();
                 audioEl.play().catch(() => setPlayState(false));
                 activeAudio = audioEl;
+            };
+
+            if (audioEl.paused) {
+                // Apply the remembered position before the first frame plays,
+                // so a refresh resumes exactly where the listener stopped.
+                if (loadedSource) {
+                    audioEl.addEventListener('loadedmetadata', () => {
+                        restoreStoredAudioPosition(audioEl);
+                        startPlayback();
+                    }, { once: true });
+                } else {
+                    restoreStoredAudioPosition(audioEl);
+                    startPlayback();
+                }
             } else {
                 audioEl.pause();
             }
@@ -238,17 +361,54 @@ function initAudioPlayers(container = document) {
             if (!audioEl.paused) setPlayState(true);
         });
         audioEl.addEventListener('loadedmetadata', () => {
-            if (timeTotal) timeTotal.textContent = formatTime(audioEl.duration);
+            if (timeTotal) {
+                timeTotal.textContent = formatTime(audioEl.duration);
+            }
+
+            restoreStoredAudioPosition(audioEl);
+
+            postDuration(audioEl, audioEl.duration);
             updateProgressUI();
         });
-        audioEl.addEventListener('timeupdate', updateProgressUI);
+
+        // If the media was already hydrated by the lazyloader before this
+        // player was initialised, the event above has already fired.
+        if (audioEl.readyState >= 1) {
+            restoreStoredAudioPosition(audioEl);
+            updateProgressUI();
+        }
+
+        let lastSavedAt = 0;
+        const savePosition = () => {
+            if (!rememberPositions()) return;
+
+            const src = audioEl.currentSrc || audioEl.dataset.src;
+            if (!src || audioEl.currentTime <= 0) return;
+
+            setStoredPosition(src, audioEl.currentTime);
+        };
+
+        audioEl.addEventListener('timeupdate', () => {
+            updateProgressUI();
+
+            const now = Date.now();
+            if (now - lastSavedAt > 2000) {
+                lastSavedAt = now;
+                savePosition();
+            }
+        });
         audioEl.addEventListener('progress',   updateBufferedUI);
+        audioEl.addEventListener('pause', savePosition);
         audioEl.addEventListener('ended', () => {
+            savePosition();
+            clearStoredPosition(audioEl.currentSrc || audioEl.dataset.src);
             audioEl.currentTime = 0;
             updateProgressUI();
             setPlayState(false);
             if (activeAudio === audioEl) activeAudio = null;
         });
+
+        window.addEventListener('pagehide', savePosition);
 
         // ── Speed ──────────────────────────────────────────────────────────────
         speedOptions.forEach(option => {
@@ -271,9 +431,12 @@ function initAudioPlayers(container = document) {
         }
 
         // ── Init UI ────────────────────────────────────────────────────────────
+        // Never force-load media on init: the page should paint first and the
+        // audio is fetched only when the viewer actually presses play.
         if (timeCurrent) timeCurrent.textContent = '0:00';
-        if (timeTotal)   timeTotal.textContent   = audioEl.duration ? formatTime(audioEl.duration) : '0:00';
-        if (audioEl.readyState < 1) audioEl.load();
+        if (timeTotal && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
+            timeTotal.textContent = formatTime(audioEl.duration);
+        }
     });
 }
 
@@ -285,5 +448,13 @@ function pauseAllAudio() {
 window.initAudioPlayers = initAudioPlayers;
 window.pauseAllAudio    = pauseAllAudio;
 
-document.addEventListener('DOMContentLoaded', () => initAudioPlayers());
+document.addEventListener('DOMContentLoaded', () => {
+    const start = () => initAudioPlayers();
+
+    if (window.whenIdle) {
+        window.whenIdle(start, 1500);
+    } else {
+        window.setTimeout(start, 1);
+    }
+});
 document.addEventListener('bleeps:media:hydrated', () => setTimeout(() => initAudioPlayers(), 100));

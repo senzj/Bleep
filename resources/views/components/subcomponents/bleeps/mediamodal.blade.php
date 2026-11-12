@@ -1,15 +1,25 @@
 {{-- Media Viewer Modal --}}
 <div
     id="media-modal"
-    class="m-0! hidden fixed inset-0 z-100 items-center justify-center bg-black/95 backdrop-blur-sm media-modal"
+    class="m-0! hidden fixed inset-0 z-100 items-center justify-center bg-black/95 media-modal"
     role="dialog"
     aria-modal="true"
     aria-label="Media viewer"
 >
     {{-- Top controls --}}
     <div class="absolute top-4 right-4 z-50 flex items-center gap-2">
+        {{-- Download (only when the user enabled media downloads) --}}
+        <a id="media-modal-download"
+           href="#"
+           download
+           class="btn btn-circle btn-ghost btn-sm text-white hover:bg-white/10 hidden"
+           title="Download media"
+           aria-label="Download media">
+            <i data-lucide="download" class="w-4 h-4"></i>
+        </a>
+
         {{-- Zoom controls --}}
-        <div class="flex items-center gap-1 bg-black/50 rounded-full px-2 py-1">
+        <div id="media-modal-zoom-controls" class="flex items-center gap-1 bg-black/50 rounded-full px-2 py-1">
             <button id="media-modal-zoom-out" type="button" aria-label="Zoom out" class="btn btn-circle btn-ghost btn-sm text-white hover:bg-white/10">
                 <i data-lucide="zoom-out" class="w-4 h-4"></i>
             </button>
@@ -23,7 +33,7 @@
         </div>
 
         {{-- Close button --}}
-        <button id="media-modal-close" type="button" aria-label="Close media viewer" class="btn btn-circle btn-ghost text-white hover:bg-white/10">
+        <button id="media-modal-close" type="button" aria-label="Close media viewer" class="btn btn-circle btn-ghost bg-transparent! text-white hover:bg-white/10! border-0!">
             <i data-lucide="x" class="w-6 h-6"></i>
         </button>
     </div>
@@ -37,12 +47,18 @@
         <i data-lucide="chevron-right" class="w-6 h-6"></i>
     </button>
 
+    {{-- Loader: shown only when an uncached image takes a moment to load. --}}
+    <span id="media-modal-loader"
+          class="hidden loading loading-spinner loading-lg text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+          aria-hidden="true"></span>
+
     {{-- Media container --}}
-    <div id="media-modal-container" class="flex items-center justify-center max-w-5xl max-h-[90vh] w-full select-none px-8">
+    <div id="media-modal-container" class="flex items-center justify-center max-w-5xl max-h-[90vh] w-full select-none touch-none px-8">
         {{-- Image --}}
         <img id="media-modal-image"
-             src=""
              alt=""
+             decoding="async"
+             fetchpriority="high"
              class="hidden w-auto h-auto max-w-[95vw] max-h-[85vh] object-contain"
              draggable="false"
              style="transform-origin: center center; width: auto !important; height: auto !important; max-width: 95vw !important; max-height: 85vh !important; object-fit: contain !important;">
@@ -54,12 +70,15 @@
                autoplay
                playsinline
                style="width: auto !important; height: auto !important; max-width: 95vw !important; max-height: 85vh !important; object-fit: contain !important;">
-            <source id="media-modal-video-source" src="" type="">
         </video>
     </div>
 
-    {{-- Counter --}}
-    <div class="absolute bottom-3 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-4 py-2 rounded-full" aria-live="polite">
-        <span id="media-modal-counter">1 / 4</span>
+    {{-- Counter and slide indicator --}}
+    <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+        <div id="media-modal-dots" class="flex items-center gap-1.5" aria-hidden="true"></div>
+
+        <div class="text-white text-sm bg-black/50 px-4 py-2 rounded-full" aria-live="polite">
+            <span id="media-modal-counter">1 / 4</span>
+        </div>
     </div>
 </div>

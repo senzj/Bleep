@@ -64,7 +64,7 @@
                                id="edit-media-input"
                                name="media[]"
                                multiple
-                               accept="image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/mp3"
+                               accept="{{ config('media.accept') }}"
                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
                     </div>
 
