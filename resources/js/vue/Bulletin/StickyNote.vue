@@ -1,20 +1,20 @@
 <script setup>
 import { computed, ref } from 'vue';
 import {
+    Angry,
+    Droplets,
     Flame,
+    Flower2,
+    Frown,
     Heart,
-    Image as ImageIcon,
     Laugh,
-    Lightbulb,
     Maximize2,
     MoreVertical,
-    Music,
     Pencil,
     Smile,
     SmilePlus,
     ThumbsUp,
     Trash2,
-    Video,
 } from 'lucide-vue-next';
 import { REACTIONS, formatEditedTimestamp, formatNoteTimestamp, noteVariant } from './boardLayout';
 
@@ -75,7 +75,10 @@ const REACTION_ICONS = {
     laugh: Laugh,
     wow: Smile,
     fire: Flame,
-    idea: Lightbulb,
+    sad: Frown,
+    angry: Angry,
+    cry: Droplets,
+    flower: Flower2,
 };
 
 const reactionIcon = computed(() => REACTION_ICONS[mine.value] ?? SmilePlus);
@@ -123,21 +126,8 @@ const media = computed(() => {
 
 const showMedia = computed(() => Boolean(media.value) && !mediaFailed.value);
 
-const showInlineMedia = computed(() => showMedia.value && props.placement.h >= 2);
-
-const hiddenMedia = computed(() => showMedia.value && !showInlineMedia.value);
-
-const hiddenMediaIcon = computed(() => {
-    if (media.value?.kind === 'video') {
-        return Video;
-    }
-
-    if (media.value?.kind === 'audio') {
-        return Music;
-    }
-
-    return ImageIcon;
-});
+// The attachment is always shown inline now; the dialog still opens from it.
+const showInlineMedia = showMedia;
 
 const style = computed(() => {
     const { cell, gap, offsetX, offsetY, fontSize } = props.metrics;
@@ -153,7 +143,9 @@ const style = computed(() => {
     let lines = Math.floor((height - padding * 2 - footer - signature) / (fontSize * 1.42));
 
     if (showInlineMedia.value) {
-        lines -= 4;
+        // Tall notes can afford a large attachment; a single-row note only
+        // reserves a thin thumbnail strip so its text stays readable.
+        lines -= h >= 2 ? 4 : 2;
     }
 
     if (props.note.link_url) {
@@ -231,10 +223,9 @@ const style = computed(() => {
                 >
                 <template v-else-if="media.kind === 'video'">
                     <video
-                        :src="media.url"
+                        :src="`${media.url}#t=0.1`"
                         class="bulletin-note__image"
                         muted
-                        loop
                         playsinline
                         preload="metadata"
                         @error="mediaFailed = true"
@@ -324,15 +315,10 @@ const style = computed(() => {
             <button
                 type="button"
                 class="btn btn-ghost btn-xs px-2"
-                :aria-label="
-                    hiddenMedia
-                        ? `Open the attachment and full note from ${note.anonymous_name}`
-                        : `Read the full note from ${note.anonymous_name}`
-                "
+                :aria-label="`Read the full note from ${note.anonymous_name}`"
                 @click.stop="$emit('open')"
             >
-                <component
-                    :is="hiddenMedia ? hiddenMediaIcon : Maximize2"
+                <Maximize2
                     class="bulletin-note__action-icon"
                     :size="18"
                     :stroke-width="2.1"

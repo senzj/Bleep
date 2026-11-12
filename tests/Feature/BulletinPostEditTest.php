@@ -9,11 +9,18 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Session\ArraySessionHandler;
 use Illuminate\Session\Store;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 use function Pest\Laravel\mock;
+
+beforeEach(function () {
+    // The edit throttle keys on a fixed test IP, so clear it between tests to
+    // keep each scenario independent.
+    Cache::flush();
+});
 
 afterEach(function () {
     Carbon::setTestNow();
@@ -69,7 +76,7 @@ it('keeps the original created time when a note is edited', function () {
     $post = createOwnedNote($this);
     $createdAt = $post->created_at->toDateTimeString();
 
-    Carbon::setTestNow('2026-10-28 11:45:00');
+    Carbon::setTestNow('2026-10-28 09:20:00');
     actAsNoteOwner($post);
 
     $this->patchJson("/bulletin/posts/{$post->public_id}", [
@@ -79,17 +86,17 @@ it('keeps the original created time when a note is edited', function () {
     expect($post->fresh()->created_at->toDateTimeString())->toBe($createdAt);
 });
 
-it('rejects an edit after the one day window', function () {
+it('rejects an edit after the ten minute window', function () {
     $post = createOwnedNote($this);
 
-    $post->forceFill(['created_at' => now()->subDay()->subMinute()])->save();
+    $post->forceFill(['created_at' => now()->subMinutes(11)])->save();
     actAsNoteOwner($post);
 
     $this->patchJson("/bulletin/posts/{$post->public_id}", [
         'content' => 'Too late to change this.',
     ])
         ->assertForbidden()
-        ->assertJsonPath('message', 'Notes can only be edited within 24 hours of pinning.');
+        ->assertJsonPath('message', 'Notes can only be edited within 10 minutes of pinning.');
 
     expect($post->fresh()->content)->toBe('Original note copy.');
 });
@@ -217,6 +224,152 @@ it('keeps delete available after the edit window closes', function () {
 
     expect($payload['can_edit'])->toBeFalse()
         ->and($payload['can_delete'])->toBeTrue();
+});
+
+it('rejects a delete after the one week window', function () {
+    $post = createOwnedNote($this);
+    $post->forceFill(['created_at' => now()->subDays(8)])->save();
+    actAsNoteOwner($post);
+
+    $this->deleteJson("/bulletin/posts/{$post->public_id}")
+        ->assertForbidden()
+        ->assertJsonPath('message', 'Notes can only be deleted within 7 days of pinning.');
+
+    expect(BulletinPost::count())->toBe(1);
+});
+
+it('lets the owner change the note size, colour and texture', function () {
+    $post = createOwnedNote($this, ['content' => 'Original note copy.']);
+    actAsNoteOwner($post);
+
+    $this->patchJson("/bulletin/posts/{$post->public_id}", [
+        'content' => 'A bigger blue note.',
+        'width' => 2,
+        'height' => 3,
+        'paper_color' => '#bfdbfe',
+        'paper_texture' => 'folded',
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.width', 2)
+        ->assertJsonPath('data.height', 3)
+        ->assertJsonPath('data.color', '#bfdbfe')
+        ->assertJsonPath('data.texture', 'folded');
+
+    expect($post->fresh()->width)->toBe(2)
+        ->and($post->fresh()->height)->toBe(3)
+        ->and($post->fresh()->paper_color)->toBe('#bfdbfe')
+        ->and($post->fresh()->paper_texture)->toBe('folded');
+});
+
+it('accepts an explicit size field on edit', function () {
+    $post = createOwnedNote($this, ['content' => 'Original note copy.']);
+    actAsNoteOwner($post);
+
+    $this->patchJson("/bulletin/posts/{$post->public_id}", [
+        'content' => 'Sized from the shorthand.',
+        'size' => '2x2',
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.width', 2)
+        ->assertJsonPath('data.height', 2);
+
+    expect($post->fresh()->width)->toBe(2)
+        ->and($post->fresh()->height)->toBe(2);
+});
+
+it('rejects an invalid edited note size', function () {
+    $post = createOwnedNote($this);
+    actAsNoteOwner($post);
+
+    $this->patchJson("/bulletin/posts/{$post->public_id}", [
+        'content' => 'Still here.',
+        'width' => 3,
+        'height' => 1,
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['width']);
+});
+
+it('rejects an invalid edited paper colour', function () {
+    $post = createOwnedNote($this);
+    actAsNoteOwner($post);
+
+    $this->patchJson("/bulletin/posts/{$post->public_id}", [
+        'content' => 'Still here.',
+        'paper_color' => '#12345',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['paper_color']);
+});
+
+it('rejects an invalid edited paper texture', function () {
+    $post = createOwnedNote($this);
+    actAsNoteOwner($post);
+
+    $this->patchJson("/bulletin/posts/{$post->public_id}", [
+        'content' => 'Still here.',
+        'paper_texture' => 'glitter',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['paper_texture']);
+});
+
+it('replaces the note attachment on edit and deletes the old file', function () {
+    Storage::fake('public');
+
+    $this->post('/bulletin/posts', [
+        'content' => 'Has a photo.',
+        'size' => '1x1',
+        'media' => UploadedFile::fake()->image('old.jpg'),
+    ], ['Accept' => 'application/json'])->assertCreated();
+
+    $post = BulletinPost::sole();
+    $oldPath = $post->media_path;
+    actAsNoteOwner($post);
+
+    Storage::disk('public')->assertExists($oldPath);
+
+    $this->patch("/bulletin/posts/{$post->public_id}", [
+        'content' => 'Has a new photo.',
+        'media' => UploadedFile::fake()->image('new.png'),
+    ], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonPath('data.media_kind', 'image');
+
+    $fresh = $post->fresh();
+
+    expect($fresh->media_path)->not->toBe($oldPath)
+        ->and($fresh->media_kind)->toBe('image')
+        ->and($fresh->media_path)->not->toBeNull();
+
+    Storage::disk('public')->assertMissing($oldPath);
+    Storage::disk('public')->assertExists($fresh->media_path);
+});
+
+it('removes the note attachment on edit', function () {
+    Storage::fake('public');
+
+    $this->post('/bulletin/posts', [
+        'content' => 'Has a photo.',
+        'size' => '1x1',
+        'media' => UploadedFile::fake()->image('remove-me.jpg'),
+    ], ['Accept' => 'application/json'])->assertCreated();
+
+    $post = BulletinPost::sole();
+    $path = $post->media_path;
+    actAsNoteOwner($post);
+
+    $this->patchJson("/bulletin/posts/{$post->public_id}", [
+        'content' => 'No photo anymore.',
+        'remove_media' => true,
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.media_url', null);
+
+    expect($post->fresh()->media_path)->toBeNull()
+        ->and($post->fresh()->media_kind)->toBeNull();
+
+    Storage::disk('public')->assertMissing($path);
 });
 
 it('defines an edit rate limit per visitor and per IP', function () {

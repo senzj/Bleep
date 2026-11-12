@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ContentWindowService;
 use App\Services\MediaUploadService;
 use Database\Factories\BulletinPostFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -107,11 +108,18 @@ class BulletinPost extends Model
     }
 
     /**
-     * Visitors may correct their own note for one day after pinning it.
+     * Visitors may correct their own note for 10 minutes after pinning it.
      */
     public function isEditable(): bool
     {
-        return $this->created_at !== null
-            && now()->lt($this->created_at->copy()->addDay());
+        return ContentWindowService::canEdit($this->created_at);
+    }
+
+    /**
+     * Visitors may remove their own note for one week after pinning it.
+     */
+    public function isDeletable(): bool
+    {
+        return ContentWindowService::canDelete($this->created_at);
     }
 }

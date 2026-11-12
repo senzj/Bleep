@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BulletinReactionType;
 use App\Models\BulletinPost;
 use App\Models\BulletinReaction;
 use App\Models\BulletinReport;
@@ -446,11 +447,11 @@ it('replaces a reaction when the visitor picks a different one', function () {
     ])->assertOk();
 
     $this->postJson("/bulletin/posts/{$post->public_id}/reactions", [
-        'reaction_type' => 'idea',
+        'reaction_type' => 'flower',
     ])
         ->assertOk()
-        ->assertJsonPath('data.reactions.mine', 'idea')
-        ->assertJsonPath('data.reactions.counts.idea', 1)
+        ->assertJsonPath('data.reactions.mine', 'flower')
+        ->assertJsonPath('data.reactions.counts.flower', 1)
         ->assertJsonPath('data.reactions.counts.heart', 0);
 
     expect(BulletinReaction::count())->toBe(1);
@@ -484,11 +485,25 @@ it('shows reaction counts and the visitor reaction in list payloads', function (
         ->assertJsonPath('data.0.reactions.mine', 'wow');
 });
 
+it('accepts every reaction offered by the board', function (string $reaction) {
+    $post = BulletinPost::factory()->create();
+    $visitor = mock(BulletinVisitor::class);
+    $visitor->shouldReceive('hash')->andReturn(str_repeat('a', 64));
+    $visitor->shouldReceive('ipHash')->andReturn(str_repeat('b', 64));
+
+    $this->postJson("/bulletin/posts/{$post->public_id}/reactions", [
+        'reaction_type' => $reaction,
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.reactions.mine', $reaction)
+        ->assertJsonPath("data.reactions.counts.{$reaction}", 1);
+})->with(BulletinReactionType::values());
+
 it('validates reaction types', function () {
     $post = BulletinPost::factory()->create();
 
     $this->postJson("/bulletin/posts/{$post->public_id}/reactions", [
-        'reaction_type' => 'angry',
+        'reaction_type' => 'idea',
     ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['reaction_type']);

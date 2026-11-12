@@ -11,6 +11,44 @@ const emit = defineEmits(['close']);
 const dialog = ref(null);
 const mediaFailed = ref(false);
 
+/**
+ * A playing video can keep pointer capture after the dialog disappears and
+ * leave the board feeling unresponsive, so always pause players and close the
+ * native dialog explicitly before unmounting.
+ */
+const pauseMedia = () => {
+    dialog.value?.querySelectorAll('video, audio').forEach((player) => {
+        try {
+            player.pause();
+        } catch {
+            /* no-op */
+        }
+    });
+};
+
+let closed = false;
+
+const cleanup = () => {
+    pauseMedia();
+    document.body.classList.remove('bulletin-dialog-open');
+};
+
+const close = () => {
+    if (closed) {
+        return;
+    }
+
+    closed = true;
+    cleanup();
+
+    if (dialog.value?.open) {
+        dialog.value.close();
+    }
+
+    emit('close');
+};
+
+
 const variant = noteVariant(props.note.id, props.note.color, props.note.texture);
 
 const paperClass = variant.pattern
@@ -35,14 +73,18 @@ const media = computed(() => {
     return null;
 });
 
-const close = () => emit('close');
-
 onMounted(() => {
-    dialog.value?.showModal();
+    try {
+        dialog.value?.showModal();
+    } catch {
+        /* already open */
+    }
+
     document.body.classList.add('bulletin-dialog-open');
 });
 
 onBeforeUnmount(() => {
+    cleanup();
     document.body.classList.remove('bulletin-dialog-open');
 });
 </script>
@@ -86,7 +128,7 @@ onBeforeUnmount(() => {
                 >
                 <video
                     v-else-if="media.kind === 'video'"
-                    :src="media.url"
+                    :src="`${media.url}#t=0.1`"
                     class="mt-3 max-h-[50dvh] w-full rounded bg-black"
                     controls
                     playsinline

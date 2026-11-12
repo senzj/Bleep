@@ -190,17 +190,47 @@ class BulletinController extends Controller
 
         if (! $target->isEditable()) {
             return response()->json([
-                'message' => 'Notes can only be edited within 24 hours of pinning.',
+                'message' => 'Notes can only be edited within 10 minutes of pinning.',
             ], 403);
         }
 
         $validated = $request->validated();
 
-        $target->forceFill([
+        $attributes = [
             'content' => $validated['content'],
             'link_url' => $validated['link_url'] ?? null,
+            'width' => (int) ($validated['width'] ?? $target->width),
+            'height' => (int) ($validated['height'] ?? $target->height),
+            'paper_color' => $this->nullableAttribute($validated, 'paper_color', $target->paper_color),
+            'paper_texture' => $this->nullableAttribute($validated, 'paper_texture', $target->paper_texture),
             'edited_at' => now(),
-        ])->save();
+        ];
+
+        $media = $request->file('media');
+        $removeMedia = filter_var($validated['remove_media'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if ($media?->isValid()) {
+            $previousPath = $target->media_path;
+            $saved = MediaUploadService::saveBulletinMedia($media, $target->public_id);
+
+            $attributes['media_path'] = $saved['path'];
+            $attributes['media_mime'] = $saved['mime'];
+            $attributes['media_kind'] = $saved['kind'];
+
+            if ($previousPath) {
+                MediaUploadService::deleteBulletinMedia($previousPath);
+            }
+        } elseif ($removeMedia) {
+            if ($target->media_path) {
+                MediaUploadService::deleteBulletinMedia($target->media_path);
+            }
+
+            $attributes['media_path'] = null;
+            $attributes['media_mime'] = null;
+            $attributes['media_kind'] = null;
+        }
+
+        $target->forceFill($attributes)->save();
 
         $visitorHash = $this->visitor->hash($request);
         $this->board->attachReactionSummary(collect([$target]), $visitorHash);
@@ -222,6 +252,12 @@ class BulletinController extends Controller
         if (! hash_equals($target->visitor_hash, $this->visitor->hash($request))) {
             return response()->json([
                 'message' => 'Only the visitor who pinned this note can delete it.',
+            ], 403);
+        }
+
+        if (! $target->isDeletable()) {
+            return response()->json([
+                'message' => 'Notes can only be deleted within 7 days of pinning.',
             ], 403);
         }
 
@@ -295,6 +331,21 @@ class BulletinController extends Controller
                 'already_reported' => ! $report->wasRecentlyCreated,
             ],
         ], $report->wasRecentlyCreated ? 201 : 200);
+    }
+
+    /**
+     * Keep the existing value when a field is absent from the payload, but
+     * allow an explicit null to clear it.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function nullableAttribute(array $validated, string $field, ?string $current): ?string
+    {
+        if (! array_key_exists($field, $validated)) {
+            return $current;
+        }
+
+        return $validated[$field];
     }
 
     private function nameCooldownKey(string $visitorHash): string

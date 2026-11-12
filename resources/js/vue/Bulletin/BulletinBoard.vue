@@ -16,6 +16,7 @@ import {
     composerRect,
     noteFontSize,
     packNotes,
+    packNotesVertically,
 } from './boardLayout';
 
 const props = defineProps({
@@ -118,21 +119,30 @@ const rows = computed(() => {
 });
 
 const reservedRects = computed(() => {
-    const rect = isDesktop.value
-        ? composerRect(rows.value, 2, 2)
-        : { x: 0, y: 0, w: 1, h: 1 };
+    if (!isDesktop.value) {
+        return [{ x: 0, y: 0, w: board.value.columns, h: 1 }];
+    }
 
-    return [rect];
+    return [composerRect(rows.value, 2, 2)];
 });
 
 const layout = computed(() =>
-    packNotes(notes.value, {
-        rows: rows.value,
-        reserved: reservedRects.value,
-    })
+    isDesktop.value
+        ? packNotes(notes.value, {
+              rows: rows.value,
+              reserved: reservedRects.value,
+          })
+        : packNotesVertically(notes.value, {
+              columns: board.value.columns,
+              reserved: reservedRects.value,
+          })
 );
 
-const gridHeight = computed(() => rows.value * pitch.value - NOTE_GAP);
+const gridHeight = computed(() =>
+    isDesktop.value
+        ? rows.value * pitch.value - NOTE_GAP
+        : Math.max(1, layout.value.rows) * pitch.value - NOTE_GAP
+);
 
 const gridTop = computed(() => {
     // Phones keep the pin button right under the header instead of centring the
@@ -215,12 +225,71 @@ const onWheel = (event) => {
         return;
     }
 
-    if (element.scrollHeight > element.clientHeight + 2) {
+    event.preventDefault();
+    element.scrollLeft += event.deltaY;
+};
+
+/**
+ * Drag the cork itself to pan a desktop board. Dragging never starts on a note
+ * or the composer, so links, menus and text selection keep working normally.
+ */
+let dragState = null;
+
+const canDragBoard = () => isDesktop.value && scroller.value?.scrollWidth > scroller.value?.clientWidth;
+
+const onPointerDown = (event) => {
+    if (event.button !== 0 || !canDragBoard()) {
         return;
     }
 
+    if (
+        event.target instanceof Element &&
+        event.target.closest(
+            '.bulletin-note, .bulletin-composer-slot, button, a, input, textarea, select, summary, .dropdown-content'
+        )
+    ) {
+        return;
+    }
+
+    const element = scroller.value;
+    dragState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        scrollLeft: element.scrollLeft,
+        moved: false,
+    };
+    element.setPointerCapture?.(event.pointerId);
+    element.classList.add('bulletin-is-dragging');
+};
+
+const onPointerMove = (event) => {
+    if (!dragState || event.pointerId !== dragState.pointerId) {
+        return;
+    }
+
+    const element = scroller.value;
+    const deltaX = event.clientX - dragState.startX;
+    const deltaY = event.clientY - dragState.startY;
+
+    if (!dragState.moved && Math.abs(deltaX) < 4 && Math.abs(deltaY) < 4) {
+        return;
+    }
+
+    dragState.moved = true;
     event.preventDefault();
-    element.scrollLeft += event.deltaY;
+    element.scrollLeft = dragState.scrollLeft - deltaX;
+};
+
+const endDrag = (event) => {
+    if (!dragState || (event.pointerId !== undefined && event.pointerId !== dragState.pointerId)) {
+        return;
+    }
+
+    const element = scroller.value;
+    element?.releasePointerCapture?.(dragState.pointerId);
+    element?.classList.remove('bulletin-is-dragging');
+    dragState = null;
 };
 
 const onBoardKeydown = (event) => {
@@ -267,7 +336,9 @@ const checkOverflow = () => {
         return;
     }
 
-    hasOverflow.value = element.scrollWidth > element.clientWidth + 4;
+    hasOverflow.value = isDesktop.value
+        ? element.scrollWidth > element.clientWidth + 4
+        : element.scrollHeight > element.clientHeight + 4;
 };
 
 async function loadMore() {
@@ -333,7 +404,15 @@ const onScroll = () => {
             return;
         }
 
-        if (element.scrollLeft + element.clientWidth >= element.scrollWidth - 360) {
+        if (isDesktop.value) {
+            if (element.scrollLeft + element.clientWidth >= element.scrollWidth - 360) {
+                loadMore();
+            }
+
+            return;
+        }
+
+        if (element.scrollTop + element.clientHeight >= element.scrollHeight - 360) {
             loadMore();
         }
     });
@@ -583,7 +662,8 @@ const onCreated = (note) => {
 
         if (element && created) {
             element.scrollTo({
-                left: Math.max(0, created.offsetLeft - 40),
+                left: isDesktop.value ? Math.max(0, created.offsetLeft - 40) : element.scrollLeft,
+                top: isDesktop.value ? element.scrollTop : Math.max(0, created.offsetTop - 40),
                 behavior: prefersReducedMotion() ? 'auto' : 'smooth',
             });
         }
@@ -627,6 +707,10 @@ onMounted(() => {
 
     desktopQuery.addEventListener('change', onMediaChange);
     scroller.value?.addEventListener('wheel', onWheel, { passive: false });
+    scroller.value?.addEventListener('pointerdown', onPointerDown);
+    scroller.value?.addEventListener('pointermove', onPointerMove);
+    scroller.value?.addEventListener('pointerup', endDrag);
+    scroller.value?.addEventListener('pointercancel', endDrag);
     document.addEventListener('pointerdown', onDocumentPointerDown);
     document.addEventListener('keydown', onDocumentKeydown);
 });
@@ -635,6 +719,10 @@ onBeforeUnmount(() => {
     resizeObserver?.disconnect();
     desktopQuery.removeEventListener('change', onMediaChange);
     scroller.value?.removeEventListener('wheel', onWheel);
+    scroller.value?.removeEventListener('pointerdown', onPointerDown);
+    scroller.value?.removeEventListener('pointermove', onPointerMove);
+    scroller.value?.removeEventListener('pointerup', endDrag);
+    scroller.value?.removeEventListener('pointercancel', endDrag);
     document.removeEventListener('pointerdown', onDocumentPointerDown);
     document.removeEventListener('keydown', onDocumentKeydown);
     window.clearTimeout(toastMessageTimer);
@@ -710,8 +798,7 @@ watch(layout, () => {
                 </div>
 
                 <p id="bulletin-board-help" class="sr-only">
-                    The board scrolls sideways. Focus it and use the arrow keys to move through
-                    the notes.
+                    Drag the cork or use the arrow keys to move through the notes.
                 </p>
             </div>
 

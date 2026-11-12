@@ -12,7 +12,10 @@ export const REACTIONS = [
     { key: 'laugh', emoji: '😂', label: 'Funny' },
     { key: 'wow', emoji: '😮', label: 'Surprised' },
     { key: 'fire', emoji: '🔥', label: 'Fire' },
-    { key: 'idea', emoji: '💡', label: 'Idea' },
+    { key: 'sad', emoji: '😞', label: 'Sad' },
+    { key: 'angry', emoji: '😠', label: 'Angry' },
+    { key: 'cry', emoji: '😭', label: 'Cry' },
+    { key: 'flower', emoji: '🌸', label: 'Flower' },
 ];
 
 export const REPORT_REASONS = [
@@ -229,6 +232,69 @@ export function packNotes(notes, { rows, reserved = [] }) {
     }
 
     return { placed, columns: maxColumn };
+}
+
+/**
+ * Phones read a board top to bottom, so notes stack in reading order instead of
+ * growing into an endlessly wide world. The first free row wins, which lets a
+ * tall note sit beside a short one without wasting the gap underneath.
+ *
+ * @returns {{ placed: Array<{note: object, x: number, y: number, w: number, h: number}>, rows: number, columns: number }}
+ */
+export function packNotesVertically(notes, { columns = 2, reserved = [] } = {}) {
+    const columnCount = Math.max(1, columns);
+    const occupied = new Set();
+
+    const mark = (x, y, w, h) => {
+        for (let dx = 0; dx < w; dx += 1) {
+            for (let dy = 0; dy < h; dy += 1) {
+                occupied.add(`${x + dx}:${y + dy}`);
+            }
+        }
+    };
+
+    const isFree = (x, y, w, h) => {
+        for (let dx = 0; dx < w; dx += 1) {
+            for (let dy = 0; dy < h; dy += 1) {
+                if (occupied.has(`${x + dx}:${y + dy}`)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    };
+
+    reserved.forEach((rect) => mark(rect.x, rect.y, rect.w, rect.h));
+
+    const placed = [];
+    let rowCount = 0;
+
+    for (const note of notes) {
+        const w = Math.min(columnCount, Math.max(1, Number(note.width) || 1));
+        const h = Math.min(MAX_NOTE_HEIGHT, Math.max(1, Number(note.height) || 1));
+
+        let position = null;
+
+        for (let y = 0; y < 1000 && !position; y += 1) {
+            for (let x = 0; x + w <= columnCount; x += 1) {
+                if (isFree(x, y, w, h)) {
+                    position = { x, y };
+                    break;
+                }
+            }
+        }
+
+        if (!position) {
+            position = { x: 0, y: rowCount };
+        }
+
+        mark(position.x, position.y, w, h);
+        rowCount = Math.max(rowCount, position.y + h);
+        placed.push({ note, x: position.x, y: position.y, w, h });
+    }
+
+    return { placed, rows: rowCount, columns: columnCount };
 }
 
 /**

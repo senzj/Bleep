@@ -20,7 +20,7 @@
 
     <noscript>
         <div class="mx-auto w-full max-w-5xl flex-1 overflow-y-auto px-4 py-5">
-            <a href="{{ route('home') }}" class="link link-hover text-sm opacity-70">← Back to Bleep</a>
+            <x-ui.back-button fallback="{{ route('home') }}" label="Back to Bleep" />
             <h1 class="mt-1 text-3xl font-bold tracking-tight">Bleep Bulletin</h1>
             <p class="mt-1 text-sm opacity-70">
                 Anonymous notes pinned by visitors. JavaScript is needed to write a note.

@@ -28,6 +28,19 @@
     touch-action: pan-x pan-y;
 }
 
+/* Desktop boards pan by dragging the cork, so the empty surface advertises it.
+   Notes keep their normal cursor because they are not drag handles. */
+@media (min-width: 768px) {
+    .bulletin-scroller {
+        cursor: grab;
+    }
+
+    .bulletin-scroller.bulletin-is-dragging {
+        cursor: grabbing;
+        user-select: none;
+    }
+}
+
 .bulletin-scroller:focus-visible {
     outline: 3px solid #fef08a;
     outline-offset: -3px;
@@ -767,6 +780,13 @@
     box-shadow: none;
 }
 
+/* The composer and other loose sheets preview the same torn, folded or zigzag
+   silhouette as the note they will become. Notes themselves paint the shape on
+   ::before/::after so their text and controls are never clipped. */
+.bulletin-paper:not(.bulletin-note):not(.bulletin-texture-swatch) {
+    clip-path: var(--edge-clip, none);
+}
+
 /* --------------------------------------------------------------------------
    Random wear: a torn edge or a dog-eared corner. Wear sits behind the note
    content (negative z-index) so text, signatures and actions stay untouched.
@@ -973,13 +993,23 @@
     cursor: zoom-in;
 }
 
+/* One-row notes keep their attachment visible as a compact strip instead of
+   hiding it behind the expand dialog. */
+.bulletin-note--1x1 .bulletin-note__media,
+.bulletin-note--2x1 .bulletin-note__media {
+    height: 2.5rem;
+    min-height: 2.5rem;
+    flex: 0 0 auto;
+}
+
 .bulletin-note__media .bulletin-note__image {
     width: 100%;
     height: 100%;
     min-height: 0;
     flex: 1 1 auto;
     border-radius: 2px;
-    object-fit: cover;
+    object-fit: contain;
+    background: rgb(0 0 0 / 0.08);
     box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
 }
 
@@ -1249,6 +1279,35 @@
         inset 0 0 0 1px rgb(0 0 0 / 0.22),
         0 1px 1px rgb(0 0 0 / 0.18);
     clip-path: var(--edge-clip, none);
+}
+
+/* Edge shapes that read well on a 200px note are far too coarse on a 1.3rem
+   swatch, so the preview uses the same silhouette at a smaller scale. */
+.bulletin-texture-swatch.bulletin-paper--torn {
+    --edge-clip: polygon(
+        0 0,
+        100% 0,
+        100% calc(100% - 1px),
+        91% 100%,
+        82% calc(100% - 2px),
+        73% 100%,
+        64% calc(100% - 1px),
+        55% 100%,
+        46% calc(100% - 2px),
+        37% 100%,
+        28% calc(100% - 1px),
+        19% 100%,
+        10% calc(100% - 2px),
+        0 calc(100% - 1px)
+    );
+}
+
+.bulletin-texture-swatch.bulletin-paper--folded {
+    --fold-size: 4px;
+}
+
+.bulletin-texture-swatch.bulletin-paper--zigzag {
+    --zigzag-tooth: 1.5px;
 }
 
 @keyframes bulletin-composer-in {

@@ -34,7 +34,7 @@ class BulletinPostResource extends JsonResource
             'created_at' => $this->created_at->toIso8601String(),
             'edited_at' => $this->edited_at?->toIso8601String(),
             'can_edit' => (bool) ($this->is_owner ?? false) && $this->resource->isEditable(),
-            'can_delete' => (bool) ($this->is_owner ?? false),
+            'can_delete' => (bool) ($this->is_owner ?? false) && $this->resource->isDeletable(),
             'reactions' => [
                 'counts' => $this->reaction_counts ?? [],
                 'mine' => $this->my_reaction,

@@ -89,7 +89,7 @@ class StoreBulletinPostRequest extends FormRequest
                 'nullable',
                 'file',
                 'max:51200',
-                'mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mpeg,audio/wav,audio/ogg',
+                config('media.mimes_rule'),
             ],
             'size' => ['nullable', Rule::in(self::SIZES)],
             'width' => ['required_without:size', 'integer', Rule::in(self::WIDTHS)],

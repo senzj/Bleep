@@ -9,7 +9,10 @@ enum BulletinReactionType: string
     case Laugh = 'laugh';
     case Wow = 'wow';
     case Fire = 'fire';
-    case Idea = 'idea';
+    case Sad = 'sad';
+    case Angry = 'angry';
+    case Cry = 'cry';
+    case Flower = 'flower';
 
     public function emoji(): string
     {
@@ -19,7 +22,10 @@ enum BulletinReactionType: string
             self::Laugh => '😂',
             self::Wow => '😮',
             self::Fire => '🔥',
-            self::Idea => '💡',
+            self::Sad => '😞',
+            self::Angry => '😠',
+            self::Cry => '😭',
+            self::Flower => '🌸',
         };
     }
 
@@ -31,7 +37,10 @@ enum BulletinReactionType: string
             self::Laugh => 'Funny',
             self::Wow => 'Surprised',
             self::Fire => 'Fire',
-            self::Idea => 'Idea',
+            self::Sad => 'Sad',
+            self::Angry => 'Angry',
+            self::Cry => 'Cry',
+            self::Flower => 'Flower',
         };
     }
 
