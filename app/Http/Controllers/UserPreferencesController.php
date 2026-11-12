@@ -18,14 +18,21 @@ class UserPreferencesController extends Controller
         'blur_nsfw_media',
         'show_reposts_in_feed',
         'show_anonymous_bleeps',
+        'show_anonymous_comments',
         'default_feed_sort',
         'bleeps_per_page',
+        'media_offscreen',
+        'media_downloads',
+        'resume_media_on_view',
+        'remember_media_position',
         'recieve_notification_sound',
         'send_notification_sound',
         'private_profile',
         'block_new_followers',
         'hide_online_status',
         'hide_activity',
+        'follower_list_visibility',
+        'dm_privacy',
         'notify_likes',
         'notify_comments',
         'notify_replies',
@@ -48,6 +55,10 @@ class UserPreferencesController extends Controller
         'blur_nsfw_media',
         'show_reposts_in_feed',
         'show_anonymous_bleeps',
+        'show_anonymous_comments',
+        'media_downloads',
+        'resume_media_on_view',
+        'remember_media_position',
         'private_profile',
         'block_new_followers',
         'hide_online_status',
@@ -123,14 +134,21 @@ class UserPreferencesController extends Controller
             'preferences.blur_nsfw_media' => ['sometimes', 'boolean'],
             'preferences.show_reposts_in_feed' => ['sometimes', 'boolean'],
             'preferences.show_anonymous_bleeps' => ['sometimes', 'boolean'],
+            'preferences.show_anonymous_comments' => ['sometimes', 'boolean'],
             'preferences.default_feed_sort' => ['sometimes', 'string', 'in:newest,popular,following'],
             'preferences.bleeps_per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'preferences.media_offscreen' => ['sometimes', 'string', 'in:pause,background,pip'],
+            'preferences.media_downloads' => ['sometimes', 'boolean'],
+            'preferences.resume_media_on_view' => ['sometimes', 'boolean'],
+            'preferences.remember_media_position' => ['sometimes', 'boolean'],
             'preferences.recieve_notification_sound' => ['sometimes', 'string', 'max:255'],
             'preferences.send_notification_sound' => ['sometimes', 'string', 'max:255'],
             'preferences.private_profile' => ['sometimes', 'boolean'],
             'preferences.block_new_followers' => ['sometimes', 'boolean'],
             'preferences.hide_online_status' => ['sometimes', 'boolean'],
             'preferences.hide_activity' => ['sometimes', 'boolean'],
+            'preferences.follower_list_visibility' => ['sometimes', 'string', 'in:everyone,friends,only_me'],
+            'preferences.dm_privacy' => ['sometimes', 'string', 'in:everyone,followers,friends'],
             'preferences.notify_likes' => ['sometimes', 'boolean'],
             'preferences.notify_comments' => ['sometimes', 'boolean'],
             'preferences.notify_replies' => ['sometimes', 'boolean'],
@@ -286,6 +304,15 @@ class UserPreferencesController extends Controller
 
             $key === 'bleeps_per_page' => ((int) $value >= 1 && (int) $value <= 100)
                     ? null : 'bleeps_per_page must be between 1 and 100',
+
+            $key === 'media_offscreen' => in_array($value, ['pause', 'background', 'pip'], true)
+                    ? null : 'Invalid media off-screen behaviour',
+
+            $key === 'follower_list_visibility' => in_array($value, ['everyone', 'friends', 'only_me'], true)
+                    ? null : 'Invalid follower list visibility',
+
+            $key === 'dm_privacy' => in_array($value, ['everyone', 'followers', 'friends'], true)
+                    ? null : 'Invalid direct message privacy',
 
             in_array($key, self::SOUND_KEYS) => ($value === 'none' || $this->isValidSoundPath((string) $value))
                     ? null : 'Invalid sound path',

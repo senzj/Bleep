@@ -82,6 +82,7 @@ class ProfileController extends Controller
 
         $followersCount = $user->followers()->count();
         $followingCount = $user->following()->count();
+        $canViewFollowLists = $user->canViewFollowerLists($authUser);
 
         return view('pages.users.profile', [
             'user' => $user,
@@ -89,6 +90,7 @@ class ProfileController extends Controller
             'reposts' => $reposts,
             'followersCount' => $followersCount,
             'followingCount' => $followingCount,
+            'canViewFollowLists' => $canViewFollowLists,
             'isFollowing' => $isFollowing,
             'isOwnProfile' => $isOwnProfile,
             'isFriend' => $isFriend,

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\System\SystemSettings;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,8 +18,13 @@ class UserPreferences extends Model
         'blur_nsfw_media',
         'show_reposts_in_feed',
         'show_anonymous_bleeps', // hidden if nt enabled
+        'show_anonymous_comments',
         'default_feed_sort',
         'bleeps_per_page',
+        'media_offscreen',
+        'media_downloads',
+        'resume_media_on_view',
+        'remember_media_position',
 
         // notifications
         'recieve_notification_sound',
@@ -44,6 +50,8 @@ class UserPreferences extends Model
         'block_new_followers',
         'hide_online_status',
         'hide_activity',
+        'follower_list_visibility',
+        'dm_privacy',
     ];
 
     protected $casts = [
@@ -54,8 +62,13 @@ class UserPreferences extends Model
         'blur_nsfw_media' => 'boolean',
         'show_reposts_in_feed' => 'boolean',
         'show_anonymous_bleeps' => 'boolean',
+        'show_anonymous_comments' => 'boolean',
         'default_feed_sort' => 'string',
         'bleeps_per_page' => 'integer',
+        'media_offscreen' => 'string',
+        'media_downloads' => 'boolean',
+        'resume_media_on_view' => 'boolean',
+        'remember_media_position' => 'boolean',
 
         'recieve_notification_sound' => 'string',
         'send_notification_sound' => 'string',
@@ -80,14 +93,16 @@ class UserPreferences extends Model
         'block_new_followers' => 'boolean',
         'hide_online_status' => 'boolean',
         'hide_activity' => 'boolean',
+        'follower_list_visibility' => 'string',
+        'dm_privacy' => 'string',
     ];
 
     /**
-     * Default values for new preferences
+     * Default values for new preferences, merged with admin-managed defaults.
      */
     public static function defaults(): array
     {
-        return [
+        return array_merge([
             // Theme and layout preferences
             'nav_layout' => 'horizontal',
             'theme' => 'system',
@@ -97,8 +112,13 @@ class UserPreferences extends Model
             'blur_nsfw_media' => true,
             'show_reposts_in_feed' => true,
             'show_anonymous_bleeps' => true,
+            'show_anonymous_comments' => true,
             'default_feed_sort' => 'newest',
             'bleeps_per_page' => 15,
+            'media_offscreen' => 'pause',
+            'media_downloads' => false,
+            'resume_media_on_view' => false,
+            'remember_media_position' => true,
 
             // notifications
             'recieve_notification_sound' => '/sounds/notifications/marimba-bloop-1.mp3',
@@ -125,7 +145,9 @@ class UserPreferences extends Model
             'block_new_followers' => false,
             'hide_online_status' => false,
             'hide_activity' => false,
-        ];
+            'follower_list_visibility' => 'everyone',
+            'dm_privacy' => 'everyone',
+        ], SystemSettings::userPreferenceDefaults());
     }
 
     public function user(): BelongsTo
