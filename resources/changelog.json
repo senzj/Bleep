@@ -1,0 +1,79 @@
+{
+    "current": "2.4",
+    "releases": [
+        {
+            "version": "2.4",
+            "date": "2026-11-12",
+            "title": "A faster media viewer",
+            "summary": "Images now arrive pre-sized, the viewer no longer competes with the feed for CPU, and the like button only shows the broken heart while you hover a liked post.",
+            "changes": {
+                "added": [
+                    "Server-resized media images: 640 px copies for grids and 1800 px copies for the viewer, generated on demand and cached under storage/app/public/media-cache.",
+                    "A shared MediaPath helper so the streaming and image-resizing routes reject unsafe paths the same way."
+                ],
+                "changed": [
+                    "Opening the media viewer pauses anything playing in the feed, and closing it resumes playback.",
+                    "The viewer only downloads the full-resolution original when the download button is used.",
+                    "Liked posts show a broken heart on hover, and unliking now restores the normal filled heart instead of leaving the broken icon behind.",
+                    "The bulletin board patch label follows the current release version instead of a hard-coded number."
+                ],
+                "updated": [
+                    "Media tiles expose separate thumbnail, viewer and original URLs through data-media-src, data-media-view and data-media-original.",
+                    "Animated GIFs and images that already fit the requested size are still served untouched, with EXIF rotation baked into resized JPEGs."
+                ],
+                "optimized": [
+                    "Dragging and pinching in the viewer only rewrite the transform, cursor and zoom label when they change, instead of recalculating styles on every frame.",
+                    "The viewer measures its centre once per gesture instead of reading layout on every pointer move.",
+                    "Neighbouring slides start downloading during the slide fade-out instead of after it.",
+                    "Viewer icons render while the page is idle so opening the viewer does not pay for icon work.",
+                    "Grid thumbnails are 640 px instead of multi-megabyte originals, cutting download, decode time and memory."
+                ],
+                "removed": []
+            }
+        },
+        {
+            "version": "2.3",
+            "date": "2026-11-03",
+            "title": "Media, privacy and mobile polish",
+            "summary": "Background media playback, follower-list privacy, policy consent toggles, a compact navigation bar and a long list of quality-of-life fixes.",
+            "changes": {
+                "added": [
+                    "Mini player (picture-in-picture) for audio and video with a Return player to post action.",
+                    "Off-screen media preference: pause, keep playing in the background, or pop out to the mini player.",
+                    "Resume on view preference for manually paused videos.",
+                    "Follower and following list visibility: everyone, friends only, or only me.",
+                    "Terms, Privacy Policy and Cookie Policy documents with consent toggles on registration and sign-in.",
+                    "Extension badges for uploaded audio, video and image files.",
+                    "Personal media download preference, off by default.",
+                    "Bleep analytics in the post action menu for post owners."
+                ],
+                "changed": [
+                    "Mobile home now stacks announcements and notifications above the feed as collapsible panels.",
+                    "The navigation bar compacts to icons while scrolling.",
+                    "Profile account actions are collapsed into a menu and hidden from guests.",
+                    "Guests who tap like are sent to sign in instead of seeing an optimistic like.",
+                    "Unread notification counts stay in sync on the bell and the quick notifications panel.",
+                    "The bulletin board patch is now v2.3."
+                ],
+                "updated": [
+                    "Registration requires the Terms, Privacy Policy, Cookie Policy and age confirmation toggles.",
+                    "Choosing Remember me also accepts the policy toggles on that device.",
+                    "Audio and video uploads accept FLAC, ALAC, AAC and additional container formats.",
+                    "Follower counters are replaced with a private placeholder when the lists are restricted.",
+                    "Notification fallback polling now runs every five minutes when Reverb is unavailable."
+                ],
+                "optimized": [
+                    "Lazy media loading and lighter infinite-scroll work.",
+                    "Mini player layout reads and controls reduce layout thrash while scrolling.",
+                    "Lucide icon loading is batched through the shared helper.",
+                    "Comment and new-post animations are smoother and less expensive."
+                ],
+                "removed": [
+                    "The separate Block User block on profiles; it now lives in the account actions menu.",
+                    "The idea reaction from the bulletin board.",
+                    "Raw JSON-only activity rows; activity is now human-readable by default."
+                ]
+            }
+        }
+    ]
+}

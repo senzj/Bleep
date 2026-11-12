@@ -21,6 +21,14 @@ The application is a Blade-first Laravel monolith. Vue 3 is used for selected in
 - Blocking and blocked-user management
 - Reporting of bleeps and comments
 
+### Media
+
+- Image, video, and audio attachments with single-media, grid (up to 9 plus a `+N` tile), and inline player layouts
+- Full-screen media viewer with zoom, pan, double-tap zoom, wheel zoom, keyboard shortcuts, and swipe navigation
+- Server-resized images: 640 px thumbnails for grids and an 1800 px copy for the viewer, generated once and cached on disk
+- Feed playback pauses while the viewer is open and resumes after it closes
+- NSFW blurring with an age gate, and optional media downloads that save the original file
+
 ### Messaging
 
 - Direct messages and group conversations
@@ -70,6 +78,7 @@ The application is a Blade-first Laravel monolith. Vue 3 is used for selected in
 - `routes/web.php` contains the application's web routes and small internal JSON endpoints. There is no versioned public API.
 - Controllers are grouped by domain: `Auth`, `Bleep`, `Chat`, `Admin`, plus social/settings controllers.
 - `app/Services` holds reusable logic: `FeedService` (feed scopes and ordering), `MediaUploadService` (uploads and deletions), and `Chat\ChatMessageFormatter` (message payloads).
+- Media delivery lives in `routes/stream.php`, registered outside the `web` middleware group so a long stream never holds the session lock. `MediaStreamController` streams audio and video with HTTP range support; `MediaImageController` generates and caches resized image copies under `storage/app/public/media-cache/{thumb|view}`. `app/Helpers/MediaPath.php` holds the shared path-safety check for both.
 - Eloquent models cover posts, comments, follows, blocks, reports, preferences, conversations, messages, deliveries, reactions, and related records.
 - Authorization uses `BleepPolicy`, `CommentsPolicy`, and the `is_admin` gate. Admin routes are protected with `can:is_admin`.
 - `bootstrap/app.php` registers the global web middleware: timezone updates, ban checks, remembered-device checks, and progressive lockouts.
@@ -91,6 +100,7 @@ Browser
 ## Requirements
 
 - PHP 8.2 or newer with the usual Laravel extensions
+- PHP GD for server-side image resizing (JPEG and PNG are required; WebP and EXIF support are recommended). Without GD, images are served at full size instead.
 - Composer 2
 - MySQL (the repository defaults to MySQL; tests use SQLite)
 - Node.js 18+ and npm (CI uses Node 22)
@@ -144,6 +154,47 @@ REVERB_PORT=8080
 REVERB_SCHEME=http
 ```
 
+### Large media uploads
+
+Uploading a 1 GB video is limited by PHP before Laravel ever sees the file. Raise the PHP and web-server limits, then restart PHP (and the web server if it has its own body limit):
+
+```ini
+; php.ini
+upload_max_filesize = 2G
+post_max_size = 2G
+max_execution_time = 0
+max_input_time = 0
+memory_limit = 512M
+```
+
+```nginx
+# nginx
+client_max_body_size 2G;
+```
+
+```apache
+# Apache
+LimitRequestBody 2147483648
+```
+
+Useful checks:
+
+```bash
+php -i | grep -E "upload_max_filesize|post_max_size|max_execution_time"
+php artisan about
+```
+
+Notes:
+
+- `php artisan serve` is single-threaded; it is fine for small files but a large upload can make the rest of the app feel frozen. Use Laravel Herd, Sail, nginx + PHP-FPM, or another multi-process setup for real upload testing.
+- On Windows, add the project and PHP temp folder to Microsoft Defender's exclusions; real-time scanning of a 1 GB temp file can add minutes.
+- Files at or above `MEDIA_CHUNKED_UPLOAD_THRESHOLD_KB` (8 MB by default) use the resumable chunk uploader. Progress is stored in IndexedDB, so a refresh resumes from the last completed chunk instead of starting over.
+- The application-level limit is set by `MEDIA_MAX_BLEEP_FILE_KB` and `MEDIA_MAX_CHAT_FILE_KB` (2 GB by default). Keep these at or below the PHP limits above.
+- The media stream route sends `Accept-Ranges`, `ETag`, and `Last-Modified`, so browsers can seek videos and reuse cached bytes.
+- Image attachments are delivered through `/media/image/{thumb|view}/{path}`. Resized copies are cached in `storage/app/public/media-cache/{thumb|view}` and reused until the source file changes, so that directory must stay writable. The cache is not cleaned automatically; prune it if disk use matters.
+
+
+
 ## Useful Commands
 
 | Command | Purpose |
@@ -161,13 +212,14 @@ REVERB_SCHEME=http
 
 Pest is configured with `phpunit.xml` using an in-memory SQLite database. `RefreshDatabase` is enabled for feature tests, Vite is stubbed during tests, and the broadcasting connection is set to Reverb with test-only credentials so channel authorization can be exercised.
 
-The current suite covers the public feed, bleep creation and deletion authorization, admin dashboard access, report moderation, and private conversation channel authorization. Run it with `php artisan test` before opening a pull request.
+The current suite covers the public feed, bleep creation and deletion authorization, admin dashboard access, report moderation, private conversation channel authorization, media streaming and image resizing, the media viewer markup and skeleton placeholders, and the like-button markup contract the optimistic icon relies on. Run it with `php artisan test` before opening a pull request.
 
 ## Project Structure
 
 ```text
 app/Http/Controllers/   Web and internal JSON controllers
 app/Http/Middleware/    Ban, device, timezone, and lockout middleware
+app/Helpers/            Small shared helpers such as the media path check
 app/Models/             Eloquent models
 app/Policies/           Post and comment authorization
 app/Services/           Feed, media, and chat formatting services
@@ -177,6 +229,7 @@ resources/views/        Blade pages and components
 resources/js/           Alpine, Vue islands, chat store, and page scripts
 resources/css/          Tailwind v4 and DaisyUI configuration
 routes/web.php          Web and internal JSON routes
+routes/stream.php       Media streaming and resized-image routes
 routes/channels.php     Broadcast channel authorization
 ```
 
@@ -231,7 +284,7 @@ Ponytail's OpenCode plugin and always-on ruleset are intentionally not enabled. 
 
 The GitHub Actions workflow in `.github/workflows/deployment.yml` runs the Pest suite first and only deploys if it passes. The deploy job then builds frontend assets and uploads the repository over FTP when `main` is updated. It excludes `.env` files, Git metadata, tests, and some storage paths, but it does not run migrations.
 
-Before releasing schema changes, run migrations against the production database. Ensure the host supports the storage link, writable storage directories, queue processing, and a long-running Reverb process if real-time chat is required on the free hosting plan. If the host cannot keep Reverb running, chat needs an external websocket service or a fallback strategy.
+Before releasing schema changes, run migrations against the production database. Ensure the host supports the storage link, writable storage directories, the PHP GD extension (for resized images), queue processing, and a long-running Reverb process if real-time chat is required on the free hosting plan. If the host cannot keep Reverb running, chat needs an external websocket service or a fallback strategy.
 
 The `.agents` directory and `skills-lock.json` are development files. Decide whether to commit them; if they are committed, consider excluding `.agents/**` from the FTP deployment to avoid uploading tooling to production.
 
