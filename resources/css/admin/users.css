@@ -1,0 +1,5 @@
+@media (min-width: 768px) {
+    .user-table-row {
+        grid-template-columns: 140px 220px 100px 100px 140px 100px !important;
+    }
+}

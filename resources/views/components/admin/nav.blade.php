@@ -8,6 +8,7 @@
             ['route' => 'admin.devices', 'icon' => 'monitor-smartphone', 'label' => 'Devices & Sessions'],
             ['route' => 'admin.visits', 'icon' => 'chart-column', 'label' => 'Site Visits'],
             ['route' => 'admin.logs', 'icon' => 'file-text', 'label' => 'System Logs'],
+            ['route' => 'admin.system', 'icon' => 'cpu', 'label' => 'System'],
         ];
     @endphp
 

@@ -17,7 +17,7 @@
     </div>
 
     {{-- Status tabs --}}
-    <div class="flex gap-1 bg-base-200 p-1 rounded-xl">
+    <div class="flex max-w-full flex-wrap gap-1 bg-base-200 p-1 rounded-xl">
         @php
             $tabs = [
                 'pending'   => ['icon' => 'clock',        'color' => 'text-warning'],
@@ -26,7 +26,7 @@
             ];
         @endphp
         @foreach($tabs as $state => $cfg)
-            <a href="?status={{ $state }}"
+            <a href="?status={{ $state }}&type={{ $type }}"
                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all
                       {{ $status === $state
                             ? 'bg-base-100 shadow-sm text-base-content'
@@ -37,6 +37,115 @@
         @endforeach
     </div>
 </div>
+
+{{-- Content type filter: keep bleep and bulletin reports on one page but
+     clearly separated. --}}
+<div class="mb-5 grid grid-cols-3 gap-1 rounded-xl bg-base-200 p-1">
+    @php
+        $typeTabs = [
+            'all' => ['label' => 'All', 'icon' => 'layers'],
+            'bleep' => ['label' => 'Bleeps', 'icon' => 'message-square'],
+            'bulletin' => ['label' => 'Bulletin', 'icon' => 'scroll'],
+        ];
+    @endphp
+
+    @foreach($typeTabs as $key => $cfg)
+        <a href="?status={{ $status }}&type={{ $key }}"
+           class="flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all
+                  {{ $type === $key
+                        ? 'bg-base-100 text-base-content shadow-sm'
+                        : 'text-base-content/50 hover:text-base-content' }}">
+            <i data-lucide="{{ $cfg['icon'] }}" class="h-3.5 w-3.5"></i>
+            {{ $cfg['label'] }}
+            @if($key === 'bulletin' && $bulletinReportCounts['posts'] > 0)
+                <span class="badge badge-xs badge-secondary">{{ $bulletinReportCounts['posts'] }}</span>
+            @endif
+        </a>
+    @endforeach
+</div>
+
+@if($type !== 'bleep' && $bulletinReports->isNotEmpty())
+    <div class="mb-6">
+        <div class="mb-2 flex items-center justify-between gap-2">
+            <h2 class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-base-content/60">
+                <span class="badge badge-sm gap-1 border bg-[#F3E8FF] text-[#5B21B6] border-[#C4A5F0]">
+                    <i data-lucide="sticky-note" class="h-3 w-3"></i>
+                    Bulletin
+                </span>
+                Reports
+            </h2>
+            <span class="text-xs text-base-content/50">
+                {{ number_format($bulletinReportCounts['total']) }} reports on
+                {{ number_format($bulletinReportCounts['posts']) }} notes
+            </span>
+        </div>
+
+        <div class="space-y-2">
+            @foreach($bulletinReports as $bulletinReport)
+                @php $post = $bulletinReport->post; @endphp
+                <div class="rounded-xl border border-[#C4A5F0]/60 bg-base-100 p-3 shadow-sm">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="badge badge-sm gap-1 border bg-[#F3E8FF] text-[#5B21B6] border-[#C4A5F0]">
+                                    <i data-lucide="sticky-note" class="h-3 w-3"></i>
+                                    Bulletin
+                                </span>
+                                <span class="badge badge-sm gap-1 border bg-[#FAEEDA] text-[#633806] border-[#EF9F27]">
+                                    <i data-lucide="flag" class="h-3 w-3"></i>
+                                    {{ $bulletinReport->report_count }}
+                                    {{ Str::plural('report', $bulletinReport->report_count) }}
+                                </span>
+                                @if($post)
+                                    <span class="text-xs text-base-content/50">
+                                        {{ $post->anonymous_name }} · {{ $post->created_at?->diffForHumans() }}
+                                    </span>
+                                @endif
+                            </div>
+
+                            @if($post)
+                                <p class="mt-2 line-clamp-3 whitespace-pre-line break-words text-sm text-base-content/90">
+                                    {{ $post->content }}
+                                </p>
+                            @else
+                                <p class="mt-2 text-sm italic text-base-content/50">
+                                    This bulletin note has been removed.
+                                </p>
+                            @endif
+                        </div>
+
+                        <div class="flex shrink-0 items-center gap-2">
+                            @if($post)
+                                <a href="{{ route('bulletin.index') }}#note-{{ $post->public_id }}"
+                                   class="btn btn-ghost btn-xs gap-1.5">
+                                    <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+                                    View note
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <div class="mt-3">
+            {{ $bulletinReports->links() }}
+        </div>
+    </div>
+@endif
+
+@if($type !== 'bulletin')
+    <div class="mb-2 flex items-center justify-between gap-2">
+        <h2 class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-base-content/60">
+            <span class="badge badge-sm gap-1 border bg-[#E6F5EE] text-[#075845] border-[#7BCFAF]">
+                <i data-lucide="message-square" class="h-3 w-3"></i>
+                Bleep
+            </span>
+            Reports
+        </h2>
+        <span class="text-xs text-base-content/50">{{ ucfirst($status) }}</span>
+    </div>
+@endif
 
 @if($reports->isNotEmpty())
 
@@ -433,7 +542,7 @@
     <div class="mt-6">
         {{ $reports->links() }}
     </div>
-@else
+@elseif($bulletinReports->isEmpty())
     <div class="flex flex-col items-center justify-center py-20 text-base-content">
         <i data-lucide="inbox" class="w-12 h-12 mb-3"></i>
         <p class="text-base font-medium">No {{ $status }} reports</p>

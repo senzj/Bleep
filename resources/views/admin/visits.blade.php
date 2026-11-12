@@ -8,14 +8,14 @@
     <div class="space-y-6">
 
         {{-- Header --}}
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
+        <div class="flex flex-col flex-wrap gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
                 <h1 class="text-2xl font-bold text-base-content">Traffic Analytics</h1>
                 <p class="text-base-content/60">Monitor website traffic and visitor statistics</p>
             </div>
 
             {{-- Date Range Picker --}}
-            <div class="join shadow-md self-start sm:self-auto">
+            <div class="join max-w-full shrink-0 shadow-md self-start sm:self-auto">
                 <button class="join-item btn btn-sm btn-active" data-range="30">30 Days</button>
                 <button class="join-item btn btn-sm" data-range="90">90 Days</button>
                 <button class="join-item btn btn-sm" data-range="180">6 Months</button>
@@ -54,6 +54,58 @@
                     <div class="stat-title">Top Browser</div>
                     <div class="stat-value text-accent text-2xl sm:text-3xl" id="topBrowserStat">-</div>
                     <div class="stat-desc" id="topBrowserCount">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Unique IPs table --}}
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+            <div class="card-body p-4 sm:p-6">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <h2 class="card-title text-lg">Unique IP Addresses</h2>
+                    <span class="text-xs text-base-content/50">
+                        Showing {{ $uniqueIpRows->count() }} of {{ number_format($uniqueIPs) }} distinct IPs
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm table-zebra w-full">
+                        <thead>
+                            <tr>
+                                <th>IP Address</th>
+                                <th class="text-right">Visits</th>
+                                <th class="text-center">Last Seen</th>
+                                <th class="text-center">Browser / Platform</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($uniqueIpRows as $row)
+                                <tr class="hover">
+                                    <td class="font-mono text-xs">
+                                        <a href="{{ route('admin.visits', ['ip' => $row->ip_address]) }}"
+                                           class="link link-hover link-primary">
+                                            {{ $row->ip_address }}
+                                        </a>
+                                    </td>
+                                    <td class="text-right font-semibold tabular-nums">{{ number_format($row->visits_count) }}</td>
+                                    <td class="text-center text-xs text-base-content/60">
+                                        {{ \Illuminate\Support\Carbon::parse($row->last_seen_at)->diffForHumans() }}
+                                    </td>
+                                    <td class="text-center text-xs text-base-content/60">
+                                        {{ $row->browser ?: 'Unknown browser' }}
+                                        <span class="text-base-content/30">·</span>
+                                        {{ $row->platform ?: 'Unknown platform' }}
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="py-8 text-center text-base-content/50">
+                                        No visits recorded yet.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -133,7 +185,7 @@
             <div class="card-body p-0 sm:p-6">
 
                 {{-- Header + Filters --}}
-                <div class="p-4 border-b border-base-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex flex-col flex-wrap justify-between gap-4 border-b border-base-200 p-4 sm:flex-row sm:items-center">
                     <h2 class="card-title text-lg">Recent Visits Log</h2>
 
                     {{-- Filters: collapsible on small screens --}}
@@ -143,7 +195,7 @@
                             <span class="text-sm">Filters</span>
                         </summary>
 
-                        <form method="GET" action="{{ route('admin.visits') }}" class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 sm:p-0">
+                        <form method="GET" action="{{ route('admin.visits') }}" class="flex flex-col gap-2 p-3 sm:flex-row sm:flex-wrap sm:items-center sm:p-0">
                             <input type="text" name="ip" placeholder="Search IP..." value="{{ request('ip') }}"
                                    class="input input-sm input-bordered w-full sm:w-40" />
 

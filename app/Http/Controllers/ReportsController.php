@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\NotificationType;
 use App\Models\Bleep;
+use App\Models\BulletinReport;
 use App\Models\Comments;
 use App\Models\Reports;
 use App\Models\User;
@@ -29,6 +30,45 @@ class ReportsController extends Controller
         abort_unless(Auth::user()->hasAdminAccess(), 403);
 
         $status = $request->query('status', 'pending');
+        $type = $request->query('type', 'all');
+        $type = in_array($type, ['all', 'bleep', 'bulletin'], true) ? $type : 'all';
+
+        // Bulletin notes use their own reports table and have no review status,
+        // so they are listed separately with a distinct tag.
+        $bulletinReports = collect();
+        $bulletinReportCounts = ['total' => 0, 'open' => 0, 'posts' => 0];
+
+        if ($type !== 'bleep') {
+            $bulletinReportCounts = [
+                'total' => BulletinReport::count(),
+                'open' => BulletinReport::whereHas('post')->count(),
+                'posts' => BulletinReport::distinct('bulletin_post_id')->count('bulletin_post_id'),
+            ];
+
+            $bulletinReports = BulletinReport::query()
+                ->select(
+                    'bulletin_post_id',
+                    DB::raw('COUNT(*) as report_count'),
+                    DB::raw('MAX(created_at) as latest_at')
+                )
+                ->groupBy('bulletin_post_id')
+                ->orderByDesc('report_count')
+                ->orderByDesc('latest_at')
+                ->with('post')
+                ->paginate(10, ['*'], 'bulletin_page');
+        }
+
+        if ($type === 'bulletin') {
+            $reports = Reports::query()->whereRaw('1 = 0')->paginate(20);
+
+            return view('admin.reports', compact(
+                'reports',
+                'status',
+                'type',
+                'bulletinReports',
+                'bulletinReportCounts'
+            ));
+        }
 
         // Step 1: Get grouped summary (most-reported first)
         $grouped = Reports::where('status', $status)
@@ -100,7 +140,13 @@ class ReportsController extends Controller
 
         $reports = $grouped;
 
-        return view('admin.reports', compact('reports', 'status'));
+        return view('admin.reports', compact(
+            'reports',
+            'status',
+            'type',
+            'bulletinReports',
+            'bulletinReportCounts'
+        ));
     }
 
     // ── User submits a report

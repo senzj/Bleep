@@ -1,12 +1,6 @@
 @once
     @push('styles')
-        <style>
-            @media(min-width: 768px) {
-                .user-table-row {
-                    grid-template-columns: 140px 220px 100px 100px 140px 100px !important;
-                }
-            }
-        </style>
+        @vite('resources/css/admin/users.css')
     @endpush
 
     @push('scripts')

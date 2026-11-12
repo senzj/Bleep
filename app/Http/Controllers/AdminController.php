@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Enums\NotificationType;
 use App\Helpers\UserAgentParser;
 use App\Models\Bleep;
+use App\Models\BulletinPost;
+use App\Models\BulletinReaction;
+use App\Models\BulletinReport;
 use App\Models\Comments;
 use App\Models\Likes;
 use App\Models\Logs;
@@ -74,6 +77,41 @@ class AdminController extends Controller
             Log::error($e);
         }
 
+        // Bulletin board statistics. Kept in a try/catch so an older database
+        // without the bulletin tables still renders the dashboard.
+        $totalBulletinPosts = 0;
+        $bulletinPostsToday = 0;
+        $totalBulletinReactions = 0;
+        $bulletinReportsTotal = 0;
+        $bulletinReportsOpen = 0;
+        $bulletinChart = collect();
+
+        try {
+            $totalBulletinPosts = BulletinPost::count();
+            $bulletinPostsToday = BulletinPost::whereDate('created_at', now()->toDateString())->count();
+            $totalBulletinReactions = BulletinReaction::count();
+            $bulletinReportsTotal = BulletinReport::count();
+            $bulletinReportsOpen = BulletinReport::whereHas('post')->count();
+
+            $bulletinByDay = BulletinPost::query()
+                ->where('created_at', '>=', now()->subDays(6)->startOfDay())
+                ->get(['created_at'])
+                ->groupBy(fn (BulletinPost $post) => $post->created_at->toDateString())
+                ->map(fn ($group) => $group->count());
+
+            $bulletinChart = collect(range(6, 0))->map(function (int $offset) use ($bulletinByDay) {
+                $day = now()->subDays($offset)->startOfDay();
+
+                return [
+                    'label' => $day->format('D'),
+                    'date' => $day->toDateString(),
+                    'total' => (int) ($bulletinByDay[$day->toDateString()] ?? 0),
+                ];
+            });
+        } catch (Throwable $e) {
+            Log::warning('admin.dashboard bulletin stats failed: '.$e->getMessage());
+        }
+
         return view('admin.dashboard', compact(
             'totalUsers',
             'newToday',
@@ -85,7 +123,13 @@ class AdminController extends Controller
             'totalEngagement',
             'reportsPending',
             'reportsOngoing',
-            'reportsResolved'
+            'reportsResolved',
+            'totalBulletinPosts',
+            'bulletinPostsToday',
+            'totalBulletinReactions',
+            'bulletinReportsTotal',
+            'bulletinReportsOpen',
+            'bulletinChart'
         ));
     }
 
@@ -734,6 +778,16 @@ class AdminController extends Controller
         $totalVisits = Visits::count();
         $uniqueIPs = Visits::distinct()->count('ip_address');
 
+        // Distinct IPs with their visit volume and most recent sighting, for
+        // the admin-facing "Unique IPs" table.
+        $uniqueIpRows = Visits::query()
+            ->selectRaw('ip_address, COUNT(*) as visits_count, MAX(created_at) as last_seen_at, MAX(browser) as browser, MAX(platform) as platform')
+            ->whereNotNull('ip_address')
+            ->groupBy('ip_address')
+            ->orderByDesc('visits_count')
+            ->limit(50)
+            ->get();
+
         // Get paginated results (Newest on top is default via orderByDesc)
         $recentVisits = $query->orderByDesc('created_at')->paginate(25)->withQueryString();
 
@@ -744,7 +798,7 @@ class AdminController extends Controller
             return $visit;
         });
 
-        return view('admin.visits', compact('totalVisits', 'uniqueIPs', 'recentVisits', 'platforms', 'browsers'));
+        return view('admin.visits', compact('totalVisits', 'uniqueIPs', 'uniqueIpRows', 'recentVisits', 'platforms', 'browsers'));
     }
 
     public function visitsData(Request $request)

@@ -129,6 +129,83 @@
         </div>
     </div>
 
+    {{-- Bulletin board --}}
+    <div class="rounded-2xl border border-base-300 bg-base-100 p-4">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <span class="grid h-8 w-8 place-items-center rounded-lg bg-secondary/10 text-secondary">
+                    <i data-lucide="scroll" class="h-4 w-4"></i>
+                </span>
+                <div>
+                    <h3 class="text-sm font-semibold uppercase tracking-wide opacity-70">Bulletin Board</h3>
+                    <p class="text-xs text-base-content/50">Anonymous notes pinned by visitors</p>
+                </div>
+            </div>
+
+            <a href="{{ route('admin.reports', ['status' => 'pending', 'type' => 'bulletin']) }}"
+               class="btn btn-ghost btn-xs gap-1.5">
+                <i data-lucide="flag" class="h-3.5 w-3.5"></i>
+                {{ number_format($bulletinReportsOpen) }} open reports
+            </a>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <div class="rounded-xl border border-base-200 bg-base-200/40 p-3">
+                <div class="flex items-center gap-1.5 text-xs text-base-content/60">
+                    <i data-lucide="scroll" class="h-3.5 w-3.5"></i>
+                    Total notes
+                </div>
+                <p class="mt-1 text-2xl font-bold">{{ number_format($totalBulletinPosts) }}</p>
+                <p class="text-xs text-base-content/50">+{{ number_format($bulletinPostsToday) }} today</p>
+            </div>
+
+            <div class="rounded-xl border border-base-200 bg-base-200/40 p-3">
+                <div class="flex items-center gap-1.5 text-xs text-base-content/60">
+                    <i data-lucide="heart" class="h-3.5 w-3.5"></i>
+                    Reactions
+                </div>
+                <p class="mt-1 text-2xl font-bold">{{ number_format($totalBulletinReactions) }}</p>
+                <p class="text-xs text-base-content/50">Across all notes</p>
+            </div>
+
+            <div class="rounded-xl border border-base-200 bg-base-200/40 p-3">
+                <div class="flex items-center gap-1.5 text-xs text-base-content/60">
+                    <i data-lucide="flag" class="h-3.5 w-3.5"></i>
+                    Reports
+                </div>
+                <p class="mt-1 text-2xl font-bold">{{ number_format($bulletinReportsTotal) }}</p>
+                <p class="text-xs text-base-content/50">{{ number_format($bulletinReportsOpen) }} on live notes</p>
+            </div>
+
+            <div class="rounded-xl border border-base-200 bg-base-200/40 p-3">
+                <div class="flex items-center gap-1.5 text-xs text-base-content/60">
+                    <i data-lucide="trending-up" class="h-3.5 w-3.5"></i>
+                    Last 7 days
+                </div>
+                <p class="mt-1 text-2xl font-bold">{{ number_format($bulletinChart->sum('total')) }}</p>
+                <p class="text-xs text-base-content/50">New notes</p>
+            </div>
+        </div>
+
+        @php
+            $bulletinPeak = max(1, (int) $bulletinChart->max('total'));
+        @endphp
+
+        <div class="mt-3 flex h-16 items-end gap-2">
+            @foreach ($bulletinChart as $day)
+                <div class="group relative flex h-full flex-1 flex-col justify-end">
+                    <div class="w-full rounded-t-sm bg-secondary transition-all duration-300"
+                         style="height: {{ $day['total'] > 0 ? max(6, round(($day['total'] / $bulletinPeak) * 100)) : 2 }}%"
+                         title="{{ $day['date'] }}: {{ $day['total'] }} notes"></div>
+                </div>
+            @endforeach
+        </div>
+        <div class="mt-1 flex justify-between text-[11px] text-base-content/50">
+            <span>{{ $bulletinChart->first()['label'] ?? '' }}</span>
+            <span>{{ $bulletinChart->last()['label'] ?? '' }}</span>
+        </div>
+    </div>
+
     {{-- User Growth + Reports --}}
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div class="rounded-2xl border border-base-300 bg-base-100 p-4 xl:col-span-2">
@@ -174,9 +251,9 @@
 
     {{-- Engagement --}}
     <div class="rounded-2xl border border-base-300 bg-base-100 p-4">
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h3 class="text-sm font-semibold uppercase tracking-wide opacity-70">Engagement Trend</h3>
-            <div class="flex gap-4 text-xs opacity-60">
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs opacity-60">
                 <span>Likes: <strong id="kpi-likes-total">—</strong></span>
                 <span>Comments: <strong id="kpi-comments-total">—</strong></span>
                 <span>Shares: <strong id="kpi-shares-total">—</strong></span>
