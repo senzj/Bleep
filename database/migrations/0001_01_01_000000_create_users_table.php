@@ -20,6 +20,10 @@ return new class extends Migration
             $table->string('password');
             $table->enum('role', ['admin', 'moderator', 'user'])->default('user');
             $table->string('timezone')->default('UTC');
+            $table->timestamp('terms_accepted_at')->nullable();
+            $table->timestamp('privacy_accepted_at')->nullable();
+            $table->timestamp('cookies_accepted_at')->nullable();
+            $table->timestamp('age_confirmed_at')->nullable();
             $table->string('profile_picture')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->boolean('is_verified')->default(false);

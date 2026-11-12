@@ -31,7 +31,7 @@ return new class extends Migration
             $table->enum('category', ['spam', 'harassment', 'hate', 'nsfw', 'illegal', 'other'])
                 ->default('other');
 
-            $table->enum('action_taken', ['none', 'bleep_deleted', 'op_banned', 'reporter_banned'])
+            $table->enum('action_taken', ['none', 'bleep_deleted', 'op_banned', 'reporter_banned', 'warned'])
                 ->nullable();
 
             $table->timestamp('reviewed_at')->nullable();

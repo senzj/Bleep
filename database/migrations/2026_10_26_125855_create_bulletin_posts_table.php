@@ -19,12 +19,20 @@ return new class extends Migration
 
             $table->string('anonymous_name', 64);
             $table->text('content');
+            $table->timestamp('edited_at')->nullable();
             $table->string('link_url', 2048)->nullable();
             $table->string('image_url', 2048)->nullable();
+
+            $table->string('media_path', 2048)->nullable();
+            $table->string('media_mime', 128)->nullable();
+            $table->string('media_kind', 16)->nullable();
 
             // Relative board size in grid cells: 1x1, 1x2, 2x1, or 2x2.
             $table->unsignedTinyInteger('width')->default(1);
             $table->unsignedTinyInteger('height')->default(1);
+
+            $table->char('paper_color', 7)->nullable();
+            $table->string('paper_texture', 20)->nullable();
 
             // HMAC only. The raw visitor identity and IP are never stored here.
             $table->char('visitor_hash', 64);

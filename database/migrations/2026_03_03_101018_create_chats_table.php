@@ -32,6 +32,7 @@ return new class extends Migration
             $table->enum('role', ['admin', 'member'])->default('member');
 
             $table->timestamp('last_read_at')->nullable();
+            $table->timestamp('left_at')->nullable();
             $table->timestamp('joined_at')->useCurrent();
 
             $table->boolean('is_muted')->default(false);
@@ -63,6 +64,11 @@ return new class extends Migration
                 ->constrained('messages')
                 ->nullOnDelete();
 
+            $table->foreignId('shared_bleep_id')
+                ->nullable()
+                ->constrained('bleeps')
+                ->nullOnDelete();
+
             $table->boolean('is_edited')->default(false);
             $table->timestamp('edited_at')->nullable();
             $table->string('client_uuid', 64)->nullable();
@@ -71,6 +77,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['conversation_id', 'client_uuid', 'created_at']);
+            $table->index('shared_bleep_id');
         });
 
         Schema::create('message_deliveries', function (Blueprint $table) {
