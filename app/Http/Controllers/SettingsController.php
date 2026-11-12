@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\UserPreferencesController;
 use App\Models\Logs;
 use App\Models\RememberedDevice;
+use App\Models\User;
 use App\Services\MediaUploadService;
+use App\Services\System\Changelog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -103,7 +104,7 @@ class SettingsController extends Controller
 
         // helper users map for sessions view (load users for session entries, optional)
         $userIds = $sessions->pluck('user_id')->filter()->unique()->toArray();
-        $users = \App\Models\User::whereIn('id', $userIds)->get()->keyBy('id');
+        $users = User::whereIn('id', $userIds)->get()->keyBy('id');
 
         // current device token: pass hashed token to compare with stored token
         $plainCookie = $request->cookie('device_token');
@@ -136,7 +137,7 @@ class SettingsController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => $deleted > 0,
-                'message' => $deleted > 0 ? 'Session logged out successfully.' : 'Session not found.'
+                'message' => $deleted > 0 ? 'Session logged out successfully.' : 'Session not found.',
             ]);
         }
 
@@ -162,7 +163,7 @@ class SettingsController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => $deleted > 0,
-                'message' => $deleted > 0 ? 'Device removed successfully.' : 'Device not found.'
+                'message' => $deleted > 0 ? 'Device removed successfully.' : 'Device not found.',
             ]);
         }
 
@@ -184,8 +185,8 @@ class SettingsController extends Controller
             $q = trim($request->get('q'));
             $query->where(function ($w) use ($q) {
                 $w->where('action', 'like', "%{$q}%")
-                  ->orWhere('details', 'like', "%{$q}%")
-                  ->orWhere('ip', 'like', "%{$q}%");
+                    ->orWhere('details', 'like', "%{$q}%")
+                    ->orWhere('ip', 'like', "%{$q}%");
             });
         }
 
@@ -230,10 +231,16 @@ class SettingsController extends Controller
         $user = $request->user();
         $preferences = $user->getPreferences();
 
-
         return view('settings.preferences', [
             'preferences' => $preferences,
             'systemSounds' => UserPreferencesController::scanSystemSounds(),
+        ]);
+    }
+
+    public function system(Changelog $changelog)
+    {
+        return view('settings.system', [
+            'changelog' => $changelog->all(),
         ]);
     }
 }

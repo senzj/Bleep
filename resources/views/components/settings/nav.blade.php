@@ -45,5 +45,14 @@
             <i data-lucide="file-text" class="w-4 h-4 shrink-0" aria-hidden="true"></i>
             <span class="hidden sm:inline">Account Activity</span>
         </a>
+
+        {{-- System / Changelog --}}
+        <a href="{{ route('settings.system') }}"
+           aria-current="{{ request()->routeIs('settings.system') ? 'page' : 'false' }}"
+           class="flex flex-1 items-center justify-center gap-2 px-3 py-2 md:px-4 rounded-lg text-sm font-medium transition-colors
+           {{ request()->routeIs('settings.system') ? 'bg-primary text-primary-content' : 'bg-base-200 text-base-content/70 hover:bg-base-300 hover:text-base-content' }}">
+            <i data-lucide="cpu" class="w-4 h-4 shrink-0" aria-hidden="true"></i>
+            <span class="hidden sm:inline">System</span>
+        </a>
     </nav>
 </nav>

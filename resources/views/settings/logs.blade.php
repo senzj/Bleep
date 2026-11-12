@@ -88,13 +88,6 @@
                 $icon = $actionIcons[strtolower($log->action)] ?? 'monitor-smartphone';
 
                 $hasExtraJson = is_array($log->details) && (count($log->details) > 1 || !isset($log->details['message']));
-                $formattedJson = collect($log->details)
-                    ->map(function($value, $key) {
-                        if (is_bool($value)) $value = $value ? 'true' : 'false';
-                        elseif (is_array($value)) $value = json_encode($value);
-                        return "\"{$key}\" = {$value}";
-                    })
-                    ->implode("\n");
             @endphp
 
             {{-- Desktop Layout --}}
@@ -115,7 +108,22 @@
                 </div>
 
                 @if($hasExtraJson)
-                    <pre class="text-xs p-2 bg-base-200/50 rounded overflow-x-auto whitespace-pre-wrap wrap-break-word max-w-full">{{ $formattedJson }}</pre>
+                    <div class="min-w-0" x-data="{ raw: false }">
+                        <p class="text-sm leading-relaxed wrap-break-word" x-show="!raw" x-cloak>
+                            {{ $log->readableDetails() }}
+                        </p>
+                        <pre class="text-xs p-2 bg-base-200/50 rounded overflow-x-auto whitespace-pre-wrap wrap-break-word max-w-full" x-show="raw" x-cloak>{{ json_encode($log->details, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                        <button type="button"
+                                class="mt-1 text-[11px] font-medium text-primary hover:underline"
+                                @click="raw = !raw"
+                                x-text="raw ? 'Show summary' : 'View JSON'">
+                            View JSON
+                        </button>
+                    </div>
+                @else
+                    <div class="min-w-0">
+                        <p class="text-sm leading-relaxed wrap-break-word">{{ $log->readableDetails() }}</p>
+                    </div>
                 @endif
 
                 {{-- IP Address --}}
@@ -184,9 +192,23 @@
                             @endif
 
                             @if($hasExtraJson)
-                                <div class="p-3 bg-base-300/50 rounded-lg">
-                                    <div class="text-xs font-semibold text-base-content/50 uppercase mb-2">Details</div>
-                                    <pre class="text-xs p-2 bg-base-200 rounded overflow-x-auto whitespace-pre-wrap wrap-break-word max-w-full">{{ $formattedJson }}</pre>
+                                <div class="p-3 bg-base-300/50 rounded-lg" x-data="{ raw: false }">
+                                    <div class="mb-2 flex items-center justify-between gap-2">
+                                        <div class="text-xs font-semibold text-base-content/50 uppercase">Details</div>
+                                        <button type="button"
+                                                class="text-[11px] font-medium text-primary hover:underline"
+                                                @click="raw = !raw"
+                                                x-text="raw ? 'Show summary' : 'View JSON'">
+                                            View JSON
+                                        </button>
+                                    </div>
+                                    <p class="text-sm leading-relaxed wrap-break-word" x-show="!raw" x-cloak>{{ $log->readableDetails() }}</p>
+                                    <pre class="text-xs p-2 bg-base-200 rounded overflow-x-auto whitespace-pre-wrap wrap-break-word max-w-full" x-show="raw" x-cloak>{{ json_encode($log->details, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                                </div>
+                            @else
+                                <div class="p-3 bg-base-200 rounded-lg">
+                                    <div class="text-xs font-semibold text-base-content/50 uppercase mb-1">Summary</div>
+                                    <p class="text-sm leading-relaxed wrap-break-word">{{ $log->readableDetails() }}</p>
                                 </div>
                             @endif
                         </div>
