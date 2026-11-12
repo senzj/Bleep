@@ -62,8 +62,14 @@ it('filters the inbox by unread state', function () {
     $response = $this->actingAs($user)->get(route('notifications.index', ['filter' => 'unread']));
 
     $response->assertOk()
-        ->assertSee('UnreadActor followed you')
-        ->assertDontSee('ReadActor followed you');
+        ->assertSee('UnreadActor followed you');
+
+    // The page chrome (mobile activity drawer) may show recent notifications,
+    // so assert on the filtered inbox payload itself.
+    $titles = collect($response->viewData('notifications')->items())->pluck('title');
+
+    expect($titles)->toContain('UnreadActor followed you')
+        ->not->toContain('ReadActor followed you');
 });
 
 it('shows the staff filter and staff rows only to staff', function () {

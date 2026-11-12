@@ -7,11 +7,27 @@
             ->limit(5)
             ->get()
             ->map(fn ($notification) => \App\Services\Notifications\NotificationPresenter::toArray($notification));
+
+        $quickUnreadCount = once(fn () => app(\App\Services\Notifications\NotificationService::class)->unreadCount(auth()->user()));
     @endphp
 
-    <div class="mt-4 rounded-lg border border-base-200 bg-base-100 shadow-lg">
+    <div class="rounded-lg border border-base-200 bg-base-100 shadow-lg">
         <div class="flex items-center justify-between border-b border-base-200 px-4 py-3">
-            <h2 class="font-semibold">Notifications</h2>
+            {{-- Header --}}
+            <h2 class="flex items-center gap-2 font-semibold">
+                <span class="relative inline-flex" aria-hidden="true">
+                    <i data-lucide="bell" class="w-4 h-4"></i>
+                    <span
+                        data-quick-notification-badge
+                        data-count="{{ $quickUnreadCount }}"
+                        class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white{{ $quickUnreadCount > 0 ? '' : ' hidden' }}"
+                    >{{ $quickUnreadCount > 0 ? ($quickUnreadCount > 99 ? '99+' : $quickUnreadCount) : '' }}</span>
+                </span>
+                Notifications
+                <span class="sr-only" data-quick-unread-label>
+                    @if ($quickUnreadCount > 0){{ $quickUnreadCount }} unread @endif
+                </span>
+            </h2>
             <a href="{{ route('notifications.index') }}" class="text-xs font-medium text-primary hover:underline">
                 View all
             </a>

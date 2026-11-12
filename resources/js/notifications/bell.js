@@ -2,9 +2,9 @@
  * Notification bell + dropdown.
  *
  * Realtime is best-effort: the tree listens on the user's existing private
- * channel, and a 60s poll keeps the badge honest when Reverb is unavailable
- * (shared hosting is the normal deployment here). Polling is cheap and only
- * replaces the list when the dropdown has already been opened.
+ * channel, and a five-minute poll keeps the badge honest when Reverb is
+ * unavailable (shared hosting is the normal deployment here). Polling is cheap
+ * and only replaces the list when the dropdown has already been opened.
  */
 export default function notificationsBell(options = {}) {
     const {
@@ -101,7 +101,7 @@ export default function notificationsBell(options = {}) {
         },
 
         startPolling() {
-            this._pollTimer = setInterval(() => this.poll(), 60000);
+            this._pollTimer = setInterval(() => this.poll(), 5 * 60 * 1000);
         },
 
         async poll(force = false) {
@@ -245,6 +245,22 @@ export default function notificationsBell(options = {}) {
             window.dispatchEvent(new CustomEvent('notifications:unread-updated', {
                 detail: { count: this.unreadCount },
             }));
+
+            // The right-hand quick card renders its count server-side; keep it in
+            // step with the bell without a page reload.
+            document.querySelectorAll('[data-quick-notification-badge]').forEach((badge) => {
+                if (this.unreadCount > 0) {
+                    badge.textContent = this.unreadCount > 99 ? '99+' : String(this.unreadCount);
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.textContent = '';
+                    badge.classList.add('hidden');
+                }
+            });
+
+            document.querySelectorAll('[data-quick-unread-label]').forEach((label) => {
+                label.textContent = this.unreadCount > 0 ? `${this.unreadCount} unread` : '';
+            });
         },
 
         refreshIcons() {

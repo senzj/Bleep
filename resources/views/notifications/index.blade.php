@@ -92,36 +92,12 @@
     </div>
 
     @once
+        @push('meta')
+            <meta name="notification-read-url" content="{{ route('notifications.read', ['notification' => '__ID__']) }}">
+        @endpush
+
         @push('scripts')
-            <script>
-                document.addEventListener('click', function (event) {
-                    const link = event.target.closest('[data-notification-id]');
-
-                    if (!link || link.dataset.notificationRead === '1') {
-                        return;
-                    }
-
-                    if (link.getAttribute('href') === '#') {
-                        event.preventDefault();
-                    }
-
-                    link.dataset.notificationRead = '1';
-
-                    const url = @js(route('notifications.read', ['notification' => '__ID__']))
-                        .replace('__ID__', encodeURIComponent(link.dataset.notificationId));
-
-                    fetch(url, {
-                        method: 'POST',
-                        keepalive: true,
-                        credentials: 'same-origin',
-                        headers: {
-                            Accept: 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-                        },
-                    }).catch(() => {});
-                });
-            </script>
+            @vite('resources/js/notifications/mark-read.js')
         @endpush
     @endonce
 </x-layout>
