@@ -1,3 +1,5 @@
+import './lucideicons';
+
 (() => {
     const DEFAULT = 'lofi';
     let t = localStorage.getItem('theme') || DEFAULT;

@@ -21,4 +21,11 @@ export {
     Scale,
     MoreHorizontal,
     XCircle,
+    StickyNote,
+    HardDrive,
+    ListChecks,
+    Radio,
+    Server,
+    Wrench,
+    PartyPopper,
 } from 'lucide';

@@ -1,7 +1,16 @@
 import './bootstrap';
-import './lucideicons';
 import './alpine';
 import './theme';
+import './ui/navbar-compact';
+import './ui/announcements';
+import './ui/sidebar';
+import './ui/nav-badges';
+import './ui/back-button';
+import './ui/mobile-drawer';
+import './notifications/activity-drawer';
+import './media/upload-manager';
+import './media/upload-tray';
+import './media/media-error-recovery';
 
 // vue js
 import { createApp } from 'vue';
@@ -14,17 +23,18 @@ import CommentLayout from './vue/Bleeps/comments/CommentLayout.vue';
 import lucideicons from './vue/LucideIcons.vue';
 
 // Custom directive to render lucide icons in Vue components
+const renderLucideDirective = (el) => {
+	if (window.renderLucideIcons) {
+		// Queued/chunked so a large Vue subtree cannot block the UI thread.
+		window.renderLucideIcons(el);
+	} else if (window.lucide && window.lucide.replace) {
+		window.lucide.replace({ root: el });
+	}
+};
+
 const lucideDirective = {
-	mounted(el) {
-		if (window.lucide && window.lucide.replace) {
-			window.lucide.replace({ nodes: el.querySelectorAll('[data-lucide]') });
-		}
-	},
-	updated(el) {
-		if (window.lucide && window.lucide.replace) {
-			window.lucide.replace({ nodes: el.querySelectorAll('[data-lucide]') });
-		}
-	},
+	mounted: renderLucideDirective,
+	updated: renderLucideDirective,
 };
 
 // Lucide Vue Icon

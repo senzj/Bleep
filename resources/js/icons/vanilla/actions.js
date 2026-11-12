@@ -16,4 +16,9 @@ export {
     RefreshCw,
     Forward,
     Repeat,
+    Repeat2,
+    Undo2,
+    ExternalLink,
+    GripVertical,
+    RotateCw,
 } from 'lucide';

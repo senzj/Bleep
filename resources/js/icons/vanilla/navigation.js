@@ -14,4 +14,6 @@ export {
     Filter,
     Ellipsis,
     Scroll,
+    Layers,
+    PanelRight,
 } from 'lucide';

@@ -11,6 +11,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="base_url" content="{{ url('') }}">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="media-chunked-threshold" content="{{ (int) config('media.chunked_upload_threshold_kb', 8192) * 1024 }}">
+        <meta name="media-chunk-size" content="{{ (int) config('media.chunk_size_kb', 8192) * 1024 }}">
+        <meta name="media-max-file-size" content="{{ (int) config('media.max_bleep_file_kb', 2097152) * 1024 }}">
         @stack('meta')
         {{-- Prevent flash: set theme before CSS paints --}}
         <script>
@@ -39,7 +42,7 @@
             'resources/css/app.css',
             'resources/js/app.js',
         ])
-        <title>Bleep | {{ isset($title) ? $title : '' }}</title>
+        <title>{{ isset($title) ? $title : '' }} | Bleep</title>
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
         @stack('styles')
@@ -57,14 +60,25 @@
         $blurNsfw = $preferences?->blur_nsfw_media ?? true;
         $autoplayVideos = $preferences?->autoplay_videos ?? true;
         $autoplayAudio = $preferences?->autoplay_audio ?? false;
+        $mediaOffscreen = $preferences?->media_offscreen ?? 'pause';
+        $mediaDownloads = $preferences?->media_downloads ?? false;
+        $resumeMediaOnView = $preferences?->resume_media_on_view ?? false;
+        $rememberMediaPosition = $preferences?->remember_media_position ?? true;
     @endphp
 
     <body class="min-h-screen font-sans bg-base-300 text-base-content"
+          data-authenticated="{{ Auth::check() ? '1' : '0' }}"
           data-nav-layout="{{ $navLayout }}"
           data-show-nsfw="{{ $showNsfw ? '1' : '0' }}"
           data-blur-nsfw="{{ $blurNsfw ? '1' : '0' }}"
           data-autoplay-videos="{{ $autoplayVideos ? '1' : '0' }}"
-          data-autoplay-audio="{{ $autoplayAudio ? '1' : '0' }}">
+          data-autoplay-audio="{{ $autoplayAudio ? '1' : '0' }}"
+          data-media-offscreen="{{ $mediaOffscreen }}"
+          data-media-downloads="{{ $mediaDownloads ? '1' : '0' }}"
+          data-resume-media-on-view="{{ $resumeMediaOnView ? '1' : '0' }}"
+          data-remember-media-position="{{ $rememberMediaPosition ? '1' : '0' }}">
+
+        <x-loading.loading-curtain />
 
         {{-- toast --}}
         @if (session('success'))
@@ -89,7 +103,7 @@
                 @include('components.include.navbar')
 
                 <div class="flex-1 flex flex-col">
-                    <main class="flex-1 container mx-auto px-1 py-4">
+                    <main class="flex-1 w-full px-2 py-4 sm:px-4 lg:px-6">
                         {{ $slot }}
                     </main>
                 </div>
@@ -98,47 +112,13 @@
             {{-- Horizontal nav layout: traditional stacked layout --}}
             @include('components.include.navbar')
 
-            <main class="flex-1 container mx-auto px-1 py-4">
+            <main class="flex-1 w-full px-2 py-4 sm:px-4 lg:px-6">
                 {{ $slot }}
             </main>
         @endif
 
+        <x-media.upload-tray />
+
         @stack('scripts')
-
-        {{-- Sidebar toggle script for vertical nav --}}
-        @if($navLayout === 'vertical')
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const sidebar = document.getElementById('vertical-nav-mobile');
-                const overlay = document.getElementById('sidebar-overlay');
-                const openBtn = document.getElementById('open-sidebar-btn');
-                const closeBtn = document.getElementById('close-sidebar-btn');
-
-                function openSidebar() {
-                    sidebar?.classList.remove('-translate-x-full');
-                    overlay?.classList.remove('hidden');
-                }
-
-                function closeSidebar() {
-                    sidebar?.classList.add('-translate-x-full');
-                    overlay?.classList.add('hidden');
-                }
-
-                openBtn?.addEventListener('click', openSidebar);
-                closeBtn?.addEventListener('click', closeSidebar);
-                overlay?.addEventListener('click', closeSidebar);
-
-                // Close on escape key
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') closeSidebar();
-                });
-
-                // Re-initialize Lucide icons
-                if (typeof lucide !== 'undefined') {
-                    lucide.createIcons();
-                }
-            });
-        </script>
-        @endif
     </body>
 </html>

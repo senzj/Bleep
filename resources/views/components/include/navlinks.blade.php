@@ -13,24 +13,24 @@
     @endphp
 
     {{-- Home --}}
-    <a href="{{ route('home') }}" class="flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->is('/') ? 'bg-primary text-primary-content' : '' }}">
+    <a href="{{ route('home') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->is('/') ? 'bg-primary text-primary-content' : '' }}">
         <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
         <span class="sidebar-text">Home</span>
     </a>
 
     {{-- Bulletin --}}
-    <a href="{{ route('bulletin.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('bulletin.*') ? 'bg-primary text-primary-content' : '' }}">
+    <a href="{{ route('bulletin.index') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('bulletin.*') ? 'bg-primary text-primary-content' : '' }}">
         <i data-lucide="scroll" class="w-5 h-5 shrink-0"></i>
         <span class="sidebar-text">Bulletin</span>
     </a>
 
     {{-- Messages --}}
-    <a href="{{ route('messages') }}" class="relative flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('messages') ? 'bg-primary text-primary-content' : '' }}">
+    <a href="{{ route('messages') }}" class="nav-link relative flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('messages') ? 'bg-primary text-primary-content' : '' }}">
         <span class="relative shrink-0">
             <i data-lucide="message-square" class="w-5 h-5"></i>
             <span
-                id="nav-chat-unread-badge"
-                class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white leading-none{{ $unreadConversationCount > 0 ? '' : ' hidden' }}"
+                data-nav-chat-badge
+                class="nav-chat-unread-badge absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white leading-none{{ $unreadConversationCount > 0 ? '' : ' hidden' }}"
             >
                 {{ $unreadConversationCount > 0 ? ($unreadConversationCount > 99 ? '99+' : $unreadConversationCount) : '' }}
             </span>
@@ -39,13 +39,13 @@
     </a>
 
     {{-- People --}}
-    <a href="{{ route('social.people') }}" class="flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('social.people') ? 'bg-primary text-primary-content' : '' }}">
+    <a href="{{ route('social.people') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('social.people') ? 'bg-primary text-primary-content' : '' }}">
         <i data-lucide="users" class="w-5 h-5 shrink-0"></i>
         <span class="sidebar-text">People</span>
     </a>
 
     {{-- Notifications --}}
-    <a href="{{ route('notifications.index') }}" class="relative flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('notifications.index') ? 'bg-primary text-primary-content' : '' }}">
+    {{-- <a href="{{ route('notifications.index') }}" class="relative flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('notifications.index') ? 'bg-primary text-primary-content' : '' }}">
         <span class="relative shrink-0">
             <i data-lucide="bell" class="w-5 h-5"></i>
             <span
@@ -55,37 +55,7 @@
             </span>
         </span>
         <span class="sidebar-text">Notifications</span>
-    </a>
+    </a> --}}
 
-    {{-- Keep nav notification badge in sync with the bell --}}
-    <script>
-        document.addEventListener('notifications:unread-updated', function(e) {
-            var count = Number(e.detail?.count || 0);
-            document.querySelectorAll('.nav-notification-unread-badge').forEach(function(badge) {
-                if (count > 0) {
-                    badge.textContent = count > 99 ? '99+' : String(count);
-                    badge.classList.remove('hidden');
-                } else {
-                    badge.textContent = '';
-                    badge.classList.add('hidden');
-                }
-            });
-        });
-    </script>
-
-    {{-- Keep nav chat badge in sync with Vue chat store --}}
-    <script>
-        document.addEventListener('chat:unread-updated', function(e) {
-            var badge = document.getElementById('nav-chat-unread-badge');
-            if (!badge) return;
-            var count = Number(e.detail?.count || 0);
-            if (count > 0) {
-                badge.textContent = count > 99 ? '99+' : String(count);
-                badge.classList.remove('hidden');
-            } else {
-                badge.textContent = '';
-                badge.classList.add('hidden');
-            }
-        });
-    </script>
+    {{-- Keep nav notification/chat badges in sync with the live counters --}}
 @endauth

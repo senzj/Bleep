@@ -11,14 +11,14 @@
              const spaceBelow = window.innerHeight - rect.bottom;
              $el.classList.toggle('dropdown-top', spaceBelow < 250);
          ">
-        <button tabindex="0" class="flex items-center gap-3 px-3 py-2 shadow-lg border border-base-200/90 rounded-md bg-base-100/70 hover:bg-base-200 transition-colors cursor-pointer w-full">
+        <button tabindex="0" class="nav-profile-toggle flex items-center gap-3 px-3 py-2 shadow-lg border border-base-200/90 rounded-md bg-base-100/70 hover:bg-base-200 transition-colors cursor-pointer w-full">
             {{-- Avatar --}}
             <div class="avatar shrink-0">
                 <x-subcomponents.avatar :user="Auth::user()" :size="10" />
             </div>
 
             {{-- User Info --}}
-            <div class="text-left leading-tight">
+            <div class="nav-profile-details text-left leading-tight">
                 <p class="font-semibold text-sm text-base-500">
                     {{ Auth::user()->dname }}
                 </p>
@@ -28,13 +28,13 @@
             </div>
 
             {{-- three dot menu --}}
-            <div class="ml-auto">
+            <div class="nav-profile-more ml-auto">
                 <i data-lucide="more-vertical" class="w-4 h-4"></i>
             </div>
         </button>
 
         {{-- Dropdown Menu --}}
-        <ul tabindex="0" class="dropdown-content z-1 shadow-lg bg-base-100 rounded-md w-full border border-base-200 p-2 space-y-1 mt-2 mb-2">
+        <ul tabindex="0" class="dropdown-content z-1 shadow-lg bg-base-100 rounded-md w-full min-w-56 border border-base-200 p-2 space-y-1 mt-2 mb-2">
             {{-- Profile --}}
             <li>
                 <a href="{{ route('user.profile', ['username' => Auth::user()->username]) }}"
@@ -111,6 +111,10 @@
         </ul>
     </div>
 @else
+    <a href="{{ route('bulletin.index') }}" class="flex items-center gap-2 px-3 py-2 text-sm text-base-content rounded-md hover:bg-base-200 transition">
+        <i data-lucide="scroll" class="w-4 h-4"></i>
+        <span>Bulletin</span>
+    </a>
     <a href="{{ route('login') }}" class="btn btn-ghost btn-sm">Sign In</a>
     <a href="{{ route('register') }}" class="btn btn-primary btn-sm">Sign Up</a>
 @endauth

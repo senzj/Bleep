@@ -32,7 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // re-run lucide icon rendering if available
-            if (window.lucide) {
+            if (window.renderLucideIcons) {
+                window.renderLucideIcons(feedPanel);
+            } else if (window.lucide) {
                 if (typeof window.lucide.replace === 'function') {
                     try { window.lucide.replace(); } catch (e) {}
                 } else if (typeof window.lucide.createIcons === 'function') {

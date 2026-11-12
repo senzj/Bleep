@@ -25,6 +25,10 @@
         @auth
             <x-include.userprofile />
         @else
+            <a href="{{ route('bulletin.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-base-200 transition-colors">
+                <i data-lucide="scroll" class="w-5 h-5 shrink-0"></i>
+                <span>Bulletin</span>
+            </a>
             <a href="{{ route('login') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-base-200 transition-colors">
                 <i data-lucide="log-in" class="w-5 h-5 shrink-0"></i>
                 <span>Sign In</span>
@@ -37,34 +41,3 @@
     </div>
 </aside>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const menuBtn = document.getElementById('hor-mobile-menu-btn');
-        const closeBtn = document.getElementById('hor-mobile-close-btn');
-        const drawer = document.getElementById('hor-mobile-drawer');
-        const overlay = document.getElementById('hor-mobile-overlay');
-
-        function openDrawer() {
-            drawer?.classList.remove('-translate-x-full');
-            overlay?.classList.remove('hidden');
-        }
-
-        function closeDrawer() {
-            drawer?.classList.add('-translate-x-full');
-            overlay?.classList.add('hidden');
-        }
-
-        menuBtn?.addEventListener('click', openDrawer);
-        closeBtn?.addEventListener('click', closeDrawer);
-        overlay?.addEventListener('click', closeDrawer);
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeDrawer();
-        });
-
-        // Re-initialize Lucide icons
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-    });
-</script>

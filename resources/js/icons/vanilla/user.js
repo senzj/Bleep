@@ -8,6 +8,8 @@ export {
     UserRoundCheck,
     UserRoundPen,
     UserRoundPlus,
+    UserRoundX,
     Users,
     IdCard,
+    HeartHandshake,
 } from 'lucide';
