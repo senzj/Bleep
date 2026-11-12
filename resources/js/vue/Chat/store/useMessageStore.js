@@ -921,6 +921,13 @@ const createGroupConversation = async ({ name, userIds }) => {
     return id;
 };
 
+const leaveConversation = async (conversationId = state.activeConversationId) => {
+    if (!conversationId) return;
+
+    await window.axios.post(`/chat/conversations/${conversationId}/leave`);
+    await fetchConversations({ silent: true });
+};
+
 const sendTyping = () => {
     const conversationId = state.activeConversationId;
     if (!conversationId) return;
@@ -1073,6 +1080,7 @@ export const useMessageStore = () => {
         sendVoiceMessage,
         createDirectConversation,
         createGroupConversation,
+        leaveConversation,
         sendTyping,
         markConversationRead,
         toggleReaction,

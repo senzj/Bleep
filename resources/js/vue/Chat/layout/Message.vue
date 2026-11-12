@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import MessageInput from '../components/input/MessageInput.vue';
 import MessageList from '../components/messages/MessageList.vue';
 import { useMessageStore } from '../store/useMessageStore';
@@ -7,6 +7,38 @@ import { useMessageStore } from '../store/useMessageStore';
 const emit = defineEmits(['go-back']);
 
 const store = useMessageStore();
+
+const leavingGroup = ref(false);
+const leaveError = ref('');
+
+const isGroupConversation = computed(() => Boolean(store.activeConversation.value?.is_group));
+
+const hasLeftGroup = computed(() => {
+	const conversation = store.activeConversation.value;
+	return Boolean(conversation?.is_group && conversation?.has_left);
+});
+
+const handleLeaveGroup = async () => {
+	const conversation = store.activeConversation.value;
+	if (!conversation || leavingGroup.value) return;
+
+	const confirmed = window.confirm(
+		`Leave "${conversation.title || 'this group chat'}"? You can still read the history, but you will not be able to send messages.`
+	);
+
+	if (!confirmed) return;
+
+	leavingGroup.value = true;
+	leaveError.value = '';
+
+	try {
+		await store.leaveConversation(conversation.id);
+	} catch (error) {
+		leaveError.value = error?.response?.data?.message || 'Could not leave this group chat.';
+	} finally {
+		leavingGroup.value = false;
+	}
+};
 
 const getOtherParticipant = (conversation) => {
 	if (!conversation) return null;
@@ -158,6 +190,18 @@ const handleReplyMessage = (message) => {
 					</p>
 				</div>
 			</div>
+
+			<button
+				v-if="isGroupConversation && !hasLeftGroup"
+				type="button"
+				class="btn btn-ghost btn-sm text-error"
+				:disabled="leavingGroup"
+				@click="handleLeaveGroup"
+			>
+				<span v-if="leavingGroup" class="loading loading-spinner loading-xs"></span>
+				<i v-else data-lucide="log-out" class="lucide lucide-sm"></i>
+				<span class="hidden sm:inline">Leave</span>
+			</button>
 		</header>
 
 		<MessageList
@@ -177,11 +221,23 @@ const handleReplyMessage = (message) => {
 	    />
 
         <div class="bg-base-100 shrink-0">
-            <p v-if="typingText" class="border-base-300 border-t px-4 py-1.5 text-xs italic opacity-70">
+            <p v-if="leaveError" class="border-base-300 border-t px-4 py-2 text-xs text-error">
+                {{ leaveError }}
+            </p>
+
+            <p v-if="typingText && !hasLeftGroup" class="border-base-300 border-t px-4 py-1.5 text-xs italic opacity-70">
                 <span class="loading loading-dots loading-md mr-1"></span>
                 {{ typingText }}
             </p>
-            <MessageInput />
+
+            <div v-if="hasLeftGroup" class="border-base-300 border-t px-4 py-4 text-center">
+                <p class="text-sm font-medium">You have left this Group chat</p>
+                <p class="text-base-content/70 mt-1 text-xs">
+                    You can still read the history. Rejoin is not available yet.
+                </p>
+            </div>
+
+            <MessageInput v-else />
         </div>
     </section>
 </template>

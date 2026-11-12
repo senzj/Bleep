@@ -58,7 +58,13 @@ let swipeDirection = null; // null | 'horizontal' | 'vertical'
 const SWIPE_THRESHOLD = 60;
 const MAX_SWIPE = 80;
 
-const canManageMessage = computed(() => props.mine && !props.message.is_deleted);
+const canEditMessage = computed(() =>
+    props.mine && !props.message.is_deleted && props.message.can_edit !== false
+);
+const canDeleteMessage = computed(() =>
+    props.mine && !props.message.is_deleted && props.message.can_delete !== false
+);
+const canManageMessage = computed(() => canEditMessage.value || canDeleteMessage.value);
 const isDeleted = computed(() => props.message.is_deleted);
 const hasEditMedia = computed(() => retainedMediaItems.value.length + pendingMediaItems.value.length > 0);
 
@@ -106,7 +112,7 @@ const resetInlineEditor = () => {
 };
 
 const openInlineEditor = () => {
-    if (!canManageMessage.value) return;
+    if (!canEditMessage.value) return;
 
     closeActionMenu();
     editing.value = true;
@@ -364,10 +370,10 @@ onUnmounted(() => {
             <button type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200 flex items-center gap-2" @click="handleReply">
                 <LucideIcons name="reply" class="h-3.5 w-3.5" /> Reply
             </button>
-            <button v-if="canManageMessage" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200 flex items-center gap-2" @click="handleEdit">
+            <button v-if="canEditMessage" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200 flex items-center gap-2" @click="handleEdit">
                 <LucideIcons name="pencil" class="h-3.5 w-3.5" /> Edit
             </button>
-            <button v-if="canManageMessage" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs text-error hover:bg-base-200 flex items-center gap-2" @click="handleDelete">
+            <button v-if="canDeleteMessage" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs text-error hover:bg-base-200 flex items-center gap-2" @click="handleDelete">
                 <LucideIcons name="trash-2" class="h-3.5 w-3.5" /> Delete
             </button>
         </div>
@@ -413,6 +419,8 @@ onUnmounted(() => {
                             :is-deleted="isDeleted"
                             :mine="mine"
                             :can-manage-message="canManageMessage"
+                            :can-edit="canEditMessage"
+                            :can-delete="canDeleteMessage"
                             :show-emoji-picker="showEmojiPicker"
                             :show-action-menu="showActionMenu"
                             :quick-emojis="QUICK_EMOJIS"

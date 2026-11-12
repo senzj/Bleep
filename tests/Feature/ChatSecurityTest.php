@@ -191,3 +191,87 @@ it('returns the latest message for every conversation in the conversation list',
     expect($conversations[$first->id]['last_message']['body'])->toBe('Newest in first conversation')
         ->and($conversations[$second->id]['last_message']['body'])->toBe('Newest in second conversation');
 });
+
+it('lets senders edit a message inside the ten minute window', function () {
+    Event::fake();
+
+    $alice = User::factory()->create();
+    $bob = User::factory()->create();
+    $conversation = chatDirectConversation($alice, $bob);
+
+    $message = Message::create([
+        'conversation_id' => $conversation->id,
+        'sender_id' => $alice->id,
+        'body' => 'Original message',
+    ]);
+    $message->forceFill(['created_at' => now()->subMinutes(5)])->save();
+
+    $this->actingAs($alice)
+        ->patchJson("/messages/{$message->id}", ['body' => 'Edited message'])
+        ->assertOk();
+
+    expect($message->fresh()->body)->toBe('Edited message');
+});
+
+it('stops senders from editing a message after ten minutes', function () {
+    Event::fake();
+
+    $alice = User::factory()->create();
+    $bob = User::factory()->create();
+    $conversation = chatDirectConversation($alice, $bob);
+
+    $message = Message::create([
+        'conversation_id' => $conversation->id,
+        'sender_id' => $alice->id,
+        'body' => 'Original message',
+    ]);
+    $message->forceFill(['created_at' => now()->subMinutes(11)])->save();
+
+    $this->actingAs($alice)
+        ->patchJson("/messages/{$message->id}", ['body' => 'Edited message'])
+        ->assertForbidden();
+
+    expect($message->fresh()->body)->toBe('Original message');
+});
+
+it('lets senders delete a message inside the one week window', function () {
+    Event::fake();
+
+    $alice = User::factory()->create();
+    $bob = User::factory()->create();
+    $conversation = chatDirectConversation($alice, $bob);
+
+    $message = Message::create([
+        'conversation_id' => $conversation->id,
+        'sender_id' => $alice->id,
+        'body' => 'Delete me',
+    ]);
+    $message->forceFill(['created_at' => now()->subDays(2)])->save();
+
+    $this->actingAs($alice)
+        ->deleteJson("/messages/{$message->id}")
+        ->assertOk();
+
+    $this->assertSoftDeleted('messages', ['id' => $message->id]);
+});
+
+it('stops senders from deleting a message after one week', function () {
+    Event::fake();
+
+    $alice = User::factory()->create();
+    $bob = User::factory()->create();
+    $conversation = chatDirectConversation($alice, $bob);
+
+    $message = Message::create([
+        'conversation_id' => $conversation->id,
+        'sender_id' => $alice->id,
+        'body' => 'Delete me',
+    ]);
+    $message->forceFill(['created_at' => now()->subDays(8)])->save();
+
+    $this->actingAs($alice)
+        ->deleteJson("/messages/{$message->id}")
+        ->assertForbidden();
+
+    $this->assertNotSoftDeleted('messages', ['id' => $message->id]);
+});

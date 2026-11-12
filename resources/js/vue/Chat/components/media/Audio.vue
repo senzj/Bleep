@@ -130,7 +130,7 @@ watch(() => props.src, () => {
 				</button>
 
 				<!-- Right: Speed + Download + Volume -->
-				<div class="flex items-center gap-2 min-w-16 justify-end">
+				<div class="flex items-center gap-2 min-w-16 justify-end" data-audio-actions>
 					<!-- Speed -->
 					<div class="relative" @click.stop>
 						<button type="button"

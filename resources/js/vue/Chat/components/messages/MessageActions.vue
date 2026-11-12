@@ -14,6 +14,14 @@ defineProps({
         type: Boolean,
         default: false,
     },
+    canEdit: {
+        type: Boolean,
+        default: false,
+    },
+    canDelete: {
+        type: Boolean,
+        default: false,
+    },
     showEmojiPicker: {
         type: Boolean,
         default: false,
@@ -85,8 +93,8 @@ const emit = defineEmits(['toggle-emoji-picker', 'react', 'reply', 'toggle-actio
                 class="absolute top-0 z-40 min-w-28 rounded-xl border border-base-300 bg-base-100 p-1 shadow-xl"
                 :class="mine ? 'right-full mr-1' : 'left-full ml-1'"
             >
-                <button type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200" @click="emit('edit')">Edit</button>
-                <button type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs text-error hover:bg-base-200" @click="emit('delete')">Delete</button>
+                <button v-if="canEdit" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200" @click="emit('edit')">Edit</button>
+                <button v-if="canDelete" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs text-error hover:bg-base-200" @click="emit('delete')">Delete</button>
             </div>
         </div>
     </div>

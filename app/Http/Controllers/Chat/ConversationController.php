@@ -8,6 +8,7 @@ use App\Models\Conversation;
 use App\Models\User;
 use App\Services\Broadcasting\BroadcastGateway;
 use App\Services\Chat\ChatMessageFormatter;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -46,6 +47,18 @@ class ConversationController extends Controller
             ->leftJoinSub($recentDmSubquery, 'recent_dm', function ($join) {
                 $join->on('users.id', '=', 'recent_dm.other_user_id');
             })
+            ->leftJoinSub($this->interactionSubquery('likes', 'user_id', 'bleep_id', $currentUser->id), 'interaction_likes_given', function ($join) {
+                $join->on('users.id', '=', 'interaction_likes_given.user_id');
+            })
+            ->leftJoinSub($this->interactionSubquery('likes', 'user_id', 'bleep_id', $currentUser->id, reverse: true), 'interaction_likes_received', function ($join) {
+                $join->on('users.id', '=', 'interaction_likes_received.user_id');
+            })
+            ->leftJoinSub($this->interactionSubquery('comments', 'user_id', 'bleep_id', $currentUser->id), 'interaction_comments_given', function ($join) {
+                $join->on('users.id', '=', 'interaction_comments_given.user_id');
+            })
+            ->leftJoinSub($this->interactionSubquery('comments', 'user_id', 'bleep_id', $currentUser->id, reverse: true), 'interaction_comments_received', function ($join) {
+                $join->on('users.id', '=', 'interaction_comments_received.user_id');
+            })
             ->leftJoin('followings as i_follow_them', function ($join) use ($currentUser) {
                 $join->on('i_follow_them.followed_id', '=', 'users.id')
                     ->where('i_follow_them.follower_id', '=', $currentUser->id);
@@ -74,6 +87,7 @@ class ConversationController extends Controller
                 'active_sessions.last_activity',
             ])
             ->selectRaw('CASE WHEN i_follow_them.id IS NOT NULL AND they_follow_me.id IS NOT NULL THEN 1 ELSE 0 END as is_friend')
+            ->selectRaw('COALESCE(interaction_likes_given.total, 0) + COALESCE(interaction_likes_received.total, 0) + COALESCE(interaction_comments_given.total, 0) + COALESCE(interaction_comments_received.total, 0) as interaction_score')
             ->whereNull('blocked_by_me.id')
             ->whereNull('blocked_me.id')
             ->whereNotNull('i_follow_them.id')
@@ -89,6 +103,7 @@ class ConversationController extends Controller
         $users = $usersQuery
             ->orderByRaw('CASE WHEN recent_dm.last_messaged_at IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('recent_dm.last_messaged_at')
+            ->orderByDesc('interaction_score')
             ->orderBy('users.username')
             ->get();
 
@@ -102,6 +117,7 @@ class ConversationController extends Controller
                 'profile_picture_url' => $user->profile_picture_url,
                 'is_friend' => (bool) $user->is_friend,
                 'relation_label' => (bool) $user->is_friend ? 'Friend' : 'Stranger',
+                'interaction_score' => (int) ($user->interaction_score ?? 0),
                 'last_messaged_at' => $user->last_messaged_at ? Carbon::parse($user->last_messaged_at)->toIso8601String() : null,
                 'is_online' => $lastActivity > 0 && $lastActivity >= $onlineCutoff,
                 'last_seen_at' => $lastActivity > 0 ? Carbon::createFromTimestamp($lastActivity)->toIso8601String() : null,
@@ -109,6 +125,34 @@ class ConversationController extends Controller
         })->values();
 
         return response()->json(['data' => $data]);
+    }
+
+    /**
+     * Count likes or comments between the current user and each other user.
+     * With $reverse the interaction is incoming, otherwise it is outgoing.
+     */
+    private function interactionSubquery(
+        string $table,
+        string $actorColumn,
+        string $bleepColumn,
+        int $currentUserId,
+        bool $reverse = false,
+    ): Builder {
+        $query = DB::table($table)
+            ->join('bleeps', 'bleeps.id', '=', $table.'.'.$bleepColumn)
+            ->whereNull('bleeps.deleted_at');
+
+        if ($reverse) {
+            $query->where('bleeps.user_id', $currentUserId)
+                ->groupBy($table.'.'.$actorColumn)
+                ->selectRaw($table.'.'.$actorColumn.' as user_id, COUNT(*) as total');
+        } else {
+            $query->where($table.'.'.$actorColumn, $currentUserId)
+                ->groupBy('bleeps.user_id')
+                ->selectRaw('bleeps.user_id as user_id, COUNT(*) as total');
+        }
+
+        return $query;
     }
 
     public function index(Request $request): JsonResponse
@@ -167,6 +211,10 @@ class ConversationController extends Controller
                 ->map(fn ($participant) => $participant->dname ?: $participant->username)
                 ->values();
 
+            $otherParticipants = $conversation->participants
+                ->where('id', '!=', $user->id)
+                ->values();
+
             $lastMessage = $conversation->latestMessage;
 
             return [
@@ -176,8 +224,13 @@ class ConversationController extends Controller
                     ? ($conversation->name ?: 'Group Chat')
                     : ($otherNames->first() ?: 'Direct Message'),
                 'is_group' => $conversation->is_group,
+                'avatar' => $otherParticipants->first()?->profile_picture_url,
                 'participants' => $participants,
                 'last_read_at' => optional($conversation->pivot->last_read_at)?->toIso8601String(),
+                'left_at' => $conversation->pivot->left_at
+                    ? Carbon::parse($conversation->pivot->left_at)->toIso8601String()
+                    : null,
+                'has_left' => $conversation->pivot->left_at !== null,
                 'last_message_at' => optional($conversation->last_message_at)?->toIso8601String(),
                 'last_message' => $lastMessage ? ChatMessageFormatter::format($lastMessage, $user->id) : null,
                 'unread_count' => (int) ($unreadCounts[$conversation->id] ?? 0),
@@ -275,6 +328,12 @@ class ConversationController extends Controller
             ->first(fn ($conversation) => $conversation->participants_count === 2);
 
         if (! $existing) {
+            if (! $otherUser->canReceiveDirectMessageFrom($me)) {
+                return response()->json([
+                    'message' => 'This user is not accepting direct messages from you.',
+                ], 403);
+            }
+
             $existing = Conversation::create([
                 'name' => null,
                 'is_group' => false,
@@ -300,6 +359,51 @@ class ConversationController extends Controller
                 'id' => $existing->id,
             ],
         ]);
+    }
+
+    public function leave(Request $request, Conversation $conversation): JsonResponse
+    {
+        $user = $request->user();
+        $participant = $conversation->participants()
+            ->where('users.id', $user->id)
+            ->first();
+
+        abort_unless($participant, 403);
+
+        if (! $conversation->is_group) {
+            return response()->json([
+                'message' => 'Only group chats can be left.',
+            ], 422);
+        }
+
+        if ($participant->pivot->left_at !== null) {
+            return response()->json(['data' => ['has_left' => true]]);
+        }
+
+        $conversation->messages()->create([
+            'sender_id' => $user->id,
+            'body' => sprintf(
+                '%s left this group chat%s',
+                $user->dname ?: $user->username,
+                $conversation->name ? " ({$conversation->name})" : ''
+            ),
+        ]);
+
+        $conversation->participants()->updateExistingPivot($user->id, [
+            'left_at' => now(),
+        ]);
+
+        $conversation->update(['last_message_at' => now()]);
+
+        $remainingParticipantIds = $conversation->participants()
+            ->wherePivotNull('left_at')
+            ->pluck('users.id');
+
+        foreach ($remainingParticipantIds as $participantId) {
+            $this->broadcasts->dispatch(new ConversationUpdated((int) $participantId, $conversation->id));
+        }
+
+        return response()->json(['data' => ['has_left' => true]]);
     }
 
     public function createGroup(Request $request): JsonResponse

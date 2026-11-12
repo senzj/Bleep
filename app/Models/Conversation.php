@@ -41,6 +41,7 @@ class Conversation extends Model
             ->withPivot([
                 'role',
                 'last_read_at',
+                'left_at',
                 'joined_at',
                 'is_muted',
                 'muted_until',

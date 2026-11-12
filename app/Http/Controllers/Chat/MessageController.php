@@ -18,6 +18,7 @@ use App\Models\MessageMedia;
 use App\Models\User;
 use App\Services\Broadcasting\BroadcastGateway;
 use App\Services\Chat\ChatMessageFormatter;
+use App\Services\ContentWindowService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -69,6 +70,9 @@ class MessageController extends Controller
 
         abort_unless($conversation->participants()->where('users.id', $user->id)->exists(), 403);
         $this->assertDirectConversationAllowed($conversation, $user);
+
+        $participant = $conversation->participants()->where('users.id', $user->id)->first();
+        abort_if($participant?->pivot?->left_at !== null, 403, 'You have left this group chat.');
 
         if (! empty($validated['reply_to_id'])) {
             $replyTarget = Message::withTrashed()->find($validated['reply_to_id']);
@@ -213,6 +217,11 @@ class MessageController extends Controller
 
         abort_unless((int) $message->sender_id === (int) $user->id, 403);
         abort_if($message->trashed(), 422, 'Deleted messages cannot be edited.');
+        abort_unless(
+            ContentWindowService::canEdit($message->created_at),
+            403,
+            'Messages can only be edited within 10 minutes of sending.'
+        );
 
         $validated = $request->validate([
             'body' => ['nullable', 'string', 'max:5000'],
@@ -329,6 +338,11 @@ class MessageController extends Controller
         $user = $request->user();
 
         abort_unless((int) $message->sender_id === (int) $user->id, 403);
+        abort_unless(
+            ContentWindowService::canDelete($message->created_at),
+            403,
+            'Messages can only be deleted within 7 days of sending.'
+        );
 
         if (! $message->trashed()) {
             // Hard delete reactions

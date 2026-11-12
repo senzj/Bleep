@@ -3,6 +3,7 @@
 namespace App\Services\Chat;
 
 use App\Models\Message;
+use App\Services\ContentWindowService;
 use Illuminate\Support\Str;
 
 class ChatMessageFormatter
@@ -173,6 +174,14 @@ class ChatMessageFormatter
             'edited_at' => optional($message->edited_at)?->toIso8601String(),
             'is_deleted' => $isDeleted,
             'deleted_at' => optional($message->deleted_at)?->toIso8601String(),
+            'can_edit' => ! $isDeleted
+                && $viewerId !== null
+                && (int) $message->sender_id === (int) $viewerId
+                && ContentWindowService::canEdit($message->created_at),
+            'can_delete' => ! $isDeleted
+                && $viewerId !== null
+                && (int) $message->sender_id === (int) $viewerId
+                && ContentWindowService::canDelete($message->created_at),
             'status' => $status,
             'delivery_count' => $deliveryCount,
             'read_count' => $readCount,

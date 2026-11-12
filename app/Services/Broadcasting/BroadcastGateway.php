@@ -21,6 +21,16 @@ class BroadcastGateway
 
     public function dispatch(ShouldBroadcast $event, bool $toOthers = false): void
     {
+        // The test suite keeps the reverb driver configured so channel
+        // authorization is signed exactly like production, but it must never
+        // open a socket to a real Reverb server. The null driver is used only
+        // around the dispatch, so Event::fake still sees the event.
+        $testingReverb = app()->runningUnitTests() && config('broadcasting.default') === 'reverb';
+
+        if ($testingReverb) {
+            config(['broadcasting.default' => 'null']);
+        }
+
         try {
             if ($toOthers && method_exists($event, 'dontBroadcastToCurrentUser')) {
                 $event->dontBroadcastToCurrentUser();
@@ -30,9 +40,13 @@ class BroadcastGateway
         } catch (Throwable $exception) {
             Log::warning('Broadcast failed.', [
                 'event' => $event::class,
-                'connection' => config('broadcasting.default'),
+                'connection' => $testingReverb ? 'reverb' : config('broadcasting.default'),
                 'error' => $exception->getMessage(),
             ]);
+        } finally {
+            if ($testingReverb) {
+                config(['broadcasting.default' => 'reverb']);
+            }
         }
     }
 }

@@ -10,8 +10,12 @@ class MediaUploadController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
+        @set_time_limit(0);
+
+        $maxFileKb = (int) config('media.max_chat_file_kb', 2 * 1024 * 1024);
+
         $validated = $request->validate([
-            'file' => ['required', 'file', 'max:102400', 'mimetypes:image/jpeg,image/png,image/webp,video/mp4,video/webm,audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg'],
+            'file' => ['required', 'file', 'max:'.$maxFileKb, config('media.mimes_rule')],
             'media_kind' => ['nullable', 'in:media,audio,voice'],
         ]);
 

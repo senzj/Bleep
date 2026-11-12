@@ -16,14 +16,47 @@ window.Pusher = Pusher;
 const reverbKey = import.meta.env.VITE_REVERB_APP_KEY;
 
 if (reverbKey) {
+	// Reverb is often configured with 0.0.0.0 so the server listens on every
+	// interface. A browser cannot connect to 0.0.0.0, so resolve wildcard and
+	// loopback hosts to the hostname the page was actually served from.
+	const envHost = String(import.meta.env.VITE_REVERB_HOST || '')
+		.split('#')[0]
+		.trim()
+		.replace(/^https?:\/\//i, '')
+		.replace(/\/.*$/, '')
+		.replace(/:\d+$/, '');
+
+	const pageHost = window.location.hostname;
+	const wildcardHosts = ['', '0.0.0.0', '127.0.0.1', '::', '[::]', 'localhost'];
+	const wsHost = wildcardHosts.includes(envHost.toLowerCase())
+		? (pageHost || 'localhost')
+		: envHost;
+
+	const pageIsHttps = window.location.protocol === 'https:';
+	const envScheme = String(import.meta.env.VITE_REVERB_SCHEME || '')
+		.split('#')[0]
+		.trim()
+		.toLowerCase();
+	const forceTLS = pageIsHttps || envScheme === 'https';
+
+	// Only trust an explicitly configured port. Otherwise use the standard
+	// secure/non-secure port instead of hard-coding 80 (which produced the
+	// ws://0.0.0.0:8080 failure).
+	const configuredPort = Number(
+		String(import.meta.env.VITE_REVERB_PORT || '').split('#')[0].trim()
+	);
+	const port = Number.isFinite(configuredPort) && configuredPort > 0
+		? configuredPort
+		: (forceTLS ? 443 : 8080);
+
 	window.Echo = new Echo({
 		broadcaster: 'reverb',
 		key: reverbKey,
-		wsHost: import.meta.env.VITE_REVERB_HOST || window.location.hostname,
-		wsPort: Number(import.meta.env.VITE_REVERB_PORT || 80),
-		wssPort: Number(import.meta.env.VITE_REVERB_PORT || 443),
-		forceTLS: (import.meta.env.VITE_REVERB_SCHEME || 'https') === 'https',
-		enabledTransports: ['ws', 'wss'],
+		wsHost,
+		wsPort: port,
+		wssPort: port,
+		forceTLS,
+		enabledTransports: forceTLS ? ['wss'] : ['ws'],
 		auth: {
 			headers: {
 				'X-CSRF-TOKEN': csrfToken || '',
