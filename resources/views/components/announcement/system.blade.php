@@ -2,6 +2,8 @@
     $changelog = app(\App\Services\System\Changelog::class);
     $latestRelease = $changelog->latest();
     $currentVersion = $changelog->currentVersion();
+    $latestBulletin = $changelog->bulletinLatest();
+    $bulletinVersion = $changelog->bulletinVersion();
 
     // Reverb powers live notifications. Without it the bell falls back to a
     // five-minute poll, and the announcement should say so plainly.
@@ -43,7 +45,7 @@
     @if ($latestRelease)
         <div class="alert alert-info relative pr-10"
              data-announcement="update"
-             data-announcement-key="update-{{ $currentVersion }}">
+             data-announcement-key="update-{{ $currentVersion }}-bulletin-{{ $bulletinVersion }}">
             <button type="button"
                     class="btn btn-ghost btn-xs btn-circle absolute right-2 top-2"
                     data-announcement-dismiss
@@ -55,7 +57,9 @@
             <div class="space-y-1">
                 <span class="font-semibold">System Update v{{ $currentVersion }}: {{ $latestRelease['title'] }}</span>
                 <p class="text-sm">{{ $latestRelease['summary'] ?? '' }}</p>
-                <p class="text-xs">Bulletin board patch: v{{ $currentVersion }}</p>
+                <p class="text-xs">
+                    Bulletin board patch: v{{ $bulletinVersion }}@if ($latestBulletin) — {{ $latestBulletin['title'] }}@endif
+                </p>
                 <a href="{{ route('settings.system') }}" class="link link-primary text-sm font-medium">
                     See what's new
                 </a>

@@ -3,23 +3,35 @@
 use App\Models\User;
 use App\Services\System\Changelog;
 
-it('reads the current release from the changelog file', function () {
+it('reads separate version logs for Bleep and the bulletin board', function () {
     $changelog = app(Changelog::class);
 
     expect($changelog->currentVersion())->toBe('2.4')
+        ->and($changelog->bulletinVersion())->toBe('1.1')
+        ->and($changelog->currentVersion())->not->toBe($changelog->bulletinVersion())
         ->and($changelog->latest())->not->toBeNull()
         ->and($changelog->latest()['changes'])->toHaveKeys([
+            'added', 'changed', 'updated', 'optimized', 'removed',
+        ])
+        ->and($changelog->bulletinLatest())->not->toBeNull()
+        ->and($changelog->bulletinLatest()['changes'])->toHaveKeys([
             'added', 'changed', 'updated', 'optimized', 'removed',
         ]);
 });
 
-it('shows the changelog in settings for signed-in users', function () {
+it('shows both version logs in settings for signed-in users', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get(route('settings.system'))
         ->assertSuccessful()
+        ->assertSee('Version log')
         ->assertSee('v2.4')
+        ->assertSee('v1.1')
+        ->assertSee('Bleep')
+        ->assertSee('Bulletin board')
+        ->assertSee('A faster media viewer')
+        ->assertSee('Notes that can change')
         ->assertSee('Added')
         ->assertSee('Optimized')
         ->assertSee('Removed');
@@ -30,14 +42,15 @@ it('keeps the system changelog behind authentication', function () {
         ->assertRedirect(route('login'));
 });
 
-it('advertises the latest update and bulletin patch in the announcement', function () {
+it('advertises the latest Bleep and bulletin releases in the announcement', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get('/')
         ->assertSuccessful()
         ->assertSee('System Update v2.4')
-        ->assertSee('Bulletin board patch: v2.4')
+        ->assertSee('Bulletin board patch: v1.1')
+        ->assertSee('Notes that can change')
         ->assertSee('data-announcement="warning"', false)
         ->assertSee('data-announcement="update"', false);
 });

@@ -240,7 +240,7 @@ class SettingsController extends Controller
     public function system(Changelog $changelog)
     {
         return view('settings.system', [
-            'changelog' => $changelog->all(),
+            'products' => $changelog->products(),
         ]);
     }
 }
