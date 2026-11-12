@@ -137,4 +137,32 @@ return [
 
     'anonymity' => env('ANONYMITY', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Registration
+    |--------------------------------------------------------------------------
+    |
+    | Controls whether new visitors may create an account. Admins can override
+    | this at runtime from the System administration page.
+    |
+    */
+
+    'registration_enabled' => env('REGISTRATION_ENABLED', true),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Planned Maintenance
+    |--------------------------------------------------------------------------
+    |
+    | When enabled (and the app is not in local/debug mode), visitors see the
+    | maintenance page. MAINTENANCE_DURATION may be a number of minutes or a
+    | date/time string describing when the site is expected back.
+    |
+    */
+
+    'maintenance_mode' => [
+        'enabled' => (bool) env('MAINTENANCE_MODE', false),
+        'duration' => env('MAINTENANCE_DURATION'),
+    ],
+
 ];
