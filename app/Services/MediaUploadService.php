@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\MediaUpload;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -80,6 +81,98 @@ class MediaUploadService
             'type' => $type,
             'mime' => $mime,
         ];
+    }
+
+    /**
+     * Map a detected MIME type to an application media type.
+     */
+    public static function mediaTypeFromMime(string $mime): string
+    {
+        $mime = strtolower(trim($mime));
+
+        return match (true) {
+            str_starts_with($mime, 'image/') => 'image',
+            str_starts_with($mime, 'video/') => 'video',
+            str_starts_with($mime, 'audio/') => 'audio',
+            default => 'file',
+        };
+    }
+
+    /**
+     * Move an assembled chunk upload into a bleep directory.
+     *
+     * @return array{path: string, type: string, mime: string, original_name: string, size: int}
+     */
+    public static function saveBleepMediaFromUpload(MediaUpload $upload, int $bleepId): array
+    {
+        return self::storeAssembledUpload($upload, "bleep/{$bleepId}");
+    }
+
+    /**
+     * Move an assembled chunk upload into a comment directory.
+     *
+     * @return array{path: string, type: string, mime: string, original_name: string, size: int}
+     */
+    public static function saveCommentMediaFromUpload(MediaUpload $upload, int $commentId): array
+    {
+        return self::storeAssembledUpload($upload, "comments/{$commentId}");
+    }
+
+    /**
+     * @return array{path: string, type: string, mime: string, original_name: string, size: int}
+     */
+    private static function storeAssembledUpload(MediaUpload $upload, string $directory): array
+    {
+        $source = $upload->path;
+
+        if (! $source || ! Storage::disk('local')->exists($source)) {
+            throw new \RuntimeException('The uploaded file is no longer available.');
+        }
+
+        $mime = (string) ($upload->mime_type ?: 'application/octet-stream');
+        $type = self::mediaTypeFromMime($mime);
+
+        if ($type === 'file') {
+            throw new \InvalidArgumentException('Only image, video, or audio files are allowed.');
+        }
+
+        $extension = strtolower((string) pathinfo($upload->original_name, PATHINFO_EXTENSION));
+
+        if (! preg_match('/^[a-z0-9]{1,10}$/', $extension)) {
+            $extension = 'bin';
+        }
+
+        $filename = time().'_'.Str::random(10).'.'.$extension;
+        $destination = trim($directory, '/').'/'.$filename;
+
+        $stream = Storage::disk('local')->readStream($source);
+
+        if ($stream === false) {
+            throw new \RuntimeException('The uploaded file could not be read.');
+        }
+
+        try {
+            Storage::disk('public')->writeStream($destination, $stream);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        return [
+            'path' => $destination,
+            'type' => $type,
+            'mime' => $mime,
+            'original_name' => $upload->original_name,
+            'size' => (int) $upload->size,
+        ];
+    }
+
+    public static function deleteUploadTemp(MediaUpload $upload): void
+    {
+        if ($upload->temp_dir) {
+            Storage::disk('local')->deleteDirectory($upload->temp_dir);
+        }
     }
 
     /**
