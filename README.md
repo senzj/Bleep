@@ -57,6 +57,7 @@ The application is a Blade-first Laravel monolith. Vue 3 is used for selected in
 - Report review, dismissal, content removal, and reporter bans
 - Session and remembered-device management
 - Application logs and visit analytics
+- Separate version logs and release histories for Bleep and the bulletin board
 
 ## Tech Stack
 
@@ -78,6 +79,7 @@ The application is a Blade-first Laravel monolith. Vue 3 is used for selected in
 - `routes/web.php` contains the application's web routes and small internal JSON endpoints. There is no versioned public API.
 - Controllers are grouped by domain: `Auth`, `Bleep`, `Chat`, `Admin`, plus social/settings controllers.
 - `app/Services` holds reusable logic: `FeedService` (feed scopes and ordering), `MediaUploadService` (uploads and deletions), and `Chat\ChatMessageFormatter` (message payloads).
+- `app/Services/System/Changelog` reads `resources/changelog.json`, which keeps a version log and release history for each product (Bleep and the bulletin board). Settings → System lists both logs, and the update announcement shows both current versions.
 - Media delivery lives in `routes/stream.php`, registered outside the `web` middleware group so a long stream never holds the session lock. `MediaStreamController` streams audio and video with HTTP range support; `MediaImageController` generates and caches resized image copies under `storage/app/public/media-cache/{thumb|view}`. `app/Helpers/MediaPath.php` holds the shared path-safety check for both.
 - Eloquent models cover posts, comments, follows, blocks, reports, preferences, conversations, messages, deliveries, reactions, and related records.
 - Authorization uses `BleepPolicy`, `CommentsPolicy`, and the `is_admin` gate. Admin routes are protected with `can:is_admin`.
@@ -212,7 +214,7 @@ Notes:
 
 Pest is configured with `phpunit.xml` using an in-memory SQLite database. `RefreshDatabase` is enabled for feature tests, Vite is stubbed during tests, and the broadcasting connection is set to Reverb with test-only credentials so channel authorization can be exercised.
 
-The current suite covers the public feed, bleep creation and deletion authorization, admin dashboard access, report moderation, private conversation channel authorization, media streaming and image resizing, the media viewer markup and skeleton placeholders, and the like-button markup contract the optimistic icon relies on. Run it with `php artisan test` before opening a pull request.
+The current suite covers the public feed, bleep creation and deletion authorization, admin dashboard access, report moderation, private conversation channel authorization, media streaming and image resizing, the media viewer markup and skeleton placeholders, the like-button markup contract the optimistic icon relies on, and the separate Bleep and bulletin release logs. Run it with `php artisan test` before opening a pull request.
 
 ## Project Structure
 
@@ -224,7 +226,8 @@ app/Models/             Eloquent models
 app/Policies/           Post and comment authorization
 app/Services/           Feed, media, and chat formatting services
 app/Events/Chat/        Broadcast events
-database/migrations/    Schema, including a combined chat migration
+database/migrations/    Schema, consolidated into create migrations (no add/enable patches)
+resources/changelog.json  Per-product version logs and release histories
 resources/views/        Blade pages and components
 resources/js/           Alpine, Vue islands, chat store, and page scripts
 resources/css/          Tailwind v4 and DaisyUI configuration
