@@ -10,29 +10,44 @@
             ->count('cu.conversation_id');
 
         $unreadNotificationCount = once(fn () => app(\App\Services\Notifications\NotificationService::class)->unreadCount(auth()->user()));
+
+        $isHomeSection = request()->routeIs('home', 'post');
+        $isBulletinSection = request()->routeIs('bulletin.*');
+        $isChatSection = request()->routeIs('messages', 'chat.*');
+        $isPeopleSection = request()->routeIs('social.people', 'follow.requests*');
+
+        $activeClasses = 'bg-primary text-primary-content';
+        $inactiveClasses = 'bg-base-100/70 hover:bg-base-300/80 transition-colors';
     @endphp
 
     {{-- Home --}}
-    @if (request()->routeIs('home'))
-        <span class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-primary text-primary-content cursor-default" aria-current="page">
-            <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
-            <span class="sidebar-text">Home</span>
-        </span>
+    @if ($isHomeSection)
+        @if (request()->routeIs('home'))
+            <span class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm {{ $activeClasses }} cursor-default" aria-current="page">
+                <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
+                <span class="sidebar-text">Home</span>
+            </span>
+        @else
+            <a href="{{ route('home') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm {{ $activeClasses }}" aria-current="page">
+                <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
+                <span class="sidebar-text">Home</span>
+            </a>
+        @endif
     @else
-        <a href="{{ route('home') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors">
+        <a href="{{ route('home') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm {{ $inactiveClasses }}">
             <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
             <span class="sidebar-text">Home</span>
         </a>
     @endif
 
     {{-- Bulletin --}}
-    <a href="{{ route('bulletin.index') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('bulletin.*') ? 'bg-primary text-primary-content' : '' }}">
+    <a href="{{ route('bulletin.index') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm {{ $isBulletinSection ? $activeClasses : $inactiveClasses }}" aria-current="{{ $isBulletinSection ? 'page' : 'false' }}">
         <i data-lucide="scroll" class="w-5 h-5 shrink-0"></i>
         <span class="sidebar-text">Bulletin</span>
     </a>
 
     {{-- Messages --}}
-    <a href="{{ route('messages') }}" class="nav-link relative flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('messages') ? 'bg-primary text-primary-content' : '' }}">
+    <a href="{{ route('messages') }}" class="nav-link relative flex items-center gap-3 px-3 py-2 rounded-sm {{ $isChatSection ? $activeClasses : $inactiveClasses }}" aria-current="{{ $isChatSection ? 'page' : 'false' }}">
         <span class="relative shrink-0">
             <i data-lucide="message-square" class="w-5 h-5"></i>
             <span
@@ -46,7 +61,7 @@
     </a>
 
     {{-- People --}}
-    <a href="{{ route('social.people') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('social.people') ? 'bg-primary text-primary-content' : '' }}">
+    <a href="{{ route('social.people') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm {{ $isPeopleSection ? $activeClasses : $inactiveClasses }}" aria-current="{{ $isPeopleSection ? 'page' : 'false' }}">
         <i data-lucide="users" class="w-5 h-5 shrink-0"></i>
         <span class="sidebar-text">People</span>
     </a>

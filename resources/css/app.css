@@ -889,8 +889,8 @@ body.nav-compact .compact-nav {
     top: 0.5rem;
     height: 3rem;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.35rem;
+    gap: 0.15rem;
+    padding: 0.25rem;
     pointer-events: auto;
     background: var(--color-base-100);
     border: 1px solid var(--color-base-300);
@@ -932,20 +932,33 @@ body.nav-compact .compact-nav__cluster {
     right: 0.5rem;
 }
 
+/* Icon-only brand button: trim daisyUI's default button padding so the
+   cluster stays narrow and never creeps over the page tabs on smaller
+   desktop viewports. */
+.compact-nav .compact-nav__brand {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+}
+
+.compact-nav .compact-nav__brand img {
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
 .compact-nav .nav-link {
     gap: 0;
-    padding: 0.4rem;
+    padding: 0.3rem;
     border-radius: 0.5rem;
     background: transparent;
 }
 
 .compact-nav .nav-link:hover {
-    background: hsl(var(--b3) / 0.6);
+    background: color-mix(in oklab, var(--color-base-300) 60%, transparent);
 }
 
 .compact-nav .nav-link.bg-primary {
-    background: hsl(var(--p));
-    color: hsl(var(--pc));
+    background: var(--color-primary);
+    color: var(--color-primary-content);
 }
 
 .compact-nav .sidebar-text {
@@ -976,6 +989,7 @@ body.nav-compact .compact-nav__cluster {
 .compact-nav__fab {
     position: absolute;
     top: 0.5rem;
+    padding-inline: 0.5rem;
     pointer-events: auto;
     background: var(--color-base-100);
     border: 1px solid var(--color-base-300);
@@ -984,6 +998,14 @@ body.nav-compact .compact-nav__cluster {
     transition:
         transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1),
         opacity 180ms ease;
+}
+
+/* Phone/tablet FABs are icon-only; keep them square so they stop crowding the
+   feed tabs that sit between them. */
+.compact-nav__fab > img,
+.compact-nav__fab > svg {
+    width: 1.5rem;
+    height: 1.5rem;
 }
 
 body.nav-compact .compact-nav__fab {
