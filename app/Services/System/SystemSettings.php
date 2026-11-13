@@ -59,7 +59,7 @@ class SystemSettings
 
             'maintenance_mode_enabled' => [
                 'label' => 'Maintenance mode',
-                'description' => 'Show the maintenance page to visitors. Admins and moderators can still sign in.',
+                'description' => 'Show the maintenance page on public pages. Admins and moderators can still sign in and reach the admin area.',
                 'group' => 'Maintenance',
                 'type' => 'boolean',
                 'default' => (bool) config('app.maintenance_mode.enabled', false),

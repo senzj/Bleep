@@ -3,10 +3,17 @@
 <aside id="vertical-nav-desktop" class="hidden lg:flex flex-col w-54 h-screen sticky top-0 bg-base-200/95 shadow-lg shrink-0">
     {{-- Logo --}}
     <div class="flex items-center justify-between gap-2 border-b border-base-200 p-4">
-        <a href="/" class="flex items-center gap-2 text-xl font-bold rounded-lg">
-            <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="w-8 h-8">
-            <span class="sidebar-text">Bleep</span>
-        </a>
+        @if (request()->routeIs('home'))
+            <span class="flex items-center gap-2 text-xl font-bold rounded-lg cursor-default" aria-current="page">
+                <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="w-8 h-8">
+                <span class="sidebar-text">Bleep</span>
+            </span>
+        @else
+            <a href="{{ route('home') }}" class="flex items-center gap-2 text-xl font-bold rounded-lg">
+                <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="w-8 h-8">
+                <span class="sidebar-text">Bleep</span>
+            </a>
+        @endif
 
         <x-notifications.bell />
     </div>

@@ -13,10 +13,17 @@
     @endphp
 
     {{-- Home --}}
-    <a href="{{ route('home') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->is('/') ? 'bg-primary text-primary-content' : '' }}">
-        <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
-        <span class="sidebar-text">Home</span>
-    </a>
+    @if (request()->routeIs('home'))
+        <span class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-primary text-primary-content cursor-default" aria-current="page">
+            <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
+            <span class="sidebar-text">Home</span>
+        </span>
+    @else
+        <a href="{{ route('home') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors">
+            <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
+            <span class="sidebar-text">Home</span>
+        </a>
+    @endif
 
     {{-- Bulletin --}}
     <a href="{{ route('bulletin.index') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors {{ request()->routeIs('bulletin.*') ? 'bg-primary text-primary-content' : '' }}">

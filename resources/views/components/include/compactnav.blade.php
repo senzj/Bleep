@@ -11,9 +11,15 @@
     <div id="compact-nav" class="compact-nav" aria-hidden="true">
         <div class="compact-nav__cluster compact-nav__cluster--left hidden lg:flex">
             {{-- App Icon --}}
-            <a href="{{ route('home') }}" class="compact-nav__brand btn btn-ghost rounded-lg" aria-label="Bleep home">
-                <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="h-8 w-8">
-            </a>
+            @if (request()->routeIs('home'))
+                <span class="compact-nav__brand btn btn-ghost rounded-lg cursor-default" aria-current="page" aria-label="Bleep home">
+                    <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="h-8 w-8">
+                </span>
+            @else
+                <a href="{{ route('home') }}" class="compact-nav__brand btn btn-ghost rounded-lg" aria-label="Bleep home">
+                    <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="h-8 w-8">
+                </a>
+            @endif
 
             {{-- Primary navigation --}}
             <nav class="compact-nav__links flex items-center gap-0.5" aria-label="Primary">
@@ -44,13 +50,23 @@
         </div>
 
         {{-- Phones/tablets: app icon left, page tabs centre, menu right. --}}
-        <a
-            href="{{ route('home') }}"
-            class="compact-nav__fab compact-nav__fab--left btn rounded-lg lg:hidden"
-            aria-label="Bleep home"
-        >
-            <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="h-7 w-7">
-        </a>
+        @if (request()->routeIs('home'))
+            <span
+                class="compact-nav__fab compact-nav__fab--left btn rounded-lg cursor-default lg:hidden"
+                aria-current="page"
+                aria-label="Bleep home"
+            >
+                <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="h-7 w-7">
+            </span>
+        @else
+            <a
+                href="{{ route('home') }}"
+                class="compact-nav__fab compact-nav__fab--left btn rounded-lg lg:hidden"
+                aria-label="Bleep home"
+            >
+                <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="h-7 w-7">
+            </a>
+        @endif
 
         <button
             type="button"

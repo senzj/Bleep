@@ -2,8 +2,30 @@
     "products": {
         "bleep": {
             "name": "Bleep",
-            "current": "2.4",
+            "current": "2.4.1",
             "releases": [
+                {
+                    "version": "2.4.1",
+                    "date": "2026-11-13",
+                    "title": "Small things that feel better",
+                    "summary": "A fresh maintenance screen that rotates through its memes, a calmer home button, and general performance polish.",
+                    "changes": {
+                        "added": [],
+                        "changed": [
+                            "The maintenance page got a cleaner layout and now rotates through a set of meme images on each visit.",
+                            "Tapping the Bleep logo or Home while already on the home feed no longer reloads the page.",
+                            "The maintenance page is clearer about what stays available to staff while the public site is offline."
+                        ],
+                        "updated": [
+                            "General backend performance and stability improvements.",
+                            "Updated the underlying platform for better performance, security and long-term support."
+                        ],
+                        "optimized": [
+                            "Removed an unused external font request, so pages make one fewer third-party network request."
+                        ],
+                        "removed": []
+                    }
+                },
                 {
                     "version": "2.4",
                     "date": "2026-11-12",

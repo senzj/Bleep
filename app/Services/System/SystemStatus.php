@@ -88,7 +88,7 @@ class SystemStatus
                 'Maintenance mode',
                 config('app.maintenance_mode.enabled') ? 'Enabled' : 'Disabled',
                 config('app.maintenance_mode.enabled') ? 'warning' : 'ok',
-                config('app.maintenance_mode.enabled') ? 'Visitors see the maintenance page; staff can still sign in.' : null,
+                config('app.maintenance_mode.enabled') ? 'Public pages are offline; staff can still sign in and reach the admin area.' : null,
             ),
             $this->item(
                 'Registration',

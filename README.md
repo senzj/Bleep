@@ -1,6 +1,8 @@
 # Bleep
 
-Bleep started as a fork of the Laravel Chirper project and has grown into a small social network with short posts, profiles, follows, moderation tools, and real-time messaging. It is also a long-term learning project for Laravel, Vue, database design, and application security.
+Bleep started as a fork of the Laravel Chirper project and has grown into a small social network with short posts, profiles, follows, moderation tools, and real-time messaging.
+
+It exists for a few reasons. It is a long-term learning project for Laravel, Vue, database design, and application security, and a hands-on platform for learning how to use AI effectively in modern software development. More personally, it was meant to be a digital space where friends and family could share their thoughts, say how they feel, and be heard, which is why anonymous posting exists. The product is also an experiment in UX-centred social software: smooth, clean interfaces with customizable themes, layouts, and personal preferences.
 
 The application is a Blade-first Laravel monolith. Vue 3 is used for selected interactive areas (the chat interface and the comments modal) rather than for the whole frontend. There is no Inertia layer and no separate API SPA.
 
@@ -63,14 +65,14 @@ The application is a Blade-first Laravel monolith. Vue 3 is used for selected in
 
 | Area | Technology |
 | --- | --- |
-| Backend | Laravel 12 (currently 12.70.1), PHP 8.2+ required, PHP 8.4 used in deployment |
+| Backend | Laravel 13 (currently 13.40.0), PHP 8.3+ required, PHP 8.5 used locally and PHP 8.4 in CI/deployment |
 | Frontend | Blade templates with Vue 3 islands, Alpine.js |
 | Styling | Tailwind CSS v4 (CSS-first configuration) with DaisyUI themes |
 | Build | Vite 7 with the Laravel Vite plugin |
 | Realtime | Laravel Reverb, Laravel Echo, Pusher JS protocol |
 | Database | MySQL (default application connection); in-memory SQLite for tests |
 | Charts/icons | Chart.js, Lucide |
-| Testing | Pest 3, PHPUnit 11 |
+| Testing | Pest 4, PHPUnit 12 |
 | Code style | Laravel Pint |
 | Deployment | GitHub Actions building assets and uploading over FTP |
 
@@ -101,11 +103,11 @@ Browser
 
 ## Requirements
 
-- PHP 8.2 or newer with the usual Laravel extensions
+- PHP 8.3 or newer with the usual Laravel extensions
 - PHP GD for server-side image resizing (JPEG and PNG are required; WebP and EXIF support are recommended). Without GD, images are served at full size instead.
 - Composer 2
 - MySQL (the repository defaults to MySQL; tests use SQLite)
-- Node.js 18+ and npm (CI uses Node 22)
+- Node.js 20.19+ or 22.12+ and npm (CI uses Node 22)
 - Optional: a Reverb-compatible websocket setup for real-time chat
 
 ## Local Development
@@ -214,7 +216,7 @@ Notes:
 
 Pest is configured with `phpunit.xml` using an in-memory SQLite database. `RefreshDatabase` is enabled for feature tests, Vite is stubbed during tests, and the broadcasting connection is set to Reverb with test-only credentials so channel authorization can be exercised.
 
-The current suite covers the public feed, bleep creation and deletion authorization, admin dashboard access, report moderation, private conversation channel authorization, media streaming and image resizing, the media viewer markup and skeleton placeholders, the like-button markup contract the optimistic icon relies on, and the separate Bleep and bulletin release logs. Run it with `php artisan test` before opening a pull request.
+The current suite covers the public feed, bleep creation and deletion authorization, admin dashboard access, report moderation, private conversation channel authorization, media streaming and image resizing, the media viewer markup and skeleton placeholders, the like-button markup contract the optimistic icon relies on, the unlisted system credits page, and the separate Bleep and bulletin release logs. Run it with `php artisan test` before opening a pull request.
 
 ## Project Structure
 
@@ -244,12 +246,13 @@ These are development aids only. None of them are runtime dependencies of Bleep,
 
 ### Agent skills
 
-64 project skills are installed from 8 sources:
+73 project skills are installed from 9 sources:
 
 | Source | Skills | Examples |
 | --- | --- | --- |
 | `mattpocock/skills` | 38 | `improve-codebase-architecture`, `code-review`, `grill-me`, `handoff`, `tdd`, planning and writing skills |
 | `obra/superpowers` | 15 | `brainstorming`, `systematic-debugging`, `test-driven-development`, `using-git-worktrees`, `verification-before-completion` |
+| `vercel-labs/agent-skills` | 9 | `deploy-to-vercel`, `vercel-react-best-practices`, `vercel-composition-patterns`, `writing-guidelines` |
 | `DietrichGebert/ponytail` | 6 | `ponytail`, `ponytail-review`, `ponytail-audit` |
 | `anthropics/skills` | 1 | `frontend-design` |
 | `vercel-labs/skills` | 1 | `find-skills` |
@@ -274,7 +277,7 @@ Verify both with `opencode mcp list`. Context7 works without an API key; an opti
 
 ### OpenCode plugins
 
-No OpenCode plugins are declared by this repository. The local OpenCode configuration also loads the user-level `oh-my-openagent` plugin; that is a global user setting and is not part of Bleep or its deployment.
+No OpenCode plugins are declared by this repository. The local OpenCode configuration also loads the user-level `oh-my-openagent` and `superpowers` plugins; those are global user settings and are not part of Bleep or its deployment.
 
 Ponytail's OpenCode plugin and always-on ruleset are intentionally not enabled. Only its project skills are installed.
 

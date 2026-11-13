@@ -43,8 +43,6 @@
             'resources/js/app.js',
         ])
         <title>{{ isset($title) ? $title : '' }} | Bleep</title>
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
         @stack('styles')
     </head>
 

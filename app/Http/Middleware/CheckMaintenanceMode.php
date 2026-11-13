@@ -5,16 +5,32 @@ namespace App\Http\Middleware;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckMaintenanceMode
 {
     /**
+     * Paths that stay reachable while the site is offline. Staff need the
+     * sign-in flow and the settings/admin area to turn maintenance mode off.
+     *
+     * @var array<int, string>
+     */
+    private const STAFF_PATHS = [
+        'login',
+        'logout',
+        'admin',
+        'admin/*',
+        'settings',
+        'settings/*',
+    ];
+
+    /**
      * Serve the maintenance page while the site is taken offline.
      *
      * Local/debug environments stay usable so the page itself can be worked
-     * on, and staff can still reach the site to prepare for the return.
+     * on. The public site is offline for everyone, including signed-in staff;
+     * they can still reach sign-in, settings and the admin area to turn it
+     * back off.
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -26,7 +42,7 @@ class CheckMaintenanceMode
             return $next($request);
         }
 
-        if (Auth::check() && Auth::user()->hasAdminAccess()) {
+        if ($request->is(...self::STAFF_PATHS)) {
             return $next($request);
         }
 
@@ -36,8 +52,32 @@ class CheckMaintenanceMode
             ->view('maintenance', [
                 'duration' => $duration,
                 'estimatedReturn' => $this->estimatedReturn($duration),
+                'image' => $this->maintenanceImage(),
             ], 503)
             ->header('Retry-After', '300');
+    }
+
+    /**
+     * Pick a random meme image from the maintenance asset directory.
+     */
+    private function maintenanceImage(): ?string
+    {
+        $directory = public_path('images/maintenance');
+
+        if (! is_dir($directory)) {
+            return null;
+        }
+
+        $images = array_values(array_filter(
+            scandir($directory) ?: [],
+            fn (string $file): bool => preg_match('/\.(gif|jpe?g|png|webp)$/i', $file) === 1,
+        ));
+
+        if ($images === []) {
+            return null;
+        }
+
+        return $images[array_rand($images)];
     }
 
     /**

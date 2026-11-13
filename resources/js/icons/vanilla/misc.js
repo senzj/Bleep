@@ -28,4 +28,11 @@ export {
     Server,
     Wrench,
     PartyPopper,
+    TrafficCone,
+    BookOpen,
+    Brain,
+    ExternalLink,
+    GitBranch,
+    Github,
+    Quote,
 } from 'lucide';

@@ -4,10 +4,17 @@
 <aside id="hor-mobile-drawer" class="lg:hidden fixed left-0 top-0 h-full w-64 bg-base-300/95 shadow-xl z-50 transform transition-transform duration-300 ease-in-out -translate-x-full flex flex-col">
     {{-- Header --}}
     <div class="flex items-center justify-between p-4 border-b border-base-200">
-        <a href="/" class="flex items-center gap-2 text-xl font-bold">
-            <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="w-8 h-8">
-            <span>Bleep</span>
-        </a>
+        @if (request()->routeIs('home'))
+            <span class="flex items-center gap-2 text-xl font-bold cursor-default" aria-current="page">
+                <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="w-8 h-8">
+                <span>Bleep</span>
+            </span>
+        @else
+            <a href="{{ route('home') }}" class="flex items-center gap-2 text-xl font-bold">
+                <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="w-8 h-8">
+                <span>Bleep</span>
+            </a>
+        @endif
         <button id="hor-mobile-close-btn" class="btn btn-ghost btn-sm btn-circle" aria-label="Close menu">
             <i data-lucide="x" class="w-5 h-5"></i>
         </button>

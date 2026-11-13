@@ -28,6 +28,7 @@ use App\Http\Controllers\PostController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SocialController;
+use App\Http\Controllers\SystemCreditsController;
 use App\Http\Controllers\UserPreferencesController;
 use App\Http\Controllers\Users\ProfileAnalyticsController;
 use App\Http\Controllers\Users\ProfileController;
@@ -75,6 +76,9 @@ Route::post('/logout', Logout::class)
 Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
 Route::get('/cookies', [LegalController::class, 'cookies'])->name('legal.cookies');
+
+// UNLISTED CREDITS
+Route::get('/system-credits', [SystemCreditsController::class, 'index'])->name('system.credits');
 
 // PUBLIC ROUTES
 
