@@ -21,7 +21,8 @@
                             "Updated the underlying platform for better performance, security and long-term support."
                         ],
                         "optimized": [
-                            "Removed an unused external font request, so pages make one fewer third-party network request."
+                            "Removed an unused external font request, so pages make one fewer third-party network request.",
+                            "Maintenance memes are about two-thirds lighter, so the offline page loads faster."
                         ],
                         "removed": []
                     }
