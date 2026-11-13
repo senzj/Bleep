@@ -60,7 +60,7 @@
                 <p class="text-xs">
                     Bulletin board patch: v{{ $bulletinVersion }}@if ($latestBulletin) — {{ $latestBulletin['title'] }}@endif
                 </p>
-                <a href="{{ route('settings.system') }}" class="link link-primary text-sm font-medium">
+                <a href="{{ route('settings.system') }}" class="link link-hover text-sm font-medium">
                     See what's new
                 </a>
             </div>

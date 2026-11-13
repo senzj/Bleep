@@ -5,25 +5,11 @@ namespace App\Http\Middleware;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckMaintenanceMode
 {
-    /**
-     * Paths that stay reachable while the site is offline. Staff need the
-     * sign-in flow and the settings/admin area to turn maintenance mode off.
-     *
-     * @var array<int, string>
-     */
-    private const STAFF_PATHS = [
-        'login',
-        'logout',
-        'admin',
-        'admin/*',
-        'settings',
-        'settings/*',
-    ];
-
     /**
      * Serve the maintenance page while the site is taken offline.
      *
@@ -34,15 +20,18 @@ class CheckMaintenanceMode
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // If maintenance mode is not enabled, continue to the next middleware.
         if (! config('app.maintenance_mode.enabled')) {
             return $next($request);
         }
 
+        // If the app is in a local or debug environment, continue to the next middleware.
         if (app()->environment('local') || config('app.debug')) {
             return $next($request);
         }
 
-        if ($request->is(...self::STAFF_PATHS)) {
+        // If the auth user role is admin or mod they can access the site.
+        if (Auth::check() && in_array(Auth::user()->role, ['dev', 'admin'], true)) {
             return $next($request);
         }
 
