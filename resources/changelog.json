@@ -2,8 +2,27 @@
     "products": {
         "bleep": {
             "name": "Bleep",
-            "current": "2.4.1",
+            "current": "2.4.2",
             "releases": [
+                {
+                    "version": "2.4.2",
+                    "date": "2026-11-14",
+                    "title": "Calmer navigation",
+                    "summary": "The active tab now follows you around the site, the compact menu no longer covers the feed tabs, and tapping the page you are already on stops reloading it.",
+                    "changes": {
+                        "added": [],
+                        "changed": [
+                            "The navigation bar keeps the right section highlighted on subpages too, so Chat stays lit inside a conversation and Home stays lit on a bleep page.",
+                            "Tapping the page you are already on no longer reloads it anywhere on the site, not just on the home feed.",
+                            "The compact menu is slimmer, so it no longer overlaps the feed tabs on smaller screens."
+                        ],
+                        "updated": [],
+                        "optimized": [
+                            "Repeated taps on the same link show a short \"please wait a moment\" message with a one-minute cooldown, and navigation stops entirely if the clicking keeps going."
+                        ],
+                        "removed": []
+                    }
+                },
                 {
                     "version": "2.4.1",
                     "date": "2026-11-13",

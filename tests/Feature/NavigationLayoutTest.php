@@ -22,14 +22,15 @@ it('does not render the notifications side panel for guests', function () {
         ->assertDontSee('id="right-panel"', false);
 });
 
-it('does not link back to the home feed from the header on the home page', function () {
+it('keeps the home links enabled and marked current on the home page', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get('/')
         ->assertSuccessful()
+        ->assertSee('href="'.route('home').'"', false)
         ->assertSee('aria-current="page"', false)
-        ->assertDontSee('href="'.route('home').'"', false);
+        ->assertSee('<a href="'.route('home').'" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm bg-primary text-primary-content" aria-current="page">', false);
 });
 
 it('links back to the home feed from the header on other pages', function () {

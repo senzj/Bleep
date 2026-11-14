@@ -21,24 +21,10 @@
     @endphp
 
     {{-- Home --}}
-    @if ($isHomeSection)
-        @if (request()->routeIs('home'))
-            <span class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm {{ $activeClasses }} cursor-default" aria-current="page">
-                <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
-                <span class="sidebar-text">Home</span>
-            </span>
-        @else
-            <a href="{{ route('home') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm {{ $activeClasses }}" aria-current="page">
-                <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
-                <span class="sidebar-text">Home</span>
-            </a>
-        @endif
-    @else
-        <a href="{{ route('home') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm {{ $inactiveClasses }}">
-            <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
-            <span class="sidebar-text">Home</span>
-        </a>
-    @endif
+    <a href="{{ route('home') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm {{ $isHomeSection ? $activeClasses : $inactiveClasses }}" aria-current="{{ $isHomeSection ? 'page' : 'false' }}">
+        <i data-lucide="home" class="w-5 h-5 shrink-0"></i>
+        <span class="sidebar-text">Home</span>
+    </a>
 
     {{-- Bulletin --}}
     <a href="{{ route('bulletin.index') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm {{ $isBulletinSection ? $activeClasses : $inactiveClasses }}" aria-current="{{ $isBulletinSection ? 'page' : 'false' }}">
