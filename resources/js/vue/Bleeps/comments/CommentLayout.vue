@@ -47,6 +47,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    initialLoaded: {
+        type: Boolean,
+        default: false,
+    },
 
 });
 
@@ -77,6 +81,7 @@ const emit = defineEmits(['close']);
         :initial-comments="initialComments"
         :initial-current-page="initialCurrentPage"
         :initial-has-more="initialHasMore"
+        :initial-loaded="initialLoaded"
         @close="emit('close')"
     />
 </template>

@@ -181,7 +181,7 @@ class ReportsController extends Controller
         $report = $target->reports()->create([
             'reporter_id' => $reporter->id,
             'category' => $validated['category'],
-            'reason' => $validated['reason'],
+            'reason' => $validated['reason'] ?? null,
             'status' => 'pending',
         ]);
 

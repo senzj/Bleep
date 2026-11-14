@@ -19,15 +19,6 @@
             <span class="hidden sm:inline">Preferences</span>
         </a>
 
-        {{-- Change Password --}}
-        <a href="{{ route('settings.password') }}"
-           aria-current="{{ request()->routeIs('settings.password') ? 'page' : 'false' }}"
-           class="flex flex-1 items-center justify-center gap-2 px-3 py-2 md:px-4 rounded-lg text-sm font-medium transition-colors
-           {{ request()->routeIs('settings.password') ? 'bg-primary text-primary-content' : 'bg-base-200 text-base-content/70 hover:bg-base-300 hover:text-base-content' }}">
-            <i data-lucide="lock" class="w-4 h-4 shrink-0" aria-hidden="true"></i>
-            <span class="hidden sm:inline">Change Password</span>
-        </a>
-
         {{-- Device and Session --}}
         <a href="{{ route('settings.devices') }}"
            aria-current="{{ request()->routeIs('settings.devices') ? 'page' : 'false' }}"

@@ -13,55 +13,18 @@
         </div>
     </div>
 
-    {{-- RIGHT: Activity + notifications + profile + mobile menu --}}
+    {{-- RIGHT: notifications + profile --}}
     <div class="navbar-end nav-group nav-group--actions gap-1 shrink-0">
-        @auth
-            <button
-                type="button"
-                id="activity-drawer-open"
-                class="btn btn-ghost btn-circle lg:hidden"
-                aria-label="Open announcements and notifications"
-                aria-controls="activity-drawer"
-                aria-expanded="false"
-            >
-                <span class="relative inline-flex">
-                    <i data-lucide="bell" class="w-5 h-5"></i>
-                    <span
-                        data-activity-unread-badge
-                        class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white hidden"
-                    ></span>
-                </span>
-            </button>
-        @endauth
-
-        {{-- Desktop bell. On phones/tablets the activity drawer is the single
-             notification surface, so the bell dropdown is not duplicated. --}}
+        {{-- Desktop bell. On phones/tablets notifications live in the mobile
+             slide-over menu, so the bell dropdown is not duplicated. --}}
         <div class="hidden lg:block">
             <x-notifications.bell />
         </div>
-
-        {{-- Compact mobile avatar (only visible when the navbar collapses) --}}
-        @auth
-            <a
-                href="{{ route('user.profile', ['username' => Auth::user()->username]) }}"
-                class="nav-compact-avatar btn btn-ghost btn-circle lg:hidden"
-                aria-label="Your profile"
-            >
-                <span class="avatar">
-                    <x-subcomponents.avatar :user="Auth::user()" :size="8" />
-                </span>
-            </a>
-        @endauth
 
         {{-- Desktop: user profile --}}
         <div class="nav-profile hidden lg:flex items-center">
             <x-include.userprofile />
         </div>
-
-        {{-- Mobile: hamburger --}}
-        <button id="hor-mobile-menu-btn" class="btn btn-ghost btn-circle lg:hidden" aria-label="Open menu">
-            <i data-lucide="menu" class="w-5 h-5"></i>
-        </button>
     </div>
 
 </nav>

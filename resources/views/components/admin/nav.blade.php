@@ -7,13 +7,14 @@
             ['route' => 'admin.users', 'icon' => 'users', 'label' => 'User Management'],
             ['route' => 'admin.devices', 'icon' => 'monitor-smartphone', 'label' => 'Devices & Sessions'],
             ['route' => 'admin.visits', 'icon' => 'chart-column', 'label' => 'Site Visits'],
-            ['route' => 'admin.logs', 'icon' => 'file-text', 'label' => 'System Logs'],
+            ['route' => 'admin.logs', 'icon' => 'file-text', 'label' => 'Activity Logs'],
+            ['route' => 'admin.system.logs', 'icon' => 'terminal', 'label' => 'System Logs'],
             ['route' => 'admin.system', 'icon' => 'cpu', 'label' => 'System'],
         ];
     @endphp
 
     {{-- Mobile: horizontal nav --}}
-    <div class="md:hidden flex justify-between bg-base-200 rounded-lg p-1">
+    <div class="md:hidden flex flex-wrap justify-between gap-0.5 bg-base-200 rounded-lg p-1">
         @foreach ($items as $item)
             <a href="{{ route($item['route']) }}"
                 title="{{ $item['label'] }}"

@@ -2,6 +2,7 @@
 
 use App\Models\Bleep;
 use App\Models\User;
+use App\Models\UserPreferences;
 
 it('renders the compact navbar hook and collapsible mobile side panels for signed-in users', function () {
     $user = User::factory()->create();
@@ -66,4 +67,68 @@ it('offers guests a way into the public bulletin board', function () {
         ->assertSuccessful()
         ->assertSee(route('bulletin.index'), false)
         ->assertSee('Read the bulletin board');
+});
+
+it('renders exactly one bottom-right mobile menu button in the horizontal layout', function () {
+    $user = User::factory()->create();
+
+    $body = $this->actingAs($user)->get('/')->assertSuccessful()->getContent();
+
+    expect(substr_count($body, 'id="mobile-menu-btn"'))->toBe(1)
+        ->and($body)->not->toContain('id="hor-mobile-menu-btn"')
+        ->and($body)->not->toContain('id="compact-mobile-menu-btn"')
+        ->and($body)->not->toContain('compact-nav__fab')
+        ->and($body)->not->toContain('id="activity-drawer-open"');
+});
+
+it('keeps the only mobile menu button in place for the vertical layout', function () {
+    $user = User::factory()->create();
+    $user->preferences()->create([
+        ...UserPreferences::defaults(),
+        'nav_layout' => 'vertical',
+    ]);
+
+    $body = $this->actingAs($user)->get('/')->assertSuccessful()->getContent();
+
+    expect(substr_count($body, 'id="mobile-menu-btn"'))->toBe(1)
+        ->and($body)->not->toContain('id="hor-mobile-menu-btn"')
+        ->and($body)->not->toContain('compact-nav__fab')
+        ->and($body)->toContain('w-58')
+        ->and($body)->toContain('lg:col-start-4');
+});
+
+it('moves notifications into the mobile slide-over menu', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/')
+        ->assertSuccessful()
+        ->assertSee('id="hor-mobile-drawer"', false)
+        ->assertSee('id="mobile-menu-btn"', false)
+        ->assertSee('href="'.route('notifications.index').'"', false)
+        ->assertSee('nav-notification-unread-badge', false);
+});
+
+it('hides the chat navigation when the feature is disabled', function () {
+    config(['features.chat' => false]);
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/')
+        ->assertSuccessful()
+        ->assertDontSee('data-nav-chat-badge', false)
+        ->assertDontSee('href="'.route('messages').'"', false)
+        ->assertSee('href="'.route('social.people').'"', false);
+});
+
+it('shows the chat navigation when the feature is enabled', function () {
+    config(['features.chat' => true]);
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/')
+        ->assertSuccessful()
+        ->assertSee('data-nav-chat-badge', false);
 });

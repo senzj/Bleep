@@ -98,6 +98,7 @@ const mountCommentLayout = (containerId, initialPayload = null) => {
         initialComments: initialPayload?.comments || [],
         initialCurrentPage: Number(initialPayload?.currentPage || 1),
         initialHasMore: Boolean(initialPayload?.hasMore),
+        initialLoaded: Boolean(initialPayload?.loaded),
     });
 
 	app.directive('lucide', lucideDirective);
@@ -216,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 comments: initialComments,
                 currentPage: initialCurrentPage,
                 hasMore: initialHasMore,
+                loaded: true,
             });
             setModalLoadingCurtain(false);
         } catch (error) {

@@ -63,7 +63,7 @@ class SettingsController extends Controller
      */
     public function editPassword(Request $request)
     {
-        return view('settings.password');
+        return redirect()->to(route('settings.profile').'#password');
     }
 
     public function updatePassword(Request $request)
@@ -81,7 +81,7 @@ class SettingsController extends Controller
 
         Logs::record($user->id, 'password_change', null, $request);
 
-        return redirect()->route('settings.password')->with('success', 'Password updated.');
+        return redirect()->to(route('settings.profile').'#password')->with('success', 'Password updated.');
     }
 
     /**

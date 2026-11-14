@@ -4,6 +4,23 @@
     @endpush
 @endonce
 
+@once
+    <dialog id="unfollow-confirm-modal" class="modal modal-bottom sm:modal-middle">
+        <div class="modal-box max-w-sm">
+            <h3 class="text-lg font-bold">Unfollow this user?</h3>
+            <p class="py-2 text-sm text-base-content/70">
+                Are you sure you want to unfollow this user? Their bleeps will stop
+                appearing in your feed until you follow them again.
+            </p>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost btn-sm" data-unfollow-cancel>Cancel</button>
+                <button type="button" class="btn btn-error btn-sm" data-unfollow-confirm>Unfollow</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+@endonce
+
 @props([
     'user',
     'showFollowed'  => false, // shows "Followed" state for mutual follows (used in People suggestions)

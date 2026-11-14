@@ -1,7 +1,19 @@
 {{-- Mobile Slide-over Menu --}}
+{{-- The one and only mobile nav trigger, in every layout and mode. --}}
+<button
+    id="mobile-menu-btn"
+    type="button"
+    class="lg:hidden fixed bottom-6 right-6 z-40 btn btn-primary btn-circle shadow-xl"
+    aria-label="Open menu"
+    aria-controls="hor-mobile-drawer"
+    aria-expanded="false"
+>
+    <i data-lucide="menu" class="w-6 h-6"></i>
+</button>
+
 <div id="hor-mobile-overlay" class="fixed inset-0 bg-black/50 z-50 hidden lg:hidden transition-opacity duration-300" aria-hidden="true"></div>
 
-<aside id="hor-mobile-drawer" class="lg:hidden fixed left-0 top-0 h-full w-64 bg-base-300/95 shadow-xl z-50 transform transition-transform duration-300 ease-in-out -translate-x-full flex flex-col">
+<aside id="hor-mobile-drawer" class="lg:hidden fixed left-0 top-0 h-full w-60 bg-base-300/95 shadow-xl z-50 transform transition-transform duration-300 ease-in-out -translate-x-full flex flex-col" aria-hidden="true">
     {{-- Header --}}
     <div class="flex items-center justify-between p-4 border-b border-base-200">
         <a href="{{ route('home') }}" class="flex items-center gap-2 text-xl font-bold" aria-current="{{ request()->routeIs('home') ? 'page' : 'false' }}">
@@ -15,8 +27,28 @@
 
     {{-- Navigation Links --}}
     <nav class="flex flex-col p-4 space-y-1 flex-1 overflow-y-auto">
+        <x-include.navlinks />
+
         @auth
-            <x-include.navlinks />
+            @php
+                $drawerUnreadCount = once(fn () => app(\App\Services\Notifications\NotificationService::class)->unreadCount(auth()->user()));
+            @endphp
+
+            <a
+                href="{{ route('notifications.index') }}"
+                class="nav-link relative flex items-center gap-3 px-3 py-2 rounded-sm {{ request()->routeIs('notifications.*') ? 'bg-primary text-primary-content' : 'bg-base-100/70 hover:bg-base-300/80 transition-colors' }}"
+                aria-current="{{ request()->routeIs('notifications.*') ? 'page' : 'false' }}"
+            >
+                <span class="relative shrink-0">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                    <span
+                        class="nav-notification-unread-badge absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white leading-none{{ $drawerUnreadCount > 0 ? '' : ' hidden' }}"
+                    >
+                        {{ $drawerUnreadCount > 0 ? ($drawerUnreadCount > 99 ? '99+' : $drawerUnreadCount) : '' }}
+                    </span>
+                </span>
+                <span>Notifications</span>
+            </a>
         @endauth
     </nav>
 
@@ -40,4 +72,3 @@
         @endauth
     </div>
 </aside>
-

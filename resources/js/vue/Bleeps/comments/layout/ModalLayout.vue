@@ -49,6 +49,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    initialLoaded: {
+        type: Boolean,
+        default: false,
+    },
 
 });
 
@@ -88,7 +92,7 @@ onMounted(async () => {
     hasLoadedOnce.value = false;
 
     if (props.bleepId) {
-        if (props.initialComments.length > 0) {
+        if (props.initialComments.length > 0 || props.initialLoaded) {
             comments.value = [...props.initialComments];
             currentPage.value = Number(props.initialCurrentPage || 1) + 1;
             hasMorePages.value = Boolean(props.initialHasMore);

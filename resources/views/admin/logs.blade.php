@@ -1,7 +1,7 @@
 <x-admin.layout>
     <div class="mb-8">
-        <h1 class="text-2xl font-bold mb-2">System Logs</h1>
-        <p class="text-sm text-base-content/70">Monitor all system activities and user actions</p>
+        <h1 class="text-2xl font-bold mb-2">Activity Logs</h1>
+        <p class="text-sm text-base-content/70">Monitor sign-ins, account changes and moderation actions</p>
     </div>
 
     {{-- Stats Overview --}}

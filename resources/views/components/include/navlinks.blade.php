@@ -1,13 +1,17 @@
 @auth
     @php
-        $unreadConversationCount = \Illuminate\Support\Facades\DB::table('conversation_user as cu')
-            ->join('messages as m', 'm.conversation_id', '=', 'cu.conversation_id')
-            ->where('cu.user_id', auth()->id())
-            ->where('m.sender_id', '!=', auth()->id())
-            ->whereNull('m.deleted_at')
-            ->whereRaw('(cu.last_read_at IS NULL OR m.created_at > cu.last_read_at)')
-            ->distinct()
-            ->count('cu.conversation_id');
+        $chatEnabled = (bool) config('features.chat', true);
+
+        $unreadConversationCount = $chatEnabled
+            ? \Illuminate\Support\Facades\DB::table('conversation_user as cu')
+                ->join('messages as m', 'm.conversation_id', '=', 'cu.conversation_id')
+                ->where('cu.user_id', auth()->id())
+                ->where('m.sender_id', '!=', auth()->id())
+                ->whereNull('m.deleted_at')
+                ->whereRaw('(cu.last_read_at IS NULL OR m.created_at > cu.last_read_at)')
+                ->distinct()
+                ->count('cu.conversation_id')
+            : 0;
 
         $unreadNotificationCount = once(fn () => app(\App\Services\Notifications\NotificationService::class)->unreadCount(auth()->user()));
 
@@ -33,18 +37,20 @@
     </a>
 
     {{-- Messages --}}
-    <a href="{{ route('messages') }}" class="nav-link relative flex items-center gap-3 px-3 py-2 rounded-sm {{ $isChatSection ? $activeClasses : $inactiveClasses }}" aria-current="{{ $isChatSection ? 'page' : 'false' }}">
-        <span class="relative shrink-0">
-            <i data-lucide="message-square" class="w-5 h-5"></i>
-            <span
-                data-nav-chat-badge
-                class="nav-chat-unread-badge absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white leading-none{{ $unreadConversationCount > 0 ? '' : ' hidden' }}"
-            >
-                {{ $unreadConversationCount > 0 ? ($unreadConversationCount > 99 ? '99+' : $unreadConversationCount) : '' }}
+    @if ($chatEnabled)
+        <a href="{{ route('messages') }}" class="nav-link relative flex items-center gap-3 px-3 py-2 rounded-sm {{ $isChatSection ? $activeClasses : $inactiveClasses }}" aria-current="{{ $isChatSection ? 'page' : 'false' }}">
+            <span class="relative shrink-0">
+                <i data-lucide="message-square" class="w-5 h-5"></i>
+                <span
+                    data-nav-chat-badge
+                    class="nav-chat-unread-badge absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white leading-none{{ $unreadConversationCount > 0 ? '' : ' hidden' }}"
+                >
+                    {{ $unreadConversationCount > 0 ? ($unreadConversationCount > 99 ? '99+' : $unreadConversationCount) : '' }}
+                </span>
             </span>
-        </span>
-        <span class="sidebar-text">Chat</span>
-    </a>
+            <span class="sidebar-text">Chat</span>
+        </a>
+    @endif
 
     {{-- People --}}
     <a href="{{ route('social.people') }}" class="nav-link flex items-center gap-3 px-3 py-2 rounded-sm {{ $isPeopleSection ? $activeClasses : $inactiveClasses }}" aria-current="{{ $isPeopleSection ? 'page' : 'false' }}">

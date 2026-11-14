@@ -43,23 +43,8 @@
             </div>
         </div>
 
-        {{-- Phones/tablets: app icon left, page tabs centre, menu right. --}}
-        <a
-            href="{{ route('home') }}"
-            class="compact-nav__fab compact-nav__fab--left btn rounded-lg lg:hidden"
-            aria-current="{{ request()->routeIs('home') ? 'page' : 'false' }}"
-            aria-label="Bleep home"
-        >
-            <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="h-7 w-7">
-        </a>
-
-        <button
-            type="button"
-            id="compact-mobile-menu-btn"
-            class="compact-nav__fab compact-nav__fab--right btn rounded-lg lg:hidden"
-            aria-label="Open menu"
-        >
-            <i data-lucide="menu" class="h-7 w-7"></i>
-        </button>
+        {{-- Phones/tablets use the single bottom-right menu button rendered
+             by the mobile nav component, so the compact row has no mobile
+             controls and never overlaps the page tabs. --}}
     </div>
 @endauth

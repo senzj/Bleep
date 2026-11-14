@@ -194,13 +194,6 @@ export default function commentSheet() {
                     this.$refs.sheet?.focus({ preventScroll: true });
                 }
             });
-
-            // Show the spinner when the sheet opens (it's hidden by default in
-            // modal mode to prevent ghost flash on resize).
-            const spinner = document.querySelector(
-                '#comments-container-layout-modal [data-comment-spinner]'
-            );
-            if (spinner) spinner.style.display = '';
         },
 
         close() {

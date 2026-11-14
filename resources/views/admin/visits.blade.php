@@ -68,44 +68,50 @@
                     </span>
                 </div>
 
-                <div class="overflow-x-auto">
-                    <table class="table table-sm table-zebra w-full">
-                        <thead>
-                            <tr>
-                                <th>IP Address</th>
-                                <th class="text-right">Visits</th>
-                                <th class="text-center">Last Seen</th>
-                                <th class="text-center">Browser / Platform</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($uniqueIpRows as $row)
-                                <tr class="hover">
-                                    <td class="font-mono text-xs">
-                                        <a href="{{ route('admin.visits', ['ip' => $row->ip_address]) }}"
-                                           class="link link-hover link-primary">
-                                            {{ $row->ip_address }}
-                                        </a>
-                                    </td>
-                                    <td class="text-right font-semibold tabular-nums">{{ number_format($row->visits_count) }}</td>
-                                    <td class="text-center text-xs text-base-content/60">
-                                        {{ \Illuminate\Support\Carbon::parse($row->last_seen_at)->diffForHumans() }}
-                                    </td>
-                                    <td class="text-center text-xs text-base-content/60">
-                                        {{ $row->browser ?: 'Unknown browser' }}
-                                        <span class="text-base-content/30">·</span>
-                                        {{ $row->platform ?: 'Unknown platform' }}
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4" class="py-8 text-center text-base-content/50">
-                                        No visits recorded yet.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                <div class="overflow-hidden rounded-xl border border-base-300">
+                    <div class="hidden md:grid grid-cols-[1.4fr_.6fr_1fr_1.2fr] gap-3 px-4 py-3 bg-base-200 text-[11px] uppercase tracking-wide font-semibold text-center">
+                        <div>IP Address</div>
+                        <div>Visits</div>
+                        <div>Last Seen</div>
+                        <div>Browser / Platform</div>
+                    </div>
+
+                    @forelse($uniqueIpRows as $row)
+                        <div class="grid grid-cols-1 md:grid-cols-[1.4fr_.6fr_1fr_1.2fr] gap-2 md:gap-3 px-4 py-4 border-t border-base-300 hover:bg-base-200/40 transition">
+                            <div class="flex justify-between md:justify-center items-center">
+                                <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">IP Address</span>
+                                <a href="{{ route('admin.visits', ['ip' => $row->ip_address]) }}"
+                                   class="link link-hover link-primary font-mono text-xs">
+                                    {{ $row->ip_address }}
+                                </a>
+                            </div>
+
+                            <div class="flex justify-between md:justify-center items-center">
+                                <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">Visits</span>
+                                <span class="font-semibold tabular-nums">{{ number_format($row->visits_count) }}</span>
+                            </div>
+
+                            <div class="flex justify-between md:justify-center items-center">
+                                <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">Last Seen</span>
+                                <span class="text-xs text-base-content/60">
+                                    {{ \Illuminate\Support\Carbon::parse($row->last_seen_at)->diffForHumans() }}
+                                </span>
+                            </div>
+
+                            <div class="flex justify-between md:justify-center items-center">
+                                <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">Browser / Platform</span>
+                                <span class="text-xs text-base-content/60">
+                                    {{ $row->browser ?: 'Unknown browser' }}
+                                    <span class="text-base-content/30">&middot;</span>
+                                    {{ $row->platform ?: 'Unknown platform' }}
+                                </span>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="px-4 py-8 text-center text-sm text-base-content/50">
+                            No visits recorded yet.
+                        </div>
+                    @endforelse
                 </div>
             </div>
         </div>
@@ -229,65 +235,41 @@
                     </details>
                 </div>
 
-                {{-- Desktop/Tablet Table (md+) --}}
-                <div class="overflow-x-auto hidden md:block">
-                    <table class="table table-zebra w-full">
-                        <thead>
-                            <tr>
-                                <th class="w-40 text-center">Date & Time</th>
-                                <th class="w-32 text-center">IP Address</th>
-                                <th class="w-50 text-center">Device Info</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($recentVisits as $v)
-                                <tr class="hover">
-                                    <td class="whitespace-nowrap text-xs text-center">
-                                        <div class="font-bold">{{ $v->created_at->format('M d, Y') }}</div>
-                                        <div class="text-base-content/50">{{ $v->created_at->format('H:i:s') }}</div>
-                                    </td>
-                                    <td class="font-mono text-xs text-center">
-                                        <a href="{{ route('admin.visits', ['ip' => $v->ip_address]) }}" class="hover:underline hover:text-primary">
-                                            {{ $v->ip_address }}
-                                        </a>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="text-sm">
-                                            {!! $v->parsed_ua !!}
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="3" class="text-center py-8 text-base-content/50">
-                                        No visits found matching your filters.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                {{-- Visit rows --}}
+                <div class="overflow-hidden rounded-xl border border-base-300 mx-4 sm:mx-6">
+                    <div class="hidden md:grid grid-cols-[1fr_1fr_1.6fr] gap-3 px-4 py-3 bg-base-200 text-[11px] uppercase tracking-wide font-semibold text-center">
+                        <div>Date &amp; Time</div>
+                        <div>IP Address</div>
+                        <div>Device Info</div>
+                    </div>
 
-                {{-- Mobile stacked list --}}
-                <div class="md:hidden space-y-3 p-4">
                     @forelse($recentVisits as $v)
-                        <div class="bg-base-100 border border-base-200 rounded-lg p-3 shadow-sm">
-                            <div class="flex justify-between items-start gap-2">
-                                <div>
-                                    <div class="text-sm font-semibold">{{ $v->created_at->format('M d, Y') }}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.6fr] gap-2 md:gap-3 px-4 py-4 border-t border-base-300 hover:bg-base-200/40 transition">
+                            <div class="flex justify-between md:justify-center items-center">
+                                <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">Date &amp; Time</span>
+                                <div class="text-center">
+                                    <div class="text-xs font-bold">{{ $v->created_at->format('M d, Y') }}</div>
                                     <div class="text-xs text-base-content/50">{{ $v->created_at->format('H:i:s') }}</div>
-                                </div>
-                                <div class="text-xs font-mono text-right">
-                                    <a href="{{ route('admin.visits', ['ip' => $v->ip_address]) }}" class="hover:underline text-sm">{{ $v->ip_address }}</a>
                                 </div>
                             </div>
 
-                            <div class="mt-2 text-sm">
-                                {!! $v->parsed_ua !!}
+                            <div class="flex justify-between md:justify-center items-center">
+                                <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">IP Address</span>
+                                <a href="{{ route('admin.visits', ['ip' => $v->ip_address]) }}"
+                                   class="font-mono text-xs hover:underline hover:text-primary">
+                                    {{ $v->ip_address }}
+                                </a>
+                            </div>
+
+                            <div class="flex justify-between md:justify-center items-center">
+                                <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">Device Info</span>
+                                <div class="text-center text-sm">
+                                    {!! $v->parsed_ua !!}
+                                </div>
                             </div>
                         </div>
                     @empty
-                        <div class="text-center text-base-content/50 py-8">
+                        <div class="px-4 py-8 text-center text-sm text-base-content/50">
                             No visits found matching your filters.
                         </div>
                     @endforelse

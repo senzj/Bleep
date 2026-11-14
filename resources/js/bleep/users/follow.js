@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setFollowingUI(userId, following) {
         document.querySelectorAll(`.follow-btn[data-user-id="${userId}"]`).forEach(btn => {
             btn.dataset.following = following ? '1' : '0';
+            btn.classList.remove('btn-error');
 
             const followText = btn.querySelector('.follow-text');
             const unfollowText = btn.querySelector('.unfollow-text');
@@ -41,6 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Following state: filled primary until hover turns it red.
                 btn.classList.add('btn-primary');
                 btn.classList.remove('btn-outline');
+
+                followText?.classList.remove('hidden');
+                unfollowText?.classList.add('hidden');
 
                 if (followText) followText.textContent = 'Following';
                 if (icon) {
@@ -52,11 +56,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.classList.remove('btn-primary');
                 btn.classList.add('btn-outline');
 
+                followText?.classList.remove('hidden');
+                unfollowText?.classList.add('hidden');
+
                 if (followText) followText.textContent = 'Follow';
                 if (icon) {
                     icon.setAttribute('data-lucide', 'user-round-plus');
                     lucide.createIcons(); // Re-render lucide icons
                 }
+            }
+        });
+    }
+
+    // Touch devices have no hover, so the confirm step swaps the button to a
+    // red "Unfollow" while the dialog is open.
+    function setUnfollowUI(userId) {
+        document.querySelectorAll(`.follow-btn[data-user-id="${userId}"]`).forEach(btn => {
+            if (btn.dataset.following !== '1') return;
+
+            const followText = btn.querySelector('.follow-text');
+            const unfollowText = btn.querySelector('.unfollow-text');
+            const icon = btn.querySelector('.follow-icon');
+
+            btn.classList.remove('btn-primary', 'btn-outline');
+            btn.classList.add('btn-error');
+
+            followText?.classList.add('hidden');
+            unfollowText?.classList.remove('hidden');
+
+            if (icon) {
+                icon.setAttribute('data-lucide', 'user-round-x');
+                lucide.createIcons();
             }
         });
     }
@@ -135,13 +165,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, true);
 
-    document.body.addEventListener('click', async (e) => {
-        const btn = e.target.closest('.follow-btn');
-        if (!btn) return;
+    const unfollowDialog = document.getElementById('unfollow-confirm-modal');
+    const usesTouchLayout = () => window.matchMedia('(hover: none)').matches || window.innerWidth < 1024;
+    let pendingUnfollow = null;
 
-        const userId = btn.dataset.userId;
-        if (!userId) return;
-
+    async function requestFollowToggle(userId) {
         try {
             const res = await fetch(`/bleeper/${userId}/follow`, {
                 method: 'POST',
@@ -155,13 +183,63 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!res.ok) {
-                return;
+                return null;
             }
 
-            const data = await res.json();
-            setFollowingUI(userId, !!data.following);
+            return await res.json();
         } catch (err) {
             console.error('Follow error:', err);
+            return null;
+        }
+    }
+
+    if (unfollowDialog) {
+        const confirmBtn = unfollowDialog.querySelector('[data-unfollow-confirm]');
+        const cancelBtn = unfollowDialog.querySelector('[data-unfollow-cancel]');
+
+        confirmBtn?.addEventListener('click', async () => {
+            const pending = pendingUnfollow;
+            pendingUnfollow = null;
+            unfollowDialog.close();
+
+            if (!pending) return;
+
+            const data = await requestFollowToggle(pending.userId);
+            setFollowingUI(pending.userId, data ? !!data.following : true);
+        });
+
+        cancelBtn?.addEventListener('click', () => unfollowDialog.close());
+
+        // Escape, backdrop and Cancel restore the "Following" button.
+        unfollowDialog.addEventListener('close', () => {
+            if (!pendingUnfollow) return;
+
+            const { userId } = pendingUnfollow;
+            pendingUnfollow = null;
+            setFollowingUI(userId, true);
+        });
+    }
+
+    document.body.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.follow-btn');
+        if (!btn) return;
+
+        const userId = btn.dataset.userId;
+        if (!userId) return;
+
+        // On touch layouts, unfollowing asks first; the button turns into a red
+        // "Unfollow" while the confirmation dialog is open.
+        if (btn.dataset.following === '1' && usesTouchLayout() && unfollowDialog) {
+            e.preventDefault();
+            pendingUnfollow = { userId };
+            setUnfollowUI(userId);
+            unfollowDialog.showModal();
+            return;
+        }
+
+        const data = await requestFollowToggle(userId);
+        if (data) {
+            setFollowingUI(userId, !!data.following);
         }
     });
 

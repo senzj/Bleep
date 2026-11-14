@@ -65,8 +65,10 @@
     data-anonymous="{{ $anonEnabled ?? 'false' }}"
     class="h-full w-full"
 >
-    {{-- Loading Placeholder --}}
-    <div class="flex justify-center items-center h-full w-full">
-        <span class="loading loading-spinner loading-md"></span>
-    </div>
+    {{-- Loading Placeholder (the modal has its own loading curtain) --}}
+    @if ($layoutmode !== 'modal')
+        <div class="flex justify-center items-center h-full w-full">
+            <span class="loading loading-spinner loading-md"></span>
+        </div>
+    @endif
 </div>

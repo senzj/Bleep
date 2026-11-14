@@ -3,10 +3,12 @@
         @vite('resources/js/admin/devices.js')
     @endpush
 
-    @php
-        use App\Helpers\UserAgentParser;
-    @endphp
 @endonce
+
+@php
+    use App\Helpers\UserAgentParser;
+@endphp
+
 <x-admin.layout>
 
     {{-- Header + Stats --}}

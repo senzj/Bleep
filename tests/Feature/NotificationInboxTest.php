@@ -188,3 +188,17 @@ it('marks every notification as read', function () {
 
     expect(Notification::where('user_id', $user->id)->whereNull('read_at')->count())->toBe(0);
 });
+
+it('wires unread quick-card notifications to the read endpoint', function () {
+    $user = User::factory()->create();
+    $notification = inboxNotification($user, [
+        'url' => route('notifications.index'),
+        'data' => ['actor_name' => 'Alice'],
+    ]);
+
+    $response = $this->actingAs($user)->get(route('home'));
+
+    $response->assertOk()
+        ->assertSee('data-notification-id="'.$notification->id.'"', false)
+        ->assertSee('data-notification-read="0"', false);
+});

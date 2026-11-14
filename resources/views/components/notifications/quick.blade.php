@@ -1,4 +1,10 @@
 @auth
+    @once
+        @push('scripts')
+            @vite('resources/js/notifications/mark-read.js')
+        @endpush
+    @endonce
+
     @php
         $quickNotifications = auth()->user()->notifications()
             ->with('actor:id,username,dname,profile_picture')
@@ -43,6 +49,8 @@
                 @foreach ($quickNotifications as $notification)
                     <a
                         href="{{ $notification['url'] ?? route('notifications.index') }}"
+                        data-notification-id="{{ $notification['id'] }}"
+                        data-notification-read="{{ $notification['read'] ? '1' : '0' }}"
                         class="flex gap-3 border-b border-base-200/70 px-4 py-3 transition-colors last:border-b-0 hover:bg-base-200/60 {{ $notification['read'] ? '' : 'bg-primary/5' }}"
                     >
                         @if ($notification['actor'])

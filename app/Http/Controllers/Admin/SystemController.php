@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\System\AttackDetector;
+use App\Services\System\LogFileReader;
 use App\Services\System\SystemSettings;
 use App\Services\System\SystemStatus;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +32,54 @@ class SystemController extends Controller
             'values' => SystemSettings::values(),
             'grouped' => $grouped,
         ]);
+    }
+
+    /**
+     * Tail of the application log. Strictly limited to developers and admins;
+     * moderators keep their own activity-log view only.
+     */
+    public function logs(Request $request, LogFileReader $reader): View
+    {
+        $this->ensureDeveloperOrAdmin($request);
+
+        $levels = ['EMERGENCY', 'ALERT', 'CRITICAL', 'ERROR', 'WARNING', 'NOTICE', 'INFO', 'DEBUG'];
+        $level = strtoupper((string) $request->query('level', ''));
+        $level = in_array($level, $levels, true) ? $level : null;
+        $search = trim((string) $request->query('q', ''));
+
+        return view('admin.system-logs', [
+            'entries' => $reader->entries(250, $level, $search !== '' ? $search : null),
+            'levelCounts' => $reader->levelCounts(),
+            'levels' => $levels,
+            'level' => $level,
+            'search' => $search,
+            'exists' => $reader->exists(),
+            'size' => $reader->size(),
+            'modifiedAt' => $reader->modifiedAt(),
+            'path' => $reader->path(),
+        ]);
+    }
+
+    /**
+     * Heuristic attack review built from activity logs, the application log
+     * and dense session clusters.
+     */
+    public function attacks(Request $request, AttackDetector $detector): View
+    {
+        $this->ensureDeveloperOrAdmin($request);
+
+        return view('admin.system-attacks', [
+            'findings' => $detector->findings(),
+            'summary' => $detector->summary(),
+        ]);
+    }
+
+    private function ensureDeveloperOrAdmin(Request $request): void
+    {
+        abort_unless(
+            in_array($request->user()?->role, ['dev', 'admin'], true),
+            403,
+        );
     }
 
     public function update(Request $request): RedirectResponse

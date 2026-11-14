@@ -1,34 +1,42 @@
 /**
- * Mobile slide-over menu (horizontal layout) and shared Lucide refresh.
+ * Mobile slide-over menu and shared Lucide refresh.
+ *
+ * There is one trigger in every layout and mode: the fixed bottom-right
+ * button rendered by the mobile nav component.
  */
 document.addEventListener('DOMContentLoaded', () => {
-    const menuButtons = [
-        document.getElementById('hor-mobile-menu-btn'),
-        document.getElementById('compact-mobile-menu-btn'),
-    ];
-
+    const menuBtn = document.getElementById('mobile-menu-btn');
     const closeBtn = document.getElementById('hor-mobile-close-btn');
     const drawer = document.getElementById('hor-mobile-drawer');
     const overlay = document.getElementById('hor-mobile-overlay');
 
     if (!drawer || !overlay) return;
 
-    const openDrawer = () => {
-        drawer.classList.remove('-translate-x-full');
-        overlay.classList.remove('hidden');
+    let isOpen = false;
+
+    const setOpen = (open) => {
+        if (open === isOpen) return;
+        isOpen = open;
+
+        drawer.classList.toggle('-translate-x-full', !open);
+        drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+        overlay.classList.toggle('hidden', !open);
+        menuBtn?.setAttribute('aria-expanded', open ? 'true' : 'false');
+        document.body.style.overflow = open ? 'hidden' : '';
+
+        if (open) {
+            closeBtn?.focus({ preventScroll: true });
+        } else {
+            menuBtn?.focus({ preventScroll: true });
+        }
     };
 
-    const closeDrawer = () => {
-        drawer.classList.add('-translate-x-full');
-        overlay.classList.add('hidden');
-    };
-
-    menuButtons.forEach((button) => button?.addEventListener('click', openDrawer));
-    closeBtn?.addEventListener('click', closeDrawer);
-    overlay.addEventListener('click', closeDrawer);
+    menuBtn?.addEventListener('click', () => setOpen(true));
+    closeBtn?.addEventListener('click', () => setOpen(false));
+    overlay.addEventListener('click', () => setOpen(false));
 
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') closeDrawer();
+        if (event.key === 'Escape' && isOpen) setOpen(false);
     });
 
     window.createLucideIcons?.();

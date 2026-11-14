@@ -65,7 +65,7 @@
         @endif
 
         {{-- Center panel - main content --}}
-        <div class="order-3 lg:order-2 lg:col-span-6 {{ $navLayout === 'vertical' ? 'lg:col-span-6 lg:ml-45' : '' }}" id="center-panel">
+        <div class="order-3 lg:order-2 lg:col-span-6 {{ $navLayout === 'vertical' ? 'lg:col-span-6 lg:col-start-4' : '' }}" id="center-panel">
 
             {{-- Feed panel: post form + bleeps (toggled as a single unit on mobile) --}}
             <div id="feed-panel">
@@ -289,7 +289,7 @@
 
                     {{-- End of content indicator --}}
                     <div id="end-of-content" class="hidden text-center py-8">
-                        <i data-lucide="party-popper" class="w-8 h-8 mx-auto text-base-content/40"></i>
+                        <i data-lucide="party-popper" class="w-8 h-8 mx-auto text-base-content/20"></i>
                         <button
                             type="button"
                             data-end-message

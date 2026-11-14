@@ -121,3 +121,25 @@ it('accepts a pending follow request only for its target', function () {
 
     expect(Following::count())->toBe(1);
 });
+
+it('renders a confirmation dialog before unfollowing from a profile', function () {
+    $viewer = User::factory()->create();
+    $target = User::factory()->create();
+
+    $this->actingAs($viewer)
+        ->get(route('user.profile', ['username' => $target->username]))
+        ->assertOk()
+        ->assertSee('id="unfollow-confirm-modal"', false)
+        ->assertSee('data-unfollow-confirm', false)
+        ->assertSee('Are you sure you want to unfollow this user?', false);
+});
+
+it('offers a request button on private profiles', function () {
+    $viewer = User::factory()->create();
+    $privateUser = userWithPreferences(['private_profile' => true]);
+
+    $this->actingAs($viewer)
+        ->get(route('user.profile', ['username' => $privateUser->username]))
+        ->assertOk()
+        ->assertSee('request-follow-btn', false);
+});

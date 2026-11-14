@@ -1,4 +1,6 @@
 <x-admin.layout>
+    <x-admin.system-tabs tab="health" />
+
     @php
         $statusBadge = fn (string $status) => match ($status) {
             'ok' => 'badge-success',

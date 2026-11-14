@@ -414,6 +414,12 @@ Route::middleware('auth')->group((function () {
         Route::get('/admin/system', [SystemController::class, 'index'])
             ->name('admin.system');
 
+        Route::get('/admin/system/logs', [SystemController::class, 'logs'])
+            ->name('admin.system.logs');
+
+        Route::get('/admin/system/attacks', [SystemController::class, 'attacks'])
+            ->name('admin.system.attacks');
+
         Route::post('/admin/system', [SystemController::class, 'update'])
             ->name('admin.system.update');
 

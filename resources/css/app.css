@@ -889,8 +889,8 @@ body.nav-compact .compact-nav {
     top: 0.5rem;
     height: 3rem;
     align-items: center;
-    gap: 0.15rem;
-    padding: 0.25rem;
+    gap: 0.25rem;
+    padding: 0.3rem;
     pointer-events: auto;
     background: var(--color-base-100);
     border: 1px solid var(--color-base-300);
@@ -947,7 +947,7 @@ body.nav-compact .compact-nav__cluster {
 
 .compact-nav .nav-link {
     gap: 0;
-    padding: 0.3rem;
+    padding: 0.4rem 0.5rem;
     border-radius: 0.5rem;
     background: transparent;
 }
@@ -971,7 +971,7 @@ body.nav-compact .compact-nav__cluster {
 
 .compact-nav .nav-profile-toggle {
     width: auto;
-    padding: 0.15rem;
+    padding: 0.2rem;
     border: 0;
     border-radius: 0.5rem;
     background: transparent;
@@ -986,53 +986,12 @@ body.nav-compact .compact-nav__cluster {
     min-width: 14rem;
 }
 
-.compact-nav__fab {
-    position: absolute;
-    top: 0.5rem;
-    padding-inline: 0.5rem;
-    pointer-events: auto;
-    background: var(--color-base-100);
-    border: 1px solid var(--color-base-300);
-    box-shadow: 0 14px 34px -20px rgb(0 0 0 / 0.55);
-    transform: translateY(-8px);
-    transition:
-        transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1),
-        opacity 180ms ease;
-}
-
-/* Phone/tablet FABs are icon-only; keep them square so they stop crowding the
-   feed tabs that sit between them. */
-.compact-nav__fab > img,
-.compact-nav__fab > svg {
-    width: 1.5rem;
-    height: 1.5rem;
-}
-
-body.nav-compact .compact-nav__fab {
-    transform: translateY(0);
-}
-
-.compact-nav__fab--left {
-    left: 0.5rem;
-}
-
-.compact-nav__fab--right {
-    right: 0.5rem;
-}
-
-/* Let feed tabs rise into the free centre of the compact row. On phones the
-   tabs sit between the app icon and the menu button, not under a gap. */
+/* Compact mode only changes the desktop row. Phones/tablets use the single
+   bottom-right menu button, so nothing sits above the page tabs there. */
 body.nav-compact .feed-tabs {
     top: 0.5rem;
-    margin-inline: 3.25rem;
+    margin-inline: 0;
     transition: top 180ms ease, margin 180ms ease;
-}
-
-@media (min-width: 1024px) {
-    body.nav-compact .feed-tabs {
-        top: 0.5rem;
-        margin-inline: 0;
-    }
 }
 
 
