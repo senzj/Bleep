@@ -68,7 +68,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p storage/app/geoip
-          curl -fsSL "https://download.db-ip.com/free/dbip-city-lite-$(date +%Y-%m).mmdb.gz" | gunzip > storage/app/geoip/dbip-city-lite.mmdb
+          for month in "$(date +%Y-%m)" "$(date -d 'last month' +%Y-%m)"; do
+            if curl -fsSL "https://download.db-ip.com/free/dbip-city-lite-$month.mmdb.gz" | gunzip > storage/app/geoip/dbip-city-lite.mmdb; then
+              break
+            fi
+          done
           test -s storage/app/geoip/dbip-city-lite.mmdb
 
       # ---------- FTP Upload ----------
