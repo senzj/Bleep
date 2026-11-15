@@ -269,7 +269,7 @@
                                 <div class="hero-content text-center">
                                     <div>
                                         <span class="loading loading-spinner loading-lg text-primary"></span>
-                                        <p class="mt-3 text-base-content/60">Fetching posts from people you follow...</p>
+                                        <p class="mt-3 text-base-content/60">Fetching posts from people you follow</p>
                                     </div>
                                 </div>
                             </div>
@@ -333,13 +333,22 @@
 
                     {{-- End of content indicator --}}
                     <div id="end-of-content" class="hidden text-center py-8">
-                        <i data-lucide="party-popper" class="w-8 h-8 mx-auto text-base-content/20"></i>
-                        <button
-                            type="button"
-                            data-end-message
-                            class="mt-2 text-base-content/60 hover:text-base-content transition-colors"
-                            title="Show another ending"
-                        >That is everything for now.</button>
+
+                        {{-- End of content message --}}
+                        <div>
+                            <i data-lucide="party-popper" class="w-8 h-8 mx-auto text-base-content/20"></i>
+                            <button
+                                type="button"
+                                data-end-message
+                                class="mt-2 text-base-content/60 hover:text-base-content transition-colors"
+                                title="Show another ending"
+                            >That is everything for now.</button>
+                        </div>
+
+                        {{-- Copyright notice --}}
+                        <p class="mt-4 text-sm text-base-content/40">
+                            &copy; {{ date('Y') }} Bleep. All rights reserved.
+                        </p>
                     </div>
 
                     {{-- Infinite scroll trigger --}}

@@ -94,7 +94,18 @@ it('keeps the only mobile menu button in place for the vertical layout', functio
         ->and($body)->not->toContain('id="hor-mobile-menu-btn"')
         ->and($body)->not->toContain('compact-nav__fab')
         ->and($body)->toContain('w-58')
-        ->and($body)->toContain('lg:col-start-4');
+        ->and($body)->toContain('xl:pr-58')
+        ->and($body)->toContain('xl:col-start-3')
+        ->and($body)->not->toContain('lg:col-start-4');
+});
+
+it('keeps the three-column grid for the horizontal layout', function () {
+    $user = User::factory()->create();
+
+    $body = $this->actingAs($user)->get('/')->assertSuccessful()->getContent();
+
+    expect($body)->toContain('lg:grid-cols-12')
+        ->and($body)->not->toContain('xl:pr-58');
 });
 
 it('moves notifications into the mobile slide-over menu', function () {
