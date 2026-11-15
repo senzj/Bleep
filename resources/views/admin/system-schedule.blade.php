@@ -56,7 +56,52 @@
     </div>
 
     {{-- Health + GeoIP summary --}}
-    <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <section class="rounded-xl border border-base-300 bg-base-100 p-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="timer" class="h-4 w-4 text-base-content/60"></i>
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Scheduler trigger</h2>
+                </div>
+                <span class="badge badge-sm {{ $scheduler['state'] === null ? 'badge-ghost' : ($scheduler['stale'] ? 'badge-warning' : 'badge-success') }}">
+                    {{ $scheduler['state'] === null ? 'Never triggered' : ($scheduler['stale'] ? 'Stale' : 'Running') }}
+                </span>
+            </div>
+
+            @if ($scheduler['at'])
+                <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                    <div>
+                        <dt class="text-base-content/50">Last triggered</dt>
+                        <dd>{{ $scheduler['at']->format('M d, H:i') }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-base-content/50">Age</dt>
+                        <dd>{{ $scheduler['age_minutes'] }} min ago</dd>
+                    </div>
+                    <div>
+                        <dt class="text-base-content/50">Last status</dt>
+                        <dd>{{ ucfirst((string) $scheduler['state']['status']) }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-base-content/50">Expected every</dt>
+                        <dd>{{ $scheduler['stale_after_minutes'] }} min</dd>
+                    </div>
+                </dl>
+
+                @if ($scheduler['stale'])
+                    <p class="mt-3 rounded-lg bg-warning/10 p-2.5 text-xs text-base-content/70">
+                        Nothing has triggered the scheduler recently. Check the URL pinger pointed at
+                        <code class="font-mono">/scripts/run-scheduler.php</code>.
+                    </p>
+                @endif
+            @else
+                <p class="mt-2 text-xs text-base-content/60">
+                    No trigger recorded. Point a one-minute URL pinger at
+                    <code class="font-mono">/scripts/run-scheduler.php?key=…</code> so scheduled tasks keep running without cron.
+                </p>
+            @endif
+        </section>
+
         <section class="rounded-xl border border-base-300 bg-base-100 p-4">
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
@@ -267,8 +312,9 @@
     </section>
 
     <p class="mt-4 rounded-xl border border-base-300 bg-base-200/40 p-3 text-xs text-base-content/60">
-        The scheduler itself has to be driven by cron. Add
-        <code class="font-mono">* * * * * cd {{ base_path() }} &amp;&amp; php artisan schedule:run &gt;&gt; /dev/null 2&gt;&amp;1</code>
-        to the server's crontab (or a Task Scheduler job on Windows).
+        The scheduler has to be driven from outside the app. On a host with cron, add
+        <code class="font-mono">* * * * * cd {{ base_path() }} &amp;&amp; php artisan schedule:run &gt;&gt; /dev/null 2&gt;&amp;1</code>.
+        On a free host without cron or SSH, point a one-minute URL pinger at
+        <code class="font-mono">/scripts/run-scheduler.php</code> instead.
     </p>
 </x-admin.layout>

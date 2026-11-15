@@ -6,7 +6,7 @@ use App\Services\System\Changelog;
 it('reads separate version logs for Bleep and the bulletin board', function () {
     $changelog = app(Changelog::class);
 
-    expect($changelog->currentVersion())->toBe('2.5.0')
+    expect($changelog->currentVersion())->toBe('2.6.0')
         ->and($changelog->bulletinVersion())->toBe('1.1')
         ->and($changelog->currentVersion())->not->toBe($changelog->bulletinVersion())
         ->and($changelog->latest())->not->toBeNull()
@@ -48,9 +48,9 @@ it('advertises the latest Bleep and bulletin releases in the announcement', func
     $this->actingAs($user)
         ->get('/')
         ->assertSuccessful()
-        ->assertSee('System Update v2.5.0')
+        ->assertSee('System Update v2.6.0')
         ->assertSee('Bulletin board patch: v1.1')
-        ->assertSee('Know where visits come from')
+        ->assertSee('Maintenance without a terminal')
         ->assertSee('data-announcement="warning"', false)
         ->assertSee('data-announcement="update"', false);
 });

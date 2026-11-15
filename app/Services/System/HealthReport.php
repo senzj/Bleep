@@ -3,6 +3,7 @@
 namespace App\Services\System;
 
 use App\Services\GeoIpService;
+use App\Services\Scripts\ScriptRunLog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -65,6 +66,7 @@ class HealthReport
     {
         $checks = [
             $this->applicationCheck(),
+            $this->schedulerCheck(),
             $this->databaseCheck(),
             $this->cacheCheck(),
             $this->storageCheck(),
@@ -125,6 +127,43 @@ class HealthReport
             $missing === []
                 ? 'Environment '.config('app.env').' with a signing key configured.'
                 : 'Missing required configuration: '.implode(', ', $missing).'.',
+        );
+    }
+
+    /**
+     * @return array{key: string, label: string, status: string, detail: string}
+     */
+    private function schedulerCheck(): array
+    {
+        $log = app(ScriptRunLog::class);
+        $state = $log->heartbeatState();
+        $staleAfter = max(1, (int) config('scripts.heartbeat_stale_minutes', 10));
+
+        if ($state === null) {
+            return $this->check(
+                'scheduler',
+                'Scheduler trigger',
+                'warning',
+                'No URL scheduler trigger has been recorded. Point a one-minute pinger at /scripts/run-scheduler.php.',
+            );
+        }
+
+        $age = $log->heartbeatAgeMinutes() ?? 0;
+
+        if ($age > $staleAfter) {
+            return $this->check(
+                'scheduler',
+                'Scheduler trigger',
+                'warning',
+                'Last trigger was '.$age.' minutes ago; expected within '.$staleAfter.'. Check the URL pinger.',
+            );
+        }
+
+        return $this->check(
+            'scheduler',
+            'Scheduler trigger',
+            'ok',
+            'Triggered '.($age === 0 ? 'less than a minute ago' : $age.' minutes ago').' with status '.$state['status'].'.',
         );
     }
 

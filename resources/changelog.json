@@ -2,8 +2,33 @@
     "products": {
         "bleep": {
             "name": "Bleep",
-            "current": "2.5.0",
+            "current": "2.6.0",
             "releases": [
+                {
+                    "version": "2.6.0",
+                    "date": "2026-11-15",
+                    "title": "Maintenance without a terminal",
+                    "summary": "The scheduler, queue, health check, GeoIP refresh and cache rebuilds can now be triggered from a secret URL, so the app keeps itself running on a free host with no cron and no SSH.",
+                    "changes": {
+                        "added": [
+                            "A URL task runner in `public/scripts` for the scheduler, the queue, the health check, the GeoIP refresh, cache management and migrations, each protected by a secret key.",
+                            "A status page at `/scripts/system-status.php` showing the last scheduler trigger, the latest health report, the GeoIP database, Reverb reachability, the queue and recent task runs.",
+                            "A Scheduler trigger card on the admin Schedule tab and a scheduler check in the health report that warn when nothing has called the scheduler recently.",
+                            "Every script result is written to a capped history file, so it is clear what ran, when, and whether it worked."
+                        ],
+                        "changed": [
+                            "The migration script now runs in production too; the secret key is the gate instead of the environment name.",
+                            "Script results render as a readable page, or as JSON with `?format=json`, and the key is also accepted in an `X-Script-Key` header so it stays out of access logs.",
+                            "The schedule tab explains the one-minute URL pinger that replaces cron on hosts without it."
+                        ],
+                        "updated": [],
+                        "optimized": [
+                            "Scripts read their key from cached configuration, so they keep working after `php artisan config:cache`.",
+                            "Overlapping requests for the same script are refused, and a fatal error still produces a clean response instead of a blank page."
+                        ],
+                        "removed": []
+                    }
+                },
                 {
                     "version": "2.5.0",
                     "date": "2026-11-15",

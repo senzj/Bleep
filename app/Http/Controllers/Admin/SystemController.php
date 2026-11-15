@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\GeoIpService;
+use App\Services\Scripts\ScriptRunLog;
 use App\Services\System\AttackDetector;
 use App\Services\System\HealthReport;
 use App\Services\System\LogFileReader;
@@ -88,6 +89,7 @@ class SystemController extends Controller
         ScheduleInspector $inspector,
         HealthReport $health,
         GeoIpService $geoIp,
+        ScriptRunLog $scriptLog,
     ): View {
         $this->ensureDeveloperOrAdmin($request);
 
@@ -102,6 +104,7 @@ class SystemController extends Controller
         }
 
         $report = $health->latest();
+        $heartbeat = $scriptLog->heartbeatState();
 
         return view('admin.system-schedule', [
             'events' => $inspector->events(),
@@ -110,6 +113,13 @@ class SystemController extends Controller
             'health' => $report,
             'healthCheckedAt' => $health->checkedAt($report),
             'geoip' => $geoIp->state(),
+            'scheduler' => [
+                'state' => $heartbeat,
+                'at' => $scriptLog->heartbeatAt(),
+                'age_minutes' => $scriptLog->heartbeatAgeMinutes(),
+                'stale' => $scriptLog->heartbeatIsStale(),
+                'stale_after_minutes' => max(1, (int) config('scripts.heartbeat_stale_minutes', 10)),
+            ],
         ]);
     }
 

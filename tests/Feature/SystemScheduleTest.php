@@ -86,6 +86,7 @@ it('renders the schedule tab for admins', function () {
     config([
         'system.schedule_runs_path' => $path,
         'system.health_path' => sys_get_temp_dir().DIRECTORY_SEPARATOR.'bleep-health-none-'.uniqid().'.json',
+        'scripts.heartbeat_path' => sys_get_temp_dir().DIRECTORY_SEPARATOR.'bleep-heartbeat-none-'.uniqid().'.json',
     ]);
 
     $this->actingAs(User::factory()->create(['role' => 'admin']))
@@ -94,13 +95,43 @@ it('renders the schedule tab for admins', function () {
         ->assertSee('Schedule')
         ->assertSee('Refresh the GeoIP database')
         ->assertSee('Run the system health check')
+        ->assertSee('Scheduler trigger')
+        ->assertSee('Never triggered')
         ->assertSee('Not recorded yet');
+});
+
+it('shows a stale scheduler trigger', function () {
+    $heartbeat = sys_get_temp_dir().DIRECTORY_SEPARATOR.'bleep-heartbeat-stale-'.uniqid().'.json';
+
+    file_put_contents($heartbeat, json_encode([
+        'at' => now()->subHour()->toIso8601String(),
+        'status' => 'ok',
+        'message' => 'Task completed successfully.',
+        'duration' => 1.2,
+    ]));
+
+    config([
+        'system.schedule_runs_path' => temporarySchedulePath(),
+        'system.health_path' => sys_get_temp_dir().DIRECTORY_SEPARATOR.'bleep-health-none-'.uniqid().'.json',
+        'scripts.heartbeat_path' => $heartbeat,
+        'scripts.heartbeat_stale_minutes' => 10,
+    ]);
+
+    $this->actingAs(User::factory()->create(['role' => 'admin']))
+        ->get(route('admin.system.schedule'))
+        ->assertOk()
+        ->assertSee('Scheduler trigger')
+        ->assertSee('Stale')
+        ->assertSee('run-scheduler.php');
+
+    @unlink($heartbeat);
 });
 
 it('shows the tasks due on a chosen date', function () {
     config([
         'system.schedule_runs_path' => temporarySchedulePath(),
         'system.health_path' => sys_get_temp_dir().DIRECTORY_SEPARATOR.'bleep-health-none-'.uniqid().'.json',
+        'scripts.heartbeat_path' => sys_get_temp_dir().DIRECTORY_SEPARATOR.'bleep-heartbeat-none-'.uniqid().'.json',
     ]);
 
     $this->actingAs(User::factory()->create(['role' => 'admin']))
