@@ -64,6 +64,13 @@ jobs:
           npm ci
           npm run build
 
+      - name: Download GeoIP database
+        run: |
+          set -euo pipefail
+          mkdir -p storage/app/geoip
+          curl -fsSL "https://download.db-ip.com/free/dbip-city-lite-$(date +%Y-%m).mmdb.gz" | gunzip > storage/app/geoip/dbip-city-lite.mmdb
+          test -s storage/app/geoip/dbip-city-lite.mmdb
+
       # ---------- FTP Upload ----------
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.0
