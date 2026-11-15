@@ -35,4 +35,5 @@ export {
     GitBranch,
     Github,
     Quote,
+    CalendarClock,
 } from 'lucide';

@@ -28,20 +28,30 @@
 <x-layout>
     <x-slot:title>Home</x-slot:title>
 
-    <div class="grid grid-cols-1 gap-2 lg:grid-cols-12 lg:gap-3">
-        {{-- Left panel - left navivation, hidden when vertical navbar --}}
-        @php
-            // Get user's nav layout preference, default to horizontal
-            $navLayout = 'horizontal';
-            if (Auth::check()) {
-                $navLayout = Auth::user()->getNavLayout();
-            }
-        @endphp
+    @php
+        // Get user's nav layout preference, default to horizontal
+        $navLayout = 'horizontal';
+        if (Auth::check()) {
+            $navLayout = Auth::user()->getNavLayout();
+        }
+        $vertical = $navLayout === 'vertical';
+    @endphp
 
-        {{-- Left panel content --}}
-        @if ($navLayout !== 'vertical')
-            <div class="order-1 lg:col-span-3" id="left-panel"
-                 x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
+    {{-- Vertical navbar: [spacer | feed | merged panels] on xl, [feed | merged panels] on lg.
+         xl:pr-58 equals the sidebar width (w-58) so the feed lands on the true screen center. --}}
+    <div class="grid grid-cols-1 gap-2 lg:gap-3 {{ $vertical
+        ? 'lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_minmax(0,40rem)_minmax(0,1fr)] xl:pr-58 mt-7'
+        : 'lg:grid-cols-12' }}">
+
+        {{-- Side panels wrapper.
+             Vertical: one merged column (side by side on tablet, stacked on mobile and desktop).
+             Horizontal: `contents`, so the panels act as direct grid children exactly like before. --}}
+        <div class="{{ $vertical
+            ? 'order-1 grid items-start content-start self-start gap-7 md:grid-cols-2 lg:order-0 lg:col-start-2 lg:row-start-1 lg:grid-cols-1 xl:col-start-3 xl:-mr-58 xl:max-w-sm'
+            : 'contents' }}" id="side-panels">
+
+            {{-- Announcements --}}
+            <div class="{{ $vertical ? 'order-2' : 'order-1 lg:col-span-3' }}" id="left-panel" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
                 {{-- Mobile: stacked, collapsed by default --}}
                 <button type="button"
                         class="flex w-full items-center justify-between gap-2 rounded-lg border border-base-200 bg-base-100 px-3 py-2 text-sm font-semibold shadow-sm lg:hidden"
@@ -62,10 +72,44 @@
                     <x-announcement.system />
                 </div>
             </div>
-        @endif
+
+            {{-- Quick notifications --}}
+            @auth
+                <div class="{{ $vertical ? 'order-1' : 'order-2 lg:order-3 lg:col-span-3' }}" id="right-panel" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
+                    {{-- Mobile: stacked above the feed, collapsed by default --}}
+                    <button type="button"
+                            class="flex w-full items-center justify-between gap-2 rounded-lg border border-base-200 bg-base-100 px-3 py-2 text-sm font-semibold shadow-sm lg:hidden"
+                            @click="open = !open"
+                            :aria-expanded="open"
+                            aria-controls="right-panel-content">
+                        <span class="flex items-center gap-2">
+                            <span class="relative inline-flex" aria-hidden="true">
+                                <i data-lucide="bell" class="w-4 h-4"></i>
+                                <span
+                                    data-quick-notification-badge
+                                    data-count="0"
+                                    class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white hidden"
+                                ></span>
+                            </span>
+                            Notifications
+                        </span>
+                        <span class="transition-transform duration-200" :class="open ? 'rotate-180' : ''">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                        </span>
+                    </button>
+
+                    <div id="right-panel-content" x-show="open" x-transition.opacity.duration.200ms x-cloak class="mt-1 lg:mt-0">
+                        {{-- Quick Few Notifications --}}
+                        <x-notifications.quick />
+                    </div>
+                </div>
+            @endauth
+        </div>
 
         {{-- Center panel - main content --}}
-        <div class="order-3 lg:order-2 lg:col-span-6 {{ $navLayout === 'vertical' ? 'lg:col-span-6 lg:col-start-4' : '' }}" id="center-panel">
+        <div class="{{ $vertical
+            ? 'order-2 lg:order-0 lg:col-start-1 lg:row-start-1 xl:col-start-2'
+            : 'order-3 lg:order-2 lg:col-span-6' }}" id="center-panel">
 
             {{-- Feed panel: post form + bleeps (toggled as a single unit on mobile) --}}
             <div id="feed-panel">
@@ -257,7 +301,7 @@
                                 <div class="hero-content text-center">
                                     <div>
                                         <span class="loading loading-spinner loading-lg text-primary"></span>
-                                        <p class="mt-3 text-base-content/60">Fetching posts from your mutuals...</p>
+                                        <p class="mt-3 text-base-content/60">Fetching posts from your mutuals</p>
                                     </div>
                                 </div>
                             </div>
@@ -284,7 +328,7 @@
                     {{-- Loading indicator --}}
                     <div id="loading-indicator" class="hidden text-center py-8">
                         <span class="loading loading-spinner loading-lg text-primary"></span>
-                        <p class="mt-2 text-base-content/60">Loading more bleeps...</p>
+                        <p class="mt-2 text-base-content/60">Loading more bleeps</p>
                     </div>
 
                     {{-- End of content indicator --}}
@@ -304,39 +348,6 @@
             </div>
 
         </div>
-
-        {{-- Right panel - quick notifications --}}
-        @auth
-            <div class="order-2 lg:order-3 lg:col-span-3" id="right-panel"
-                 x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
-                {{-- Mobile: stacked above the feed, collapsed by default --}}
-                <button type="button"
-                        class="flex w-full items-center justify-between gap-2 rounded-lg border border-base-200 bg-base-100 px-3 py-2 text-sm font-semibold shadow-sm lg:hidden"
-                        @click="open = !open"
-                        :aria-expanded="open"
-                        aria-controls="right-panel-content">
-                    <span class="flex items-center gap-2">
-                        <span class="relative inline-flex" aria-hidden="true">
-                            <i data-lucide="bell" class="w-4 h-4"></i>
-                            <span
-                                data-quick-notification-badge
-                                data-count="0"
-                                class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white hidden"
-                            ></span>
-                        </span>
-                        Notifications
-                    </span>
-                    <span class="transition-transform duration-200" :class="open ? 'rotate-180' : ''">
-                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                    </span>
-                </button>
-
-                <div id="right-panel-content" x-show="open" x-transition.opacity.duration.200ms x-cloak class="mt-1 lg:mt-0">
-                    {{-- Quick Few Notifications --}}
-                    <x-notifications.quick />
-                </div>
-            </div>
-        @endauth
     </div>
 
 </x-layout>

@@ -8,7 +8,7 @@
             <span class="sidebar-text">Bleep</span>
         </a>
 
-        <x-notifications.bell />
+        {{-- <x-notifications.bell /> --}}
     </div>
 
     {{-- Navigation Links --}}

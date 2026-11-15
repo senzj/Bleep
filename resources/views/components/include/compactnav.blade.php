@@ -16,7 +16,7 @@
             </a>
 
             {{-- Primary navigation --}}
-            <nav class="compact-nav__links flex items-center gap-0.5" aria-label="Primary">
+            <nav class="compact-nav__links flex items-center gap-1" aria-label="Primary">
                 <x-include.navlinks />
             </nav>
         </div>

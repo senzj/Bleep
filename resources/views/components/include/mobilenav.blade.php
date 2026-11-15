@@ -3,7 +3,7 @@
 <button
     id="mobile-menu-btn"
     type="button"
-    class="lg:hidden fixed bottom-6 right-6 z-40 btn btn-primary btn-circle shadow-xl"
+    class="lg:hidden fixed bottom-7 right-7 z-40 btn btn-primary btn-circle shadow-xl h-13 w-13"
     aria-label="Open menu"
     aria-controls="hor-mobile-drawer"
     aria-expanded="false"

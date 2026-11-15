@@ -2,8 +2,23 @@
     "products": {
         "bleep": {
             "name": "Bleep",
-            "current": "2.6.0",
+            "current": "2.6.1",
             "releases": [
+                {
+                    "version": "2.6.1",
+                    "date": "2026-11-15",
+                    "title": "Adjustments to the vertical navbar and the main body layout on desktop screens",
+                    "summary": "The vertical navbar and the main body layout have been adjusted to better fit the available space on desktop screens.",
+                    "changes": {
+                        "added": [],
+                        "changed": [
+                            "The vertical navbar and the main body layout have been adjusted to better fit the available space on desktop screens."
+                        ],
+                        "updated": [],
+                        "optimized": [],
+                        "removed": []
+                    }
+                },
                 {
                     "version": "2.6.0",
                     "date": "2026-11-15",

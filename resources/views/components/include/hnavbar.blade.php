@@ -2,7 +2,7 @@
 
     {{-- LEFT: Logo home button + desktop nav buttons --}}
     <div class="navbar-start nav-group nav-group--brand gap-1 min-w-0 flex-1">
-        <a href="{{ route('home') }}" class="btn btn-ghost nav-brand normal-case text-xl gap-2 rounded-xl px-2 shrink-0" aria-current="{{ request()->routeIs('home') ? 'page' : 'false' }}" aria-label="Bleep home">
+        <a href="{{ route('home') }}" class="btn btn-ghost nav-brand normal-case text-xl gap-2 rounded-lg px-2 shrink-0" aria-current="{{ request()->routeIs('home') ? 'page' : 'false' }}" aria-label="Bleep home">
             <img src="{{ asset('Bleep_Icon.png') }}" alt="Bleep Logo" class="w-7 h-7">
             <span class="navbar-brand-text hidden sm:inline font-bold">Bleep</span>
         </a>

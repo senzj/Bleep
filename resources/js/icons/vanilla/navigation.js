@@ -16,4 +16,5 @@ export {
     Scroll,
     Layers,
     PanelRight,
+    Terminal,
 } from 'lucide';
