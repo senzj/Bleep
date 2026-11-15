@@ -4,113 +4,81 @@
  * Installs production Composer dependencies on hosts without SSH.
  *
  * Standalone on purpose: it must not boot Laravel, because Composer rewrites
- * vendor/ while it runs. Reuses the same task key as the other URL scripts.
+ * vendor/ while it runs. Uses the same secret as the other URL scripts
+ * (SCRIPT_SECRET_KEY).
  *
  * Flags (query string):
  *   force=1      run even if composer.lock is unchanged (default: --if-stale)
  *   dry_run=1    show what Composer would do, change nothing
  *   timeout=300  max seconds (default 300, capped at 900)
+ *
+ * Key: ?key=... or the X-Task-Key header.
  */
 
-declare(strict_types=1);
+<?php
 
-$root = dirname(__DIR__); // adjust if this file is not one level below composer.json
+namespace App\Console\Commands;
 
-ini_set('display_errors', '0');
-header('Content-Type: text/plain; charset=utf-8');
-header('Cache-Control: no-store');
+use Illuminate\Console\Command;
+use Symfony\Component\Process\Process;
 
-$fail = static function (int $code, string $message): never {
-    http_response_code($code);
-    exit($message . "\n");
-};
+class InstallComposerDependencies extends Command
+{
+    protected $signature = 'composer:install-dependencies';
 
-// ---- Key (read from .env without booting Laravel) --------------------------
-$expected = '';
-foreach (@file($root . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
-    if (str_starts_with($line, 'SCRIPTS_TASK_KEY=')) {
-        $expected = trim(substr($line, strlen('SCRIPTS_TASK_KEY=')), " \t\"'");
-        break;
+    protected $description = 'Install missing production Composer dependencies';
+
+    public function handle(): int
+    {
+        $composerJson = base_path('composer.json');
+        $composerLock = base_path('composer.lock');
+
+        if (! file_exists($composerJson) || ! file_exists($composerLock)) {
+            $this->error('composer.json or composer.lock is missing.');
+
+            return self::FAILURE;
+        }
+
+        $lockPath = storage_path('framework/composer-install.lock');
+        $lock = fopen($lockPath, 'c');
+
+        if (! $lock || ! flock($lock, LOCK_EX | LOCK_NB)) {
+            $this->warn('Another Composer installation is already running.');
+
+            return self::FAILURE;
+        }
+
+        try {
+            $composer = config('scripts.composer_binary', 'composer');
+
+            $process = new Process([
+                $composer,
+                'install',
+                '--no-dev',
+                '--prefer-dist',
+                '--optimize-autoloader',
+                '--no-interaction',
+                '--no-progress',
+            ], base_path());
+
+            $process->setTimeout(900);
+
+            $process->run(function (string $type, string $buffer): void {
+                $this->output->write($buffer);
+            });
+
+            if (! $process->isSuccessful()) {
+                $this->error('Composer installation failed.');
+
+                return self::FAILURE;
+            }
+
+            $this->info('Composer dependencies installed successfully.');
+
+            return self::SUCCESS;
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
     }
 }
-
-$provided = (string) ($_SERVER['HTTP_X_TASK_KEY'] ?? $_GET['key'] ?? '');
-
-if (strlen($expected) < 24) {
-    $fail(503, 'Task key is not configured.');
-}
-
-if (!hash_equals($expected, $provided)) {
-    usleep(500_000); // slow down guessing
-    $fail(403, 'Forbidden');
-}
-
-// ---- Flags -----------------------------------------------------------------
-$force = ($_GET['force'] ?? '') === '1';
-$dryRun = ($_GET['dry_run'] ?? '') === '1';
-$timeout = min(max((int) ($_GET['timeout'] ?? 300), 30), 900);
-
-set_time_limit($timeout);
-ini_set('memory_limit', '1G');
-
-// ---- Single run at a time --------------------------------------------------
-$lock = fopen($root . '/storage/composer-install.lock', 'c');
-if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
-    $fail(409, 'Another install is already running.');
-}
-
-// ---- --if-stale: skip when composer.lock has not changed -------------------
-$hashFile = $root . '/storage/composer-install.hash';
-$lockHash = is_file($root . '/composer.lock') ? sha1_file($root . '/composer.lock') : '';
-
-if (!$force && $lockHash !== '' && is_file($root . '/vendor/autoload.php')
-    && @file_get_contents($hashFile) === $lockHash) {
-    exit("Up to date: composer.lock unchanged since the last install. Use force=1 to run anyway.\n");
-}
-
-// ---- composer.phar ---------------------------------------------------------
-$phar = $root . '/storage/composer.phar';
-if (!is_file($phar) && !@copy('https://getcomposer.org/composer-stable.phar', $phar)) {
-    $fail(502, 'Could not download composer.phar (outbound requests may be blocked).');
-}
-
-putenv('COMPOSER_HOME=' . $root . '/storage/composer-home');
-putenv('COMPOSER_NO_INTERACTION=1');
-putenv('COMPOSER_NO_AUDIT=1');
-chdir($root);
-
-require 'phar://' . $phar . '/vendor/autoload.php';
-
-/** @var \Symfony\Component\Console\Application $app */
-/** @noinspection PhpUndefinedClassInspection */
-$app = new \Composer\Console\Application(); // @phpstan-ignore-line
-$app->setAutoExit(false);
-
-$args = [
-    'command' => 'install',
-    '--no-dev' => true,
-    '--optimize-autoloader' => true,
-    '--no-scripts' => true,
-    '--no-interaction' => true,
-    '--working-dir' => $root,
-];
-if ($dryRun) {
-    $args['--dry-run'] = true;
-}
-
-$exit = $app->run(
-    new Symfony\Component\Console\Input\ArrayInput($args),
-    new Symfony\Component\Console\Output\StreamOutput(fopen('php://output', 'w'))
-);
-
-if ($exit === 0 && !$dryRun) {
-    file_put_contents($hashFile, $lockHash);
-
-    // --no-scripts skipped package:discover; drop the stale caches so Laravel rebuilds them.
-    foreach (['packages.php', 'services.php'] as $cache) {
-        @unlink($root . '/bootstrap/cache/' . $cache);
-    }
-}
-
-echo "\nExit code: {$exit}\n";
-http_response_code($exit === 0 ? 200 : 500);
