@@ -110,7 +110,10 @@
 
                     <div class="flex justify-between md:justify-center items-center">
                         <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">IP Address</span>
-                        <div class="text-sm font-mono">{{ $s->ip_address ?? '—' }}</div>
+                        <div class="text-center">
+                            <div class="text-sm font-mono">{{ $s->ip_address ?? '-' }}</div>
+                            <x-ip-location :ip="$s->ip_address" align="center" />
+                        </div>
                     </div>
 
                     @php
@@ -176,7 +179,10 @@
 
                     <div class="flex justify-between md:justify-center items-center">
                         <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">IP Address</span>
-                        <div class="text-sm font-mono">{{ $d->ip ?? '—' }}</div>
+                        <div class="text-center">
+                            <div class="text-sm font-mono">{{ $d->ip ?? '-' }}</div>
+                            <x-ip-location :ip="$d->ip" align="center" />
+                        </div>
                     </div>
 
                     @php

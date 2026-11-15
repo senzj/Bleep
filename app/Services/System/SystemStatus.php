@@ -2,6 +2,8 @@
 
 namespace App\Services\System;
 
+use App\Services\GeoIpService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -28,6 +30,8 @@ class SystemStatus
             $this->storageGroup(),
             $this->queueGroup(),
             $this->broadcastingGroup(),
+            $this->geoIpGroup(),
+            $this->healthCheckGroup(),
             $this->uploadsGroup(),
             $this->mailGroup(),
         ];
@@ -341,6 +345,96 @@ class SystemStatus
             $this->item('From address', (string) config('mail.from.address')),
             $this->item('From name', (string) config('mail.from.name')),
         ]);
+    }
+
+    /**
+     * @return array{title: string, icon: string, items: array<int, array{label: string, value: string, status: string, note: string|null}>}
+     */
+    private function geoIpGroup(): array
+    {
+        $state = app(GeoIpService::class)->state();
+
+        if (! $state['exists']) {
+            return $this->group('GeoIP', 'map-pin', [
+                $this->item(
+                    'Database',
+                    'Not installed',
+                    'warning',
+                    'Run "php artisan geoip:update" or upload a DB-IP City Lite .mmdb file.',
+                ),
+            ]);
+        }
+
+        $items = [
+            $this->item('File', basename((string) $state['path'])),
+            $this->item('Size', $this->formatBytes($state['size'])),
+            $this->item(
+                'Updated',
+                $state['modified_at']?->diffForHumans() ?? 'Unknown',
+                $state['stale'] ? 'warning' : 'ok',
+                $state['stale']
+                    ? 'Older than '.config('geoip.stale_after_days').' days; run "php artisan geoip:update".'
+                    : null,
+            ),
+        ];
+
+        if ($state['build_epoch'] !== null) {
+            $items[] = $this->item('Build date', Carbon::createFromTimestamp($state['build_epoch'])->toFormattedDateString());
+        }
+
+        $items[] = $this->item('Provider', 'DB-IP City Lite (CC BY 4.0)');
+
+        return $this->group('GeoIP', 'map-pin', $items);
+    }
+
+    /**
+     * @return array{title: string, icon: string, items: array<int, array{label: string, value: string, status: string, note: string|null}>}
+     */
+    private function healthCheckGroup(): array
+    {
+        $report = app(HealthReport::class);
+        $latest = $report->latest();
+
+        if ($latest === null) {
+            return $this->group('Automated health check', 'heart-pulse', [
+                $this->item(
+                    'Last run',
+                    'Never',
+                    'info',
+                    'Run "php artisan system:health", or use the Schedule tab.',
+                ),
+            ]);
+        }
+
+        $status = match ($latest['status']) {
+            'ok' => 'ok',
+            'warning' => 'warning',
+            default => 'error',
+        };
+
+        $items = [
+            $this->item(
+                'Overall',
+                strtoupper($latest['status']),
+                $status,
+                'Checked '.($report->checkedAt($latest)?->diffForHumans() ?? $latest['checked_at']),
+            ),
+        ];
+
+        foreach ($latest['checks'] as $check) {
+            $items[] = $this->item(
+                $check['label'],
+                ucfirst($check['status']),
+                match ($check['status']) {
+                    'error' => 'error',
+                    'warning' => 'warning',
+                    default => 'ok',
+                },
+                $check['detail'],
+            );
+        }
+
+        return $this->group('Automated health check', 'heart-pulse', $items);
     }
 
     /**

@@ -2,8 +2,34 @@
     "products": {
         "bleep": {
             "name": "Bleep",
-            "current": "2.4.2",
+            "current": "2.5.0",
             "releases": [
+                {
+                    "version": "2.5.0",
+                    "date": "2026-11-15",
+                    "title": "Know where visits come from",
+                    "summary": "IP addresses now show the city and country they came from, and admins get a schedule tab that shows what runs when, whether it worked, and the latest automated health check.",
+                    "changes": {
+                        "added": [
+                            "Locations beside IP addresses in activity logs, sessions and devices, admin visits and attack findings, resolved locally from a DB-IP City Lite database.",
+                            "A Top Visitor Locations card on the admin visits page that rolls the busiest addresses up by country.",
+                            "A Schedule tab in Admin → System listing every scheduled task with its next run and last-run status, plus the runs due on any chosen date.",
+                            "A monthly health check (`php artisan system:health`) covering the database, cache, storage, Reverb, GeoIP freshness and log writing.",
+                            "A monthly GeoIP refresh (`php artisan geoip:update`) that downloads and validates the newest DB-IP City Lite database before replacing the live one."
+                        ],
+                        "changed": [
+                            "The admin System tabs now include Schedule alongside Health, System Logs and Attacks.",
+                            "System health now shows GeoIP database facts and the latest automated health result."
+                        ],
+                        "updated": [
+                            "GeoIP data by DB-IP City Lite, licensed under CC BY 4.0."
+                        ],
+                        "optimized": [
+                            "GeoIP lookups are memoised for each request, and private or reserved addresses are never resolved."
+                        ],
+                        "removed": []
+                    }
+                },
                 {
                     "version": "2.4.2",
                     "date": "2026-11-14",

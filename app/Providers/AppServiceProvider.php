@@ -9,7 +9,12 @@ use App\Policies\BleepPolicy;
 use App\Policies\CommentsPolicy;
 use App\Services\Bulletin\BulletinVisitor;
 use App\Services\FollowContext;
+use App\Services\GeoIpService;
+use App\Services\System\ScheduleRunRecorder;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Console\Events\ScheduledTaskFinished;
+use Illuminate\Console\Events\ScheduledTaskSkipped;
 use Illuminate\Foundation\Http\Events\RequestHandled;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,6 +43,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(FollowContext::class, function ($app) {
             return new FollowContext($app['auth']->user());
         });
+
+        // The GeoIP reader is expensive to open, so reuse it for the request.
+        $this->app->singleton(GeoIpService::class, fn (): GeoIpService => new GeoIpService);
     }
 
     /**
@@ -112,6 +120,25 @@ class AppServiceProvider extends ServiceProvider
         // Admin or Moderator Gate
         Gate::define('is_admin', function ($user) {
             return $user->hasAdminAccess();
+        });
+
+        // Keep the admin Schedule tab honest about what actually ran. The
+        // recorder writes a small JSON file, so it works with any cache driver.
+        Event::listen(ScheduledTaskFinished::class, function (ScheduledTaskFinished $event): void {
+            app(ScheduleRunRecorder::class)->record($event->task, 'success', $event->runtime);
+        });
+
+        Event::listen(ScheduledTaskFailed::class, function (ScheduledTaskFailed $event): void {
+            app(ScheduleRunRecorder::class)->record(
+                $event->task,
+                'failed',
+                $event->runtime,
+                $event->exception->getMessage(),
+            );
+        });
+
+        Event::listen(ScheduledTaskSkipped::class, function (ScheduledTaskSkipped $event): void {
+            app(ScheduleRunRecorder::class)->record($event->task, 'skipped');
         });
 
         // Records site visits ONLY for landing pages to avoid double logging

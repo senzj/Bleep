@@ -58,6 +58,37 @@
             </div>
         </div>
 
+        {{-- Top visitor locations --}}
+        @if (! empty($locationBreakdown))
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body p-4 sm:p-6">
+                    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                        <h2 class="card-title text-lg">Top Visitor Locations</h2>
+                        <span class="text-xs text-base-content/50">
+                            Based on the 50 most active IPs &middot; GeoIP by DB-IP (CC BY 4.0)
+                        </span>
+                    </div>
+
+                    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach ($locationBreakdown as $location)
+                            <div class="flex items-center gap-3 rounded-lg border border-base-200 p-3">
+                                <span class="text-2xl" aria-hidden="true">{{ $location['flag'] ?? '🌐' }}</span>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center justify-between gap-2 text-sm">
+                                        <span class="truncate font-medium">{{ $location['label'] }}</span>
+                                        <span class="shrink-0 tabular-nums text-base-content/60">{{ number_format($location['visits']) }}</span>
+                                    </div>
+                                    <div class="mt-1 h-1.5 overflow-hidden rounded bg-base-200">
+                                        <div class="h-full rounded bg-primary" style="width: {{ $location['share'] }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
+
         {{-- Unique IPs table --}}
         <div class="card bg-base-100 shadow-sm border border-base-200">
             <div class="card-body p-4 sm:p-6">
@@ -80,10 +111,13 @@
                         <div class="grid grid-cols-1 md:grid-cols-[1.4fr_.6fr_1fr_1.2fr] gap-2 md:gap-3 px-4 py-4 border-t border-base-300 hover:bg-base-200/40 transition">
                             <div class="flex justify-between md:justify-center items-center">
                                 <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">IP Address</span>
-                                <a href="{{ route('admin.visits', ['ip' => $row->ip_address]) }}"
-                                   class="link link-hover link-primary font-mono text-xs">
-                                    {{ $row->ip_address }}
-                                </a>
+                                <div class="text-center">
+                                    <a href="{{ route('admin.visits', ['ip' => $row->ip_address]) }}"
+                                       class="link link-hover link-primary font-mono text-xs">
+                                        {{ $row->ip_address }}
+                                    </a>
+                                    <x-ip-location :ip="$row->ip_address" align="center" />
+                                </div>
                             </div>
 
                             <div class="flex justify-between md:justify-center items-center">
@@ -255,10 +289,13 @@
 
                             <div class="flex justify-between md:justify-center items-center">
                                 <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">IP Address</span>
-                                <a href="{{ route('admin.visits', ['ip' => $v->ip_address]) }}"
-                                   class="font-mono text-xs hover:underline hover:text-primary">
-                                    {{ $v->ip_address }}
-                                </a>
+                                <div class="text-center">
+                                    <a href="{{ route('admin.visits', ['ip' => $v->ip_address]) }}"
+                                       class="font-mono text-xs hover:underline hover:text-primary">
+                                        {{ $v->ip_address }}
+                                    </a>
+                                    <x-ip-location :ip="$v->ip_address" align="center" />
+                                </div>
                             </div>
 
                             <div class="flex justify-between md:justify-center items-center">

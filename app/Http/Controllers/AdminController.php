@@ -16,6 +16,7 @@ use App\Models\Repost;
 use App\Models\Share;
 use App\Models\User;
 use App\Models\Visits;
+use App\Services\GeoIpService;
 use App\Services\Moderation\BanService;
 use App\Services\Notifications\NotificationService;
 use Carbon\CarbonInterval;
@@ -754,7 +755,7 @@ class AdminController extends Controller
     /**
      * Visits page
      */
-    public function visits(Request $request)
+    public function visits(Request $request, GeoIpService $geoIp)
     {
         // Base query
         $query = Visits::query();
@@ -791,6 +792,35 @@ class AdminController extends Controller
         // Get paginated results (Newest on top is default via orderByDesc)
         $recentVisits = $query->orderByDesc('created_at')->paginate(25)->withQueryString();
 
+        // Resolve the locations of the busiest IPs and roll them up by country.
+        // Uses the same limited set as the table so the page stays cheap.
+        $locationBreakdown = $uniqueIpRows
+            ->groupBy(function ($row) use ($geoIp): string {
+                $location = $geoIp->locate($row->ip_address);
+
+                return $location['country'] ?? 'Unknown';
+            })
+            ->map(function ($rows, string $country) use ($geoIp): array {
+                $sample = $geoIp->locate($rows->first()->ip_address);
+
+                return [
+                    'label' => $country,
+                    'flag' => $sample['flag'] ?? null,
+                    'visits' => (int) $rows->sum('visits_count'),
+                ];
+            })
+            ->sortByDesc('visits')
+            ->take(6)
+            ->values();
+
+        $locatedVisits = max(1, (int) $locationBreakdown->sum('visits'));
+
+        $locationBreakdown = $locationBreakdown
+            ->map(fn (array $location): array => $location + [
+                'share' => round($location['visits'] / $locatedVisits * 100, 1),
+            ])
+            ->all();
+
         // Transform the collection to include parsed UA
         $recentVisits->getCollection()->transform(function ($visit) {
             $visit->parsed_ua = UserAgentParser::parse($visit->user_agent);
@@ -798,7 +828,7 @@ class AdminController extends Controller
             return $visit;
         });
 
-        return view('admin.visits', compact('totalVisits', 'uniqueIPs', 'uniqueIpRows', 'recentVisits', 'platforms', 'browsers'));
+        return view('admin.visits', compact('totalVisits', 'uniqueIPs', 'uniqueIpRows', 'locationBreakdown', 'recentVisits', 'platforms', 'browsers'));
     }
 
     public function visitsData(Request $request)

@@ -420,6 +420,12 @@ Route::middleware('auth')->group((function () {
         Route::get('/admin/system/attacks', [SystemController::class, 'attacks'])
             ->name('admin.system.attacks');
 
+        Route::get('/admin/system/schedule', [SystemController::class, 'schedule'])
+            ->name('admin.system.schedule');
+
+        Route::post('/admin/system/health-check', [SystemController::class, 'runHealthCheck'])
+            ->name('admin.system.health');
+
         Route::post('/admin/system', [SystemController::class, 'update'])
             ->name('admin.system.update');
 

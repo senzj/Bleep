@@ -3,6 +3,7 @@
 namespace App\Services\System;
 
 use App\Models\Logs;
+use App\Services\GeoIpService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -21,7 +22,7 @@ class AttackDetector
 {
     private const WINDOW_HOURS = 24;
 
-    public function __construct(private LogFileReader $log) {}
+    public function __construct(private LogFileReader $log, private GeoIpService $geoIp) {}
 
     /**
      * @return array{confirmed: int, possible: int, scanned_at: Carbon}
@@ -46,7 +47,8 @@ class AttackDetector
      *     count: int,
      *     last_seen: Carbon|string|null,
      *     details: string,
-     *     recommendation: string
+     *     recommendation: string,
+     *     location: array<string, mixed>|null
      * }>
      */
     public function findings(): array
@@ -63,7 +65,11 @@ class AttackDetector
             return [$rank[$a['severity']] ?? 2, -$a['count']] <=> [$rank[$b['severity']] ?? 2, -$b['count']];
         });
 
-        return $findings;
+        return array_map(function (array $finding): array {
+            $finding['location'] = $this->geoIp->locate($finding['subject']);
+
+            return $finding;
+        }, $findings);
     }
 
     /**

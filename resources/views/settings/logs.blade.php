@@ -128,7 +128,8 @@
 
                 {{-- IP Address --}}
                 <div class="text-center">
-                    <div class="text-sm font-mono">{{ $log->ip ?? '—' }}</div>
+                    <div class="text-sm font-mono">{{ $log->ip ?? '-' }}</div>
+                    <x-ip-location :ip="$log->ip" align="center" />
                 </div>
 
                 {{-- Device --}}
@@ -176,6 +177,7 @@
                                 <div class="p-3 bg-base-200 rounded-lg">
                                     <div class="text-xs font-semibold text-base-content/50 uppercase mb-1">IP Address</div>
                                     <div class="text-sm font-mono break-all">{{ $log->ip }}</div>
+                                    <x-ip-location :ip="$log->ip" />
                                 </div>
                             @endif
 

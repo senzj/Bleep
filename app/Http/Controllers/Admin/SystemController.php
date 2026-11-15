@@ -3,14 +3,19 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\GeoIpService;
 use App\Services\System\AttackDetector;
+use App\Services\System\HealthReport;
 use App\Services\System\LogFileReader;
+use App\Services\System\ScheduleInspector;
 use App\Services\System\SystemSettings;
 use App\Services\System\SystemStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class SystemController extends Controller
 {
@@ -72,6 +77,61 @@ class SystemController extends Controller
             'findings' => $detector->findings(),
             'summary' => $detector->summary(),
         ]);
+    }
+
+    /**
+     * Every scheduled task, the runs due on a chosen date, and the latest
+     * automated health report.
+     */
+    public function schedule(
+        Request $request,
+        ScheduleInspector $inspector,
+        HealthReport $health,
+        GeoIpService $geoIp,
+    ): View {
+        $this->ensureDeveloperOrAdmin($request);
+
+        $date = now();
+
+        if ($request->filled('date')) {
+            try {
+                $date = Carbon::parse((string) $request->query('date'))->startOfDay();
+            } catch (Throwable) {
+                $date = now()->startOfDay();
+            }
+        }
+
+        $report = $health->latest();
+
+        return view('admin.system-schedule', [
+            'events' => $inspector->events(),
+            'runs' => $inspector->runsOn($date),
+            'date' => $date,
+            'health' => $report,
+            'healthCheckedAt' => $health->checkedAt($report),
+            'geoip' => $geoIp->state(),
+        ]);
+    }
+
+    /**
+     * Run the health checks on demand from the Schedule tab.
+     */
+    public function runHealthCheck(Request $request, HealthReport $health): RedirectResponse
+    {
+        $this->ensureDeveloperOrAdmin($request);
+
+        $result = $health->run();
+        $health->save($result);
+
+        $message = match ($result['status']) {
+            'error' => 'Health check finished with errors. Review the failing checks below.',
+            'warning' => 'Health check finished with warnings.',
+            default => 'Health check passed. All checks are healthy.',
+        };
+
+        return redirect()
+            ->route('admin.system.schedule')
+            ->with($result['status'] === 'error' ? 'error' : 'success', $message);
     }
 
     private function ensureDeveloperOrAdmin(Request $request): void

@@ -64,7 +64,17 @@
                             {{ $severityLabel($finding['severity']) }}
                         </span>
                         <h2 class="text-sm font-semibold">{{ $finding['title'] }}</h2>
-                        <span class="ml-auto font-mono text-xs text-base-content/60">{{ $finding['subject'] }}</span>
+                        <span class="ml-auto text-right">
+                            <span class="block font-mono text-xs text-base-content/60">{{ $finding['subject'] }}</span>
+                            @if ($finding['location'])
+                                <span class="inline-flex items-center gap-1 text-[11px] text-base-content/45">
+                                    @if ($finding['location']['flag'])
+                                        <span aria-hidden="true">{{ $finding['location']['flag'] }}</span>
+                                    @endif
+                                    {{ $finding['location']['label'] }}
+                                </span>
+                            @endif
+                        </span>
                     </div>
 
                     <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-base-content/60">

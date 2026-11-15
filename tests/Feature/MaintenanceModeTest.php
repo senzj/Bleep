@@ -18,13 +18,12 @@ it('serves the maintenance page to guests while enabled', function () {
         ->assertSee('Expected back around');
 });
 
-it('serves the maintenance page to staff on public pages', function () {
+it('lets admins keep browsing public pages during maintenance', function () {
     $admin = User::factory()->create(['role' => 'admin']);
 
     $this->actingAs($admin)
         ->get('/')
-        ->assertStatus(503)
-        ->assertSee('is under maintenance');
+        ->assertSuccessful();
 });
 
 it('lets staff reach the sign-in, settings and admin areas', function () {
@@ -39,10 +38,10 @@ it('lets staff reach the sign-in, settings and admin areas', function () {
         ->assertSuccessful();
 });
 
-it('keeps the sign-in page reachable for guests', function () {
+it('serves the maintenance page on the sign-in route for guests', function () {
     $this->get('/login')
-        ->assertSuccessful()
-        ->assertSee('Sign In');
+        ->assertStatus(503)
+        ->assertSee('is under maintenance');
 });
 
 it('does not intercept local or debug environments', function () {
