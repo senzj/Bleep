@@ -30,8 +30,7 @@ class GeoIpService
      *     latitude: float|null,
      *     longitude: float|null,
      *     timezone: string|null,
-     *     label: string,
-     *     flag: string|null
+     *     label: string
      * }|null>
      */
     private array $cache = [];
@@ -53,8 +52,7 @@ class GeoIpService
      *     latitude: float|null,
      *     longitude: float|null,
      *     timezone: string|null,
-     *     label: string,
-     *     flag: string|null
+     *     label: string
      * }|null
      */
     public function locate(?string $ip): ?array
@@ -100,7 +98,6 @@ class GeoIpService
             'longitude' => $record->location->longitude,
             'timezone' => $record->location->timeZone,
             'label' => $label,
-            'flag' => $this->flag($record->country->isoCode),
         ];
     }
 
@@ -241,20 +238,5 @@ class GeoIpService
         )));
 
         return $parts === [] ? null : implode(', ', $parts);
-    }
-
-    private function flag(?string $code): ?string
-    {
-        if ($code === null || strlen($code) !== 2) {
-            return null;
-        }
-
-        $flag = '';
-
-        foreach (str_split(strtoupper($code)) as $letter) {
-            $flag .= mb_chr(0x1F1E6 + ord($letter) - 65);
-        }
-
-        return $flag;
     }
 }

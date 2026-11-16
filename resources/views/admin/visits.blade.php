@@ -72,7 +72,6 @@
                     <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         @foreach ($locationBreakdown as $location)
                             <div class="flex items-center gap-3 rounded-lg border border-base-200 p-3">
-                                <span class="text-2xl" aria-hidden="true">{{ $location['flag'] ?? '🌐' }}</span>
                                 <div class="min-w-0 flex-1">
                                     <div class="flex items-center justify-between gap-2 text-sm">
                                         <span class="truncate font-medium">{{ $location['label'] }}</span>
@@ -90,15 +89,20 @@
         @endif
 
         {{-- Unique IPs table --}}
-        <div class="card bg-base-100 shadow-sm border border-base-200">
-            <div class="card-body p-4 sm:p-6">
-                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-                    <h2 class="card-title text-lg">Unique IP Addresses</h2>
+        <details class="card bg-base-100 shadow-sm border border-base-200">
+            <summary class="cursor-pointer list-none p-4 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h2 class="card-title text-lg">
+                        <i data-lucide="chevron-down" class="h-4 w-4"></i>
+                        Unique IP Addresses
+                    </h2>
                     <span class="text-xs text-base-content/50">
                         Showing {{ $uniqueIpRows->count() }} of {{ number_format($uniqueIPs) }} distinct IPs
                     </span>
                 </div>
+            </summary>
 
+            <div class="px-4 pb-4 sm:px-6 sm:pb-6">
                 <div class="overflow-hidden rounded-xl border border-base-300">
                     <div class="hidden md:grid grid-cols-[1.4fr_.6fr_1fr_1.2fr] gap-3 px-4 py-3 bg-base-200 text-[11px] uppercase tracking-wide font-semibold text-center">
                         <div>IP Address</div>
@@ -110,13 +114,21 @@
                     @forelse($uniqueIpRows as $row)
                         <div class="grid grid-cols-1 md:grid-cols-[1.4fr_.6fr_1fr_1.2fr] gap-2 md:gap-3 px-4 py-4 border-t border-base-300 hover:bg-base-200/40 transition">
                             <div class="flex justify-between md:justify-center items-center">
-                                <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">IP Address</span>
-                                <div class="text-center">
-                                    <a href="{{ route('admin.visits', ['ip' => $row->ip_address]) }}"
-                                       class="link link-hover link-primary font-mono text-xs">
-                                        {{ $row->ip_address }}
-                                    </a>
-                                    <x-ip-location :ip="$row->ip_address" align="center" />
+                                <div class="flex justify-between md:justify-center items-center">
+                                    <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">
+                                        IP Address
+                                    </span>
+
+                                    <div class="text-center min-w-0">
+                                        <a href="{{ route('admin.visits', ['ip' => $row->ip_address]) }}"
+                                        class="link link-hover link-primary font-mono text-xs break-all">
+                                            {{ $row->ip_address }}
+                                        </a>
+
+                                        <div class="mt-1">
+                                            <x-ip-location :ip="$row->ip_address" align="center" />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -148,7 +160,7 @@
                     @endforelse
                 </div>
             </div>
-        </div>
+        </details>
 
         {{-- Main Chart Section --}}
         <div class="card bg-base-100 shadow-sm border border-base-200">
@@ -157,7 +169,7 @@
                     <h2 class="card-title text-lg">Traffic Overview</h2>
                 </div>
 
-                <div class="h-[260px] sm:h-80 w-full relative">
+                <div class="h-65 sm:h-80 w-full relative">
                     <canvas id="visitsChart" class="w-full h-full"></canvas>
                 </div>
             </div>
@@ -282,8 +294,8 @@
                             <div class="flex justify-between md:justify-center items-center">
                                 <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">Date &amp; Time</span>
                                 <div class="text-center">
-                                    <div class="text-xs font-bold">{{ $v->created_at->format('M d, Y') }}</div>
-                                    <div class="text-xs text-base-content/50">{{ $v->created_at->format('H:i:s') }}</div>
+                                    <div class="text-xs font-bold">{{ \App\Support\UserTime::at($v->created_at, 'M d, Y') }}</div>
+                                    <div class="text-xs text-base-content/50">{{ \App\Support\UserTime::at($v->created_at, 'H:i:s') }}</div>
                                 </div>
                             </div>
 
@@ -291,10 +303,13 @@
                                 <span class="md:hidden text-[10px] uppercase opacity-60 font-semibold mr-2">IP Address</span>
                                 <div class="text-center">
                                     <a href="{{ route('admin.visits', ['ip' => $v->ip_address]) }}"
-                                       class="font-mono text-xs hover:underline hover:text-primary">
+                                    class="font-mono text-xs hover:underline hover:text-primary break-all">
                                         {{ $v->ip_address }}
                                     </a>
-                                    <x-ip-location :ip="$v->ip_address" align="center" />
+
+                                    <div class="mt-1">
+                                        <x-ip-location :ip="$v->ip_address" align="center" />
+                                    </div>
                                 </div>
                             </div>
 

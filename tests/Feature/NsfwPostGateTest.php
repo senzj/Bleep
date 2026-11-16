@@ -4,8 +4,8 @@ use App\Models\Bleep;
 use App\Models\User;
 
 /**
- * An NSFW post page must ask for confirmation on every visit unless the
- * signed-in viewer has confirmed their age and opted into unblurred NSFW.
+ * Only visitors clear an age check. Signed-in members see the post with its
+ * normal NSFW cover, whatever their blur preferences are.
  */
 it('shows the age gate to guests on an NSFW post page', function () {
     $bleep = Bleep::factory()->nsfw()->create([
@@ -15,10 +15,11 @@ it('shows the age gate to guests on an NSFW post page', function () {
     $this->get("/bleeps/{$bleep->id}")
         ->assertOk()
         ->assertSee('data-nsfw-age-gate', false)
-        ->assertSee('Age check required');
+        ->assertSee('Age check required')
+        ->assertSee('absolute inset-0', false);
 });
 
-it('skips the age gate for a viewer who opted into unblurred NSFW media', function () {
+it('skips the age gate for signed-in viewers who opted into unblurred NSFW media', function () {
     $viewer = User::factory()->create(['age_confirmed_at' => now()]);
 
     $viewer->getPreferences()->forceFill([
@@ -36,7 +37,7 @@ it('skips the age gate for a viewer who opted into unblurred NSFW media', functi
         ->assertDontSee('data-nsfw-age-gate', false);
 });
 
-it('shows the age gate when NSFW media is still blurred', function () {
+it('skips the age gate for signed-in viewers even when NSFW media is blurred', function () {
     $viewer = User::factory()->create(['age_confirmed_at' => now()]);
 
     $viewer->getPreferences()->forceFill([
@@ -51,10 +52,10 @@ it('shows the age gate when NSFW media is still blurred', function () {
     $this->actingAs($viewer)
         ->get("/bleeps/{$bleep->id}")
         ->assertOk()
-        ->assertSee('data-nsfw-age-gate', false);
+        ->assertDontSee('data-nsfw-age-gate', false);
 });
 
-it('shows the age gate when the viewer has not confirmed their age', function () {
+it('skips the age gate for signed-in viewers who have not confirmed their age', function () {
     $viewer = User::factory()->create(['age_confirmed_at' => null]);
 
     $viewer->getPreferences()->forceFill([
@@ -69,5 +70,5 @@ it('shows the age gate when the viewer has not confirmed their age', function ()
     $this->actingAs($viewer)
         ->get("/bleeps/{$bleep->id}")
         ->assertOk()
-        ->assertSee('data-nsfw-age-gate', false);
+        ->assertDontSee('data-nsfw-age-gate', false);
 });

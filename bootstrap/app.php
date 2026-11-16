@@ -4,6 +4,7 @@ use App\Http\Middleware\CheckMaintenanceMode;
 use App\Http\Middleware\CheckRememberedDevice;
 use App\Http\Middleware\CheckUserBan;
 use App\Http\Middleware\ProgressiveLockout;
+use App\Http\Middleware\ServePublicAssetsDuringMaintenance;
 use App\Http\Middleware\UpdateUserTimezone;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -30,6 +31,10 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Runs before routing so a host that sends every request through PHP
+        // can still hand back the maintenance page's own CSS, JS and images.
+        $middleware->prepend(ServePublicAssetsDuringMaintenance::class);
+
         // Specific middleware with alias
         $middleware->alias([
             'check.banned' => CheckUserBan::class,

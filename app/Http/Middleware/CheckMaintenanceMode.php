@@ -13,10 +13,10 @@ class CheckMaintenanceMode
     /**
      * Serve the maintenance page while the site is taken offline.
      *
-     * Local/debug environments stay usable so the page itself can be worked
-     * on. The public site is offline for everyone, including signed-in staff;
-     * they can still reach sign-in, settings and the admin area to turn it
-     * back off.
+     * Every environment is offline so the page can be reviewed locally, and
+     * assets are never intercepted: the page's own styles, scripts and meme
+     * image have to load for it to render. Staff can still reach sign-in,
+     * settings and the admin area to turn maintenance back off.
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -25,8 +25,10 @@ class CheckMaintenanceMode
             return $next($request);
         }
 
-        // If the app is in a local or debug environment, continue to the next middleware.
-        if (app()->environment('local') || config('app.debug')) {
+        // Assets are not part of the offline site. Without this the browser
+        // gets a 503 HTML response instead of the CSS, JS, image or favicon it
+        // asked for, so the maintenance page renders unstyled and broken.
+        if ($this->isAssetRequest($request)) {
             return $next($request);
         }
 
@@ -44,6 +46,18 @@ class CheckMaintenanceMode
                 'image' => $this->maintenanceImage(),
             ], 503)
             ->header('Retry-After', '300');
+    }
+
+    /**
+     * Whether the request is asking for a file rather than a page.
+     */
+    private function isAssetRequest(Request $request): bool
+    {
+        if ($request->is('build/*', 'storage/*', 'images/*', 'scripts/*', 'favicon.ico', 'robots.txt')) {
+            return true;
+        }
+
+        return pathinfo($request->path(), PATHINFO_EXTENSION) !== '';
     }
 
     /**

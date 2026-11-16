@@ -44,10 +44,24 @@ it('serves the maintenance page on the sign-in route for guests', function () {
         ->assertSee('is under maintenance');
 });
 
-it('does not intercept local or debug environments', function () {
+it('keeps serving assets while the site is offline', function () {
+    $this->get('/images/maintenance/image-1.webp')
+        ->assertOk()
+        ->assertStreamedContent(file_get_contents(public_path('images/maintenance/image-1.webp')));
+
+    $this->get('/favicon.ico')
+        ->assertOk();
+
+    $this->get('/build/assets/missing.css')
+        ->assertNotFound();
+});
+
+it('serves the maintenance page in local and debug environments too', function () {
     config(['app.debug' => true]);
 
-    $this->get('/')->assertSuccessful();
+    $this->get('/')
+        ->assertStatus(503)
+        ->assertSee('is under maintenance');
 });
 
 it('stays out of the way when maintenance mode is off', function () {

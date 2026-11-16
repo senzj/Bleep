@@ -800,12 +800,9 @@ class AdminController extends Controller
 
                 return $location['country'] ?? 'Unknown';
             })
-            ->map(function ($rows, string $country) use ($geoIp): array {
-                $sample = $geoIp->locate($rows->first()->ip_address);
-
+            ->map(function ($rows, string $country): array {
                 return [
                     'label' => $country,
-                    'flag' => $sample['flag'] ?? null,
                     'visits' => (int) $rows->sum('visits_count'),
                 ];
             })

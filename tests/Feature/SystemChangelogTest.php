@@ -42,11 +42,8 @@ it('keeps the system changelog behind authentication', function () {
         ->assertRedirect(route('login'));
 });
 
-it('advertises the latest Bleep and bulletin releases in the announcement', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->get('/')
+it('advertises the latest Bleep and bulletin releases to guests', function () {
+    $this->get('/')
         ->assertSuccessful()
         ->assertSee('System Update v2.6.2')
         ->assertSee('Bulletin board patch: v1.1')
@@ -55,13 +52,20 @@ it('advertises the latest Bleep and bulletin releases in the announcement', func
         ->assertSee('data-announcement="update"', false);
 });
 
-it('explains the polling fallback when realtime notifications are unavailable', function () {
-    config()->set('broadcasting.default', 'null');
-
+it('keeps release announcements out of the signed-in feed', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get('/')
+        ->assertSuccessful()
+        ->assertDontSee('System Update v2.6.2')
+        ->assertDontSee('data-announcement="update"', false);
+});
+
+it('explains the polling fallback when realtime notifications are unavailable', function () {
+    config()->set('broadcasting.default', 'null');
+
+    $this->get('/')
         ->assertSuccessful()
         ->assertSee('Realtime notifications are unavailable on this host');
 });
@@ -70,10 +74,7 @@ it('advertises live notifications when reverb is configured', function () {
     config()->set('broadcasting.default', 'reverb');
     config()->set('broadcasting.connections.reverb.key', 'test-key');
 
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->get('/')
+    $this->get('/')
         ->assertSuccessful()
         ->assertSee('Notifications arrive live when the realtime connection is available');
 });

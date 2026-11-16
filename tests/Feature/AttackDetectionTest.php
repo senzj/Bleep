@@ -29,12 +29,17 @@ it('flags repeated failed sign-ins as a confirmed attack', function () {
 });
 
 it('does not flag a handful of failed sign-ins', function () {
+    $path = tempnam(sys_get_temp_dir(), 'bleep-empty-log-');
+    config(['system.log_path' => $path]);
+
     failedLoginRows('203.0.113.51', 2);
 
     $this->actingAs(User::factory()->create(['role' => 'admin']))
         ->get(route('admin.system.attacks'))
         ->assertOk()
         ->assertSee('No attack signals');
+
+    @unlink($path);
 });
 
 it('flags attack signatures written to the application log', function () {

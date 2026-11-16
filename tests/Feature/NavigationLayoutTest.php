@@ -4,17 +4,24 @@ use App\Models\Bleep;
 use App\Models\User;
 use App\Models\UserPreferences;
 
-it('renders the compact navbar hook and collapsible mobile side panels for signed-in users', function () {
+it('renders the compact navbar hook and the notifications panel for signed-in users', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get('/')
         ->assertSuccessful()
         ->assertSee('id="app-navbar"', false)
-        ->assertSee('id="left-panel"', false)
-        ->assertSee('aria-controls="left-panel-content"', false)
+        ->assertDontSee('id="left-panel"', false)
+        ->assertDontSee('aria-controls="left-panel-content"', false)
         ->assertSee('id="right-panel"', false)
         ->assertSee('aria-controls="right-panel-content"', false);
+});
+
+it('shows the announcements panel to guests only', function () {
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('id="left-panel"', false)
+        ->assertSee('aria-controls="left-panel-content"', false);
 });
 
 it('does not render the notifications side panel for guests', function () {

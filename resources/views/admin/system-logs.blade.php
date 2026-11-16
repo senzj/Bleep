@@ -107,7 +107,7 @@
                 <article class="rounded-xl border border-base-300 bg-base-100 p-3 sm:p-4">
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="badge badge-sm {{ $badgeClass($entry['level']) }}">{{ $entry['level'] }}</span>
-                        <span class="font-mono text-xs text-base-content/50">{{ $entry['timestamp'] }}</span>
+                        <span class="font-mono text-xs text-base-content/50">{{ \App\Support\UserTime::atString($entry['timestamp']) }}</span>
                         @if ($entry['environment'])
                             <span class="badge badge-ghost badge-xs">{{ $entry['environment'] }}</span>
                         @endif

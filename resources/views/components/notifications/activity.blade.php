@@ -33,40 +33,20 @@
                 </button>
             </div>
 
-            <div class="grid grid-cols-2 gap-1 border-b border-base-200 bg-base-200/60 p-1">
-                <button
-                    type="button"
-                    class="activity-tab btn btn-sm border-0 shadow-none gap-2 btn-active"
-                    data-activity-tab="notifications"
-                    aria-selected="true"
-                    role="tab"
-                >
+            <div class="border-b border-base-200 bg-base-200/60 p-1">
+                <div class="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold">
                     <i data-lucide="bell" class="w-4 h-4"></i>
                     Notifications
                     <span
                         class="badge badge-xs {{ $activityUnread > 0 ? 'badge-error' : 'hidden' }}"
                         data-activity-tab-badge
                     >{{ $activityUnread > 99 ? '99+' : $activityUnread }}</span>
-                </button>
-                <button
-                    type="button"
-                    class="activity-tab btn btn-sm border-0 shadow-none gap-2"
-                    data-activity-tab="announcements"
-                    aria-selected="false"
-                    role="tab"
-                >
-                    <i data-lucide="megaphone" class="w-4 h-4"></i>
-                    Announcements
-                </button>
+                </div>
             </div>
 
             <div class="flex-1 overflow-y-auto overscroll-contain p-3">
-                <div data-activity-panel="notifications" class="space-y-3">
+                <div class="space-y-3">
                     <x-notifications.quick />
-                </div>
-
-                <div data-activity-panel="announcements" class="hidden space-y-3">
-                    <x-announcement.system />
                 </div>
             </div>
         </aside>

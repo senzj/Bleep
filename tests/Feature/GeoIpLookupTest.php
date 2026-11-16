@@ -16,7 +16,7 @@ function fakeGeoIpResolver(): Closure
             'latitude' => 14.6,
             'longitude' => 120.98,
             'timezone' => 'Asia/Manila',
-            'label' => 'Manila, Metro Manila, Philippines',
+            'label' => 'Manila, Philippines',
             'flag' => 'PH',
         ]
         : null;
@@ -55,7 +55,7 @@ it('resolves a public address through the reader', function () {
         ->toMatchArray([
             'country' => 'Philippines',
             'city' => 'Manila',
-            'label' => 'Manila, Metro Manila, Philippines',
+            'label' => 'Manila, Philippines',
         ])
         ->and($service->locate('1.1.1.1'))->toBeNull();
 });
@@ -75,11 +75,29 @@ it('shows the location beside activity log IPs', function () {
     $this->actingAs($user)
         ->get(route('settings.logs'))
         ->assertOk()
-        ->assertSee('Manila, Metro Manila, Philippines');
+        ->assertSee('Manila, Philippines');
 
     $this->actingAs($user)
         ->get(route('settings.devices'))
         ->assertOk();
+});
+
+it('shows a compact city and country instead of the long region label', function () {
+    $this->app->instance(GeoIpService::class, new GeoIpService(resolver: fakeGeoIpResolver()));
+
+    $user = User::factory()->create();
+
+    Logs::create([
+        'user_id' => $user->id,
+        'action' => 'login',
+        'ip' => '8.8.8.8',
+        'user_agent' => 'Pest',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('settings.logs'))
+        ->assertOk()
+        ->assertSee('<span class="truncate">Manila, Philippines</span>', false);
 });
 
 it('shows locations and the country breakdown on the admin visits page', function () {
@@ -100,6 +118,7 @@ it('shows locations and the country breakdown on the admin visits page', functio
         ->get(route('admin.visits'))
         ->assertOk()
         ->assertSee('Top Visitor Locations')
-        ->assertSee('Manila, Metro Manila, Philippines')
-        ->assertSee('Philippines');
+        ->assertSee('Manila, Philippines')
+        ->assertSee('Philippines')
+        ->assertSee('<details class="card bg-base-100 shadow-sm border border-base-200">', false);
 });

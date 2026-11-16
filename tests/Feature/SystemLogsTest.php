@@ -61,11 +61,16 @@ it('redirects guests away from application logs', function () {
 });
 
 it('renders the attack review tab for admins', function () {
+    $path = tempnam(sys_get_temp_dir(), 'bleep-empty-log-');
+    config(['system.log_path' => $path]);
+
     $this->actingAs(User::factory()->create(['role' => 'admin']))
         ->get(route('admin.system.attacks'))
         ->assertOk()
         ->assertSee('Attacks')
         ->assertSee('No attack signals');
+
+    @unlink($path);
 });
 
 it('keeps the attack tab away from moderators', function () {

@@ -128,7 +128,7 @@
             <div class="hidden lg:grid grid-cols-[1.2fr_1.2fr_1fr_2fr_1fr_1.5fr] gap-3 px-4 py-4 border-t border-base-300 hover:bg-base-200/40 transition items-center">
                 {{-- Date & Time --}}
                 <div>
-                    <div class="text-sm">{{ $log->created_at->format('M d, Y') }} | {{ $log->created_at->format('h:i:s A') }}</div>
+                    <div class="text-sm">{{ \App\Support\UserTime::at($log->created_at, 'M d, Y') }} | {{ \App\Support\UserTime::at($log->created_at, 'h:i:s A') }}</div>
                     <div class="text-xs text-base-content/50">{{ $log->created_at->diffForHumans() }}</div>
                 </div>
 
@@ -181,8 +181,14 @@
 
                 {{-- IP Address --}}
                 <div class="text-center">
-                    <div class="text-sm font-mono">{{ $log->ip ?? '-' }}</div>
-                    <x-ip-location :ip="$log->ip" align="center" />
+                    <div class="text-sm font-mono break-all">
+                        {{ $log->ip ?? '-' }}
+                    </div>
+                    @if($log->ip)
+                        <div class="mt-1">
+                            <x-ip-location :ip="$log->ip" align="center" />
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Device --}}
@@ -205,14 +211,14 @@
                 {{-- Header: User + Action + Time Badge --}}
                 <div class="flex items-start gap-3 mb-3">
                     @if($user)
-                        <div class="relative flex-shrink-0">
+                        <div class="relative shrink-0">
                             <img src="{{ $user->profile_picture_url }}" alt="Avatar" class="w-10 h-10 rounded-full object-cover"/>
                             @if($isOnline)
                                 <span class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-base-100 rounded-full"></span>
                             @endif
                         </div>
                     @else
-                        <div class="w-10 h-10 rounded-full bg-base-300 flex items-center justify-center flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-base-300 flex items-center justify-center shrink-0">
                             <i data-lucide="user-x" class="w-5 h-5 text-base-content/50"></i>
                         </div>
                     @endif
@@ -232,9 +238,9 @@
                         @endif
                     </div>
 
-                    <div class="text-right flex-shrink-0">
-                        <div class="text-xs font-medium">{{ $log->created_at->format('M d') }}</div>
-                        <div class="text-xs text-base-content/60">{{ $log->created_at->format('h:i A') }}</div>
+                    <div class="text-right shrink-0">
+                        <div class="text-xs font-medium">{{ \App\Support\UserTime::at($log->created_at, 'M d') }}</div>
+                        <div class="text-xs text-base-content/60">{{ \App\Support\UserTime::at($log->created_at, 'h:i A') }}</div>
                         <div class="badge badge-ghost badge-xs mt-1">{{ $log->created_at->diffForHumans(null, true) }}</div>
                     </div>
                 </div>
@@ -260,9 +266,15 @@
                 <div class="grid grid-cols-2 gap-3">
                     @if($log->ip)
                         <div>
-                            <div class="text-xs font-semibold text-base-content/50 uppercase mb-1">IP Address</div>
-                            <div class="text-sm font-mono">{{ $log->ip }}</div>
-                            <x-ip-location :ip="$log->ip" />
+                            <div class="text-xs font-semibold text-base-content/50 uppercase mb-1">
+                                IP Address
+                            </div>
+                            <div class="text-sm font-mono break-all">
+                                {{ $log->ip }}
+                            </div>
+                            <div class="mt-1">
+                                <x-ip-location :ip="$log->ip" />
+                            </div>
                         </div>
                     @endif
 

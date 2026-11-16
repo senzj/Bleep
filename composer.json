@@ -57,7 +57,7 @@
         ],
         "prodlocal": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74,#86efac\" \"cmd /C set PHP_CLI_SERVER_WORKERS=8 && php artisan serve --host=0.0.0.0 --port=8000\" \"php artisan queue:work --tries=1\" \"php artisan reverb:start --host=0.0.0.0 --port=8080\" --names=server,queue,reverb"
+            "npx concurrently -c \"#000000,#93c5fd,#c4b5fd,#fdba74,#86efac\" \"npm run build\" \"cmd /C set PHP_CLI_SERVER_WORKERS=8 && php artisan serve --host=0.0.0.0 --port=8000\" \"php artisan queue:work --tries=1\" \"php artisan reverb:start --host=0.0.0.0 --port=8080\" --names=vite,server,queue,reverb"
         ],
         "test": [
             "@php artisan config:clear --ansi",

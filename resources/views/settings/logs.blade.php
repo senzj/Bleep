@@ -94,8 +94,8 @@
             <div class="hidden md:grid grid-cols-5 gap-3 px-4 py-4 border-t border-base-300 hover:bg-base-200/40 transition items-center">
                 {{-- Date & Time --}}
                 <div>
-                    <div class="text-sm">{{ $log->created_at->format('F d, Y') }}</div>
-                    <div class="text-sm">{{ $log->created_at->format('h:i:s A') }}</div>
+                    <div class="text-sm">{{ \App\Support\UserTime::at($log->created_at, 'F d, Y') }}</div>
+                    <div class="text-sm">{{ \App\Support\UserTime::at($log->created_at, 'h:i:s A') }}</div>
                     <div class="text-xs text-base-content/50">{{ $log->created_at->diffForHumans() }}</div>
                 </div>
 
@@ -128,8 +128,12 @@
 
                 {{-- IP Address --}}
                 <div class="text-center">
-                    <div class="text-sm font-mono">{{ $log->ip ?? '-' }}</div>
-                    <x-ip-location :ip="$log->ip" align="center" />
+                    <div class="text-sm font-mono break-all">{{ $log->ip ?? '-' }}</div>
+                    @if($log->ip)
+                        <div class="mt-1">
+                            <x-ip-location :ip="$log->ip" align="center" />
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Device --}}
@@ -161,7 +165,7 @@
                                     {{ $log->created_at->diffForHumans(null, true) }}
                                 </span>
                             </div>
-                            <div class="text-xs text-base-content/70 mb-2">{{ $log->created_at->format('M d, Y • h:i A') }}</div>
+                            <div class="text-xs text-base-content/70 mb-2">{{ \App\Support\UserTime::at($log->created_at, 'M d, Y • h:i A') }}</div>
                         </div>
                     </div>
 
@@ -177,7 +181,9 @@
                                 <div class="p-3 bg-base-200 rounded-lg">
                                     <div class="text-xs font-semibold text-base-content/50 uppercase mb-1">IP Address</div>
                                     <div class="text-sm font-mono break-all">{{ $log->ip }}</div>
-                                    <x-ip-location :ip="$log->ip" />
+                                    <div class="mt-1">
+                                        <x-ip-location :ip="$log->ip" />
+                                    </div>
                                 </div>
                             @endif
 

@@ -2,6 +2,7 @@
 
 use App\Models\Bleep;
 use App\Models\Comments;
+use App\Models\Logs;
 use App\Models\RememberedDevice;
 use App\Models\User;
 use App\Models\Visits;
@@ -25,6 +26,23 @@ it('allows admins to view the dashboard', function () {
     $this->actingAs($admin)
         ->get('/admin/dashboard')
         ->assertOk();
+});
+
+it('shows admin activity timestamps in the viewer own timezone', function () {
+    $admin = User::factory()->create(['role' => 'admin', 'timezone' => 'Asia/Tokyo']);
+
+    Logs::unguarded(fn () => Logs::create([
+        'user_id' => $admin->id,
+        'action' => 'login',
+        'ip' => '127.0.0.1',
+        'created_at' => '2026-01-01 23:00:00',
+    ]));
+
+    $this->actingAs($admin)
+        ->get(route('admin.logs'))
+        ->assertOk()
+        ->assertSee('Jan 02, 2026')
+        ->assertSee('08:00:00 AM');
 });
 
 it('allows moderators to view the dashboard', function () {

@@ -50,8 +50,10 @@
             ? 'order-1 grid items-start content-start self-start gap-7 md:grid-cols-2 lg:order-0 lg:col-start-2 lg:row-start-1 lg:grid-cols-1 xl:col-start-3 xl:-mr-58 xl:max-w-sm'
             : 'contents' }}" id="side-panels">
 
-            {{-- Announcements --}}
-            <div class="{{ $vertical ? 'order-2' : 'order-1 lg:col-span-3' }}" id="left-panel" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
+            {{-- Announcements are for visitors; signed-in users get release
+                 notes in Settings > System instead of the feed panel. --}}
+            @guest
+                <div class="{{ $vertical ? 'order-2' : 'order-1 lg:col-span-3' }}" id="left-panel" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
                 {{-- Mobile: stacked, collapsed by default --}}
                 <button type="button"
                         class="flex w-full items-center justify-between gap-2 rounded-lg border border-base-200 bg-base-100 px-3 py-2 text-sm font-semibold shadow-sm lg:hidden"
@@ -72,6 +74,7 @@
                     <x-announcement.system />
                 </div>
             </div>
+            @endguest
 
             {{-- Quick notifications --}}
             @auth
@@ -336,7 +339,7 @@
 
                         {{-- End of content message --}}
                         <div>
-                            <i data-lucide="party-popper" class="w-8 h-8 mx-auto text-base-content/20"></i>
+                            <i data-lucide="party-popper" class="w-8 h-8 mx-auto text-base-content"></i>
                             <button
                                 type="button"
                                 data-end-message
