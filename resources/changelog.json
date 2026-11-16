@@ -2,8 +2,24 @@
     "products": {
         "bleep": {
             "name": "Bleep",
-            "current": "2.6.1",
+            "current": "2.6.2",
             "releases": [
+                {
+                    "version": "2.6.2",
+                    "date": "2026-11-16",
+                    "title": "Quieter logo, easier icons",
+                    "summary": "The Bleep logo no longer sits in a gray chip, and the compact nav icons are wide enough to press without aiming.",
+                    "changes": {
+                        "added": [],
+                        "changed": [
+                            "The Bleep logo in the expanded and compact nav bars no longer gets a gray active background; it keeps only a soft hover tint.",
+                            "Compact nav icons are now 2.5rem wide press targets instead of tight glyphs."
+                        ],
+                        "updated": [],
+                        "optimized": [],
+                        "removed": []
+                    }
+                },
                 {
                     "version": "2.6.1",
                     "date": "2026-11-15",

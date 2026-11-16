@@ -227,6 +227,21 @@
     padding-right: 0.35rem;
 }
 
+/* The logo is a wordmark, not a current tab. daisyUI paints an active button
+   surface whenever a .btn carries aria-current="page", so the brand opts out of
+   that chip in both bars and keeps only its hover tint. */
+#app-navbar .nav-brand,
+.compact-nav .compact-nav__brand {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+
+#app-navbar .nav-brand:hover,
+.compact-nav .compact-nav__brand:hover {
+    background-color: color-mix(in oklab, var(--color-base-200) 70%, transparent);
+}
+
 #app-navbar.is-compact .nav-profile-toggle {
     width: auto;
     padding: 0.3rem;
@@ -932,9 +947,17 @@ body.nav-compact .compact-nav__cluster {
     right: 0.5rem;
 }
 
-/* Icon-only brand button: trim daisyUI's default button padding so the
-   cluster stays narrow and never creeps over the page tabs on smaller
-   desktop viewports. */
+/* Every compact control is a pressable 2.5rem-wide target, so the icon-only
+   row reads as buttons instead of cramped glyphs. The brand keeps tight
+   padding instead of a fixed width because the logo already fills it. */
+.compact-nav .compact-nav__icon,
+.compact-nav .nav-link {
+    justify-content: center;
+    width: 2.5rem;
+    min-width: 2.5rem;
+    padding-inline: 0;
+}
+
 .compact-nav .compact-nav__brand {
     padding-left: 0.35rem;
     padding-right: 0.35rem;
@@ -947,7 +970,7 @@ body.nav-compact .compact-nav__cluster {
 
 .compact-nav .nav-link {
     gap: 0;
-    padding: 0.4rem 0.5rem;
+    padding: 0.4rem 0;
     border-radius: 0.5rem;
     background: transparent;
 }
