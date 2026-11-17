@@ -34,6 +34,15 @@ enum NotificationType: string
     case AccountUnbanned = 'account.unbanned';
     case RoleChanged = 'account.role_changed';
 
+    // Account security
+    case SignedIn = 'account.signed_in';
+    case SignedOut = 'account.signed_out';
+    case FailedSignIn = 'account.failed_sign_in';
+    case PasswordChanged = 'account.password_changed';
+    case EmailChanged = 'account.email_changed';
+    case DeviceRemoved = 'account.device_removed';
+    case SessionRevoked = 'account.session_revoked';
+
     // Admin audit trail
     case AdminBanIssued = 'admin.ban_issued';
     case AdminUnbanned = 'admin.unbanned';
@@ -80,7 +89,14 @@ enum NotificationType: string
 
             self::AccountBanned,
             self::AccountUnbanned,
-            self::RoleChanged => NotificationCategory::Account,
+            self::RoleChanged,
+            self::SignedIn,
+            self::SignedOut,
+            self::FailedSignIn,
+            self::PasswordChanged,
+            self::EmailChanged,
+            self::DeviceRemoved,
+            self::SessionRevoked => NotificationCategory::Account,
 
             self::AdminBanIssued,
             self::AdminUnbanned,
@@ -120,6 +136,13 @@ enum NotificationType: string
             self::RoleChanged,
             self::ContentRemoved,
             self::WarningIssued => null,
+            self::SignedIn,
+            self::SignedOut,
+            self::FailedSignIn,
+            self::PasswordChanged,
+            self::EmailChanged,
+            self::DeviceRemoved,
+            self::SessionRevoked => 'notify_account',
         };
     }
 
@@ -142,6 +165,13 @@ enum NotificationType: string
             self::AccountBanned, self::AdminBanIssued => 'ban',
             self::AccountUnbanned, self::AdminUnbanned => 'circle-check',
             self::RoleChanged, self::AdminRoleChanged => 'shield-check',
+            self::SignedIn => 'log-in',
+            self::SignedOut => 'log-out',
+            self::FailedSignIn => 'shield-alert',
+            self::PasswordChanged => 'key-round',
+            self::EmailChanged => 'mail',
+            self::DeviceRemoved => 'monitor-x',
+            self::SessionRevoked => 'monitor-off',
         };
     }
 }

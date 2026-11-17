@@ -6,6 +6,7 @@ use App\Models\Logs;
 use App\Models\RememberedDevice;
 use App\Models\User;
 use App\Services\MediaUploadService;
+use App\Services\Notifications\AccountSecurityAlerts;
 use App\Services\System\Changelog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -51,9 +52,15 @@ class SettingsController extends Controller
             $validated['timezone'] = $detectedTimezone;
         }
 
+        $previousEmail = $user->email;
+
         $user->update($validated);
 
         Logs::record($user->id, 'profile_edit', ['changes' => array_keys($validated)], $request);
+
+        if ($user->email !== $previousEmail) {
+            app(AccountSecurityAlerts::class)->emailChanged($user, $user->email, $request);
+        }
 
         return redirect()->route('settings.profile')->with('success', 'Profile updated.');
     }
@@ -80,6 +87,8 @@ class SettingsController extends Controller
         ]);
 
         Logs::record($user->id, 'password_change', null, $request);
+
+        app(AccountSecurityAlerts::class)->passwordChanged($user, $request);
 
         return redirect()->to(route('settings.profile').'#password')->with('success', 'Password updated.');
     }
@@ -132,6 +141,8 @@ class SettingsController extends Controller
 
         if ($deleted) {
             Logs::record($user->id, 'session_removed', ['session_id' => $sessionId], $request);
+
+            app(AccountSecurityAlerts::class)->sessionRevoked($user, $request);
         }
 
         if ($request->expectsJson()) {
@@ -158,6 +169,8 @@ class SettingsController extends Controller
 
         if ($deleted) {
             Logs::record($user->id, 'device_removed', ['device_id' => $deviceId, 'token' => $device?->token], $request);
+
+            app(AccountSecurityAlerts::class)->deviceRemoved($user, $request);
         }
 
         if ($request->expectsJson()) {

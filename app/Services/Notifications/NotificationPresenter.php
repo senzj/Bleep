@@ -89,6 +89,13 @@ class NotificationPresenter
             NotificationType::AccountBanned => 'Your account was banned',
             NotificationType::AccountUnbanned => 'Your account was unbanned',
             NotificationType::RoleChanged => 'Your role is now '.ucfirst($role),
+            NotificationType::SignedIn => 'New sign-in to your account',
+            NotificationType::SignedOut => 'Your account was signed out',
+            NotificationType::FailedSignIn => 'Repeated failed sign-ins on your account',
+            NotificationType::PasswordChanged => 'Your password was changed',
+            NotificationType::EmailChanged => 'Your email address was changed',
+            NotificationType::DeviceRemoved => 'A device was removed from your account',
+            NotificationType::SessionRevoked => 'A session was signed out',
             NotificationType::AdminBanIssued => "{$actorName} banned {$target}",
             NotificationType::AdminUnbanned => "{$actorName} unbanned {$target}",
             NotificationType::AdminRoleChanged => "{$actorName} changed {$target}'s role to ".ucfirst($role),
@@ -118,6 +125,28 @@ class NotificationPresenter
             ],
 
             NotificationType::ReportResolved => [$data['notes'] ?? null],
+
+            NotificationType::SignedIn,
+            NotificationType::SignedOut,
+            NotificationType::DeviceRemoved,
+            NotificationType::SessionRevoked => [
+                $data['device'] ?? null,
+                isset($data['ip']) ? 'IP '.$data['ip'] : null,
+            ],
+
+            NotificationType::FailedSignIn => [
+                isset($data['attempts']) ? $data['attempts'].' failed attempts in the last hour' : null,
+                isset($data['ip']) ? 'IP '.$data['ip'] : null,
+            ],
+
+            NotificationType::PasswordChanged => [
+                'If this was not you, reset your password and review your devices.',
+            ],
+
+            NotificationType::EmailChanged => [
+                isset($data['email']) ? 'Now set to '.$data['email'] : null,
+                'If this was not you, secure your account and review your devices.',
+            ],
 
             NotificationType::ReportSubmitted => [
                 $data['excerpt'] ?? null,

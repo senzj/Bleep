@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Logs;
 use App\Models\RememberedDevice;
+use App\Models\User;
+use App\Services\Notifications\AccountSecurityAlerts;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -12,6 +14,12 @@ use Illuminate\Support\Str;
 
 class Login extends Controller
 {
+    /**
+     * Alert the account owner after this many failed attempts from one address
+     * within the hour. Repeats are reported every further threshold.
+     */
+    private const FAILED_SIGN_IN_ALERT_THRESHOLD = 3;
+
     /**
      * Handle the incoming request.
      */
@@ -77,9 +85,36 @@ class Login extends Controller
         // Log failed login attempt
         Logs::record(null, 'failed_login', ['username' => $request->input('username')], $request);
 
+        $this->reportRepeatedFailures($request);
+
         // If login fails, redirect back with error
         return back()
             ->withErrors(['username' => 'Invalid credentials.'])
             ->onlyInput('username');
+    }
+
+    /**
+     * Tell the account owner when their username keeps failing from one
+     * address. The row just recorded is included in the count.
+     */
+    private function reportRepeatedFailures(Request $request): void
+    {
+        $attempts = Logs::query()
+            ->where('action', 'failed_login')
+            ->where('ip', $request->ip())
+            ->where('created_at', '>=', now()->subHour())
+            ->count();
+
+        if ($attempts === 0 || $attempts % self::FAILED_SIGN_IN_ALERT_THRESHOLD !== 0) {
+            return;
+        }
+
+        $user = User::query()->where('username', $request->input('username'))->first();
+
+        if ($user === null) {
+            return;
+        }
+
+        app(AccountSecurityAlerts::class)->failedSignIn($user, $attempts, $request);
     }
 }

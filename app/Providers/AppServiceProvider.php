@@ -4,13 +4,17 @@ namespace App\Providers;
 
 use App\Models\Bleep;
 use App\Models\Comments;
+use App\Models\User;
 use App\Models\Visits;
 use App\Policies\BleepPolicy;
 use App\Policies\CommentsPolicy;
 use App\Services\Bulletin\BulletinVisitor;
 use App\Services\FollowContext;
 use App\Services\GeoIpService;
+use App\Services\Notifications\AccountSecurityAlerts;
 use App\Services\System\ScheduleRunRecorder;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
@@ -139,6 +143,20 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(ScheduledTaskSkipped::class, function (ScheduledTaskSkipped $event): void {
             app(ScheduleRunRecorder::class)->record($event->task, 'skipped');
+        });
+
+        // Account security notices ride on the auth events so every sign-in
+        // path is covered, including the remembered-device middleware.
+        Event::listen(Login::class, function (Login $event): void {
+            if ($event->user instanceof User) {
+                app(AccountSecurityAlerts::class)->signedIn($event->user, request());
+            }
+        });
+
+        Event::listen(Logout::class, function (Logout $event): void {
+            if ($event->user instanceof User) {
+                app(AccountSecurityAlerts::class)->signedOut($event->user, request());
+            }
         });
 
         // Records site visits ONLY for landing pages to avoid double logging

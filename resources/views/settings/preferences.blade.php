@@ -220,6 +220,7 @@
                             ['notify_follows', 'New followers', 'Follows and accepted follow requests.'],
                             ['notify_unfollows', 'Unfollows', 'When someone stops following you.'],
                             ['notify_profile_visits', 'Profile visits', 'When someone opens your profile.'],
+                            ['notify_account', 'Sign-ins and security', 'Sign-ins, sign-outs, failed attempts, and password, email or device changes.'],
                             ['notify_report_updates', 'Your report updates', 'When a report you submitted is resolved.'],
                         ];
 

@@ -115,4 +115,19 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Security Alerts
+    |--------------------------------------------------------------------------
+    |
+    | Account and device security notices always land in the in-app bell. The
+    | email copy is ready but off by default, so a host can switch it on once
+    | it has a working mailer configured.
+    |
+    */
+
+    'security_alerts' => [
+        'enabled' => (bool) env('MAIL_SECURITY_ALERTS', false),
+    ],
+
 ];
