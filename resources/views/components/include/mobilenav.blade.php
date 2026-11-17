@@ -1,9 +1,35 @@
-{{-- Mobile Slide-over Menu --}}
+@php
+    $navFabPosition = 'bottom-right';
+    if (Auth::check()) {
+        $navFabPosition = Auth::user()->getNavFabPosition();
+    }
+
+    $drawerSide = str_ends_with($navFabPosition, 'left') ? 'left' : 'right';
+    $drawerHiddenClass = $drawerSide === 'right' ? 'translate-x-full' : '-translate-x-full';
+@endphp
+
+{{-- Mobile quick navigation strip --}}
+{{-- Scrolling down tucks the strip away; scrolling up brings it back. The
+     floating menu button stays available so the full slide-over is always
+     one tap away. --}}
+@auth
+    <nav
+        id="mobile-nav-strip"
+        class="mobile-nav-strip lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-base-200 bg-base-100/95 shadow-[0_-10px_30px_-20px_rgba(0,0,0,0.6)] backdrop-blur"
+        aria-label="Quick navigation"
+    >
+        <div class="mobile-nav-strip__track flex items-stretch gap-1 overflow-x-auto px-2 py-1.5">
+            <x-include.navlinks />
+        </div>
+    </nav>
+@endauth
+
+{{-- Mobile slide-over trigger --}}
 {{-- The one and only mobile nav trigger, in every layout and mode. --}}
 <button
     id="mobile-menu-btn"
     type="button"
-    class="lg:hidden fixed bottom-7 right-7 z-40 btn btn-primary btn-circle shadow-xl h-13 w-13"
+    class="nav-fab nav-fab--{{ $navFabPosition }} lg:hidden fixed z-40 btn btn-primary btn-circle shadow-xl h-13 w-13"
     aria-label="Open menu"
     aria-controls="hor-mobile-drawer"
     aria-expanded="false"
@@ -13,7 +39,12 @@
 
 <div id="hor-mobile-overlay" class="fixed inset-0 bg-black/50 z-50 hidden lg:hidden transition-opacity duration-300" aria-hidden="true"></div>
 
-<aside id="hor-mobile-drawer" class="lg:hidden fixed left-0 top-0 h-full w-60 bg-base-300/95 shadow-xl z-50 transform transition-transform duration-300 ease-in-out -translate-x-full flex flex-col" aria-hidden="true">
+<aside
+    id="hor-mobile-drawer"
+    data-side="{{ $drawerSide }}"
+    class="lg:hidden fixed top-0 h-full w-60 bg-base-300/95 shadow-xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col {{ $drawerSide === 'right' ? 'right-0' : 'left-0' }} {{ $drawerHiddenClass }}"
+    aria-hidden="true"
+>
     {{-- Header --}}
     <div class="flex items-center justify-between p-4 border-b border-base-200">
         <a href="{{ route('home') }}" class="flex items-center gap-2 text-xl font-bold" aria-current="{{ request()->routeIs('home') ? 'page' : 'false' }}">

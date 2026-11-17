@@ -11,6 +11,7 @@ class UserPreferences extends Model
     protected $fillable = [
         'user_id',
         'nav_layout',
+        'nav_fab_position',
         'theme',
 
         // Content preferences
@@ -56,6 +57,7 @@ class UserPreferences extends Model
 
     protected $casts = [
         'nav_layout' => 'string',
+        'nav_fab_position' => 'string',
         'theme' => 'string',
 
         'show_nsfw' => 'boolean',
@@ -105,6 +107,7 @@ class UserPreferences extends Model
         return array_merge([
             // Theme and layout preferences
             'nav_layout' => 'horizontal',
+            'nav_fab_position' => 'bottom-right',
             'theme' => 'system',
 
             // Content preferences

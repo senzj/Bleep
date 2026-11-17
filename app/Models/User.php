@@ -276,6 +276,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Which corner the mobile menu button sits in.
+     */
+    public function getNavFabPosition(): string
+    {
+        return $this->preferences?->nav_fab_position ?? 'bottom-right';
+    }
+
+    /**
      * Limit remembered devices to 5 per user.
      * Deletes oldest if limit exceeded.
      */

@@ -206,6 +206,43 @@ it('defaults the anonymous comment preference to on', function () {
     expect($user->getPreferences()->show_anonymous_comments)->toBeTrue();
 });
 
+it('saves the mobile menu button position from the preference api', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson('/api/preferences/update', [
+            'key' => 'nav_fab_position',
+            'value' => 'top-left',
+        ])
+        ->assertOk()
+        ->assertJsonPath('value', 'top-left');
+
+    expect($user->preferences()->first()->nav_fab_position)->toBe('top-left');
+});
+
+it('rejects an unknown mobile menu button position', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson('/api/preferences/update', [
+            'key' => 'nav_fab_position',
+            'value' => 'middle',
+        ])
+        ->assertUnprocessable()
+        ->assertJson([
+            'success' => false,
+            'error' => 'Invalid menu button position',
+        ]);
+
+    expect($user->preferences()->first())->toBeNull();
+});
+
+it('defaults the mobile menu button to the bottom right', function () {
+    $user = User::factory()->create();
+
+    expect($user->getNavFabPosition())->toBe('bottom-right');
+});
+
 function commentsFor(Bleep $bleep, User $user, bool $anonymous, string $message): void
 {
     Comments::factory()->create([

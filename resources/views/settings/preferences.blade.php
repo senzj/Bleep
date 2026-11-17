@@ -61,6 +61,20 @@
                     </div>
                     <p class="text-sm text-base-content/70">Choose between a horizontal top navbar or vertical sidebar navigation. Changes take effect after page reload.</p>
                 </div>
+
+                {{-- Mobile menu button position --}}
+                <div class="form-control flex flex-col justify-center border border-base-200 p-3 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="label-text">Mobile menu button</span>
+                        <select id="nav-fab-position-select" class="pref-select select select-bordered select-sm" data-pref="nav_fab_position">
+                            <option value="bottom-right" {{ $preferences->nav_fab_position === 'bottom-right' ? 'selected' : '' }}>Bottom right</option>
+                            <option value="bottom-left" {{ $preferences->nav_fab_position === 'bottom-left' ? 'selected' : '' }}>Bottom left</option>
+                            <option value="top-right" {{ $preferences->nav_fab_position === 'top-right' ? 'selected' : '' }}>Top right</option>
+                            <option value="top-left" {{ $preferences->nav_fab_position === 'top-left' ? 'selected' : '' }}>Top left</option>
+                        </select>
+                    </div>
+                    <p class="text-sm text-base-content/70">Where the floating menu button sits on phones and tablets. The slide-over opens from the same side.</p>
+                </div>
             </div>
 
             {{-- Content Preferences --}}

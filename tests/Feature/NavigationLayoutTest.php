@@ -85,7 +85,54 @@ it('renders exactly one bottom-right mobile menu button in the horizontal layout
         ->and($body)->not->toContain('id="hor-mobile-menu-btn"')
         ->and($body)->not->toContain('id="compact-mobile-menu-btn"')
         ->and($body)->not->toContain('compact-nav__fab')
-        ->and($body)->not->toContain('id="activity-drawer-open"');
+        ->and($body)->not->toContain('id="activity-drawer-open"')
+        ->and($body)->toContain('data-nav-fab-position="bottom-right"')
+        ->and($body)->toContain('nav-fab--bottom-right');
+});
+
+it('gives signed-in members a quick navigation strip on phones', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/')
+        ->assertSuccessful()
+        ->assertSee('id="mobile-nav-strip"', false)
+        ->assertSee('mobile-nav-strip__track', false);
+});
+
+it('leaves the quick navigation strip off for guests', function () {
+    $this->get('/login')
+        ->assertSuccessful()
+        ->assertDontSee('id="mobile-nav-strip"', false);
+});
+
+it('moves the mobile menu button and drawer to the chosen side', function () {
+    $user = User::factory()->create();
+    $user->preferences()->create([
+        ...UserPreferences::defaults(),
+        'nav_fab_position' => 'top-left',
+    ]);
+
+    $body = $this->actingAs($user)->get('/')->assertSuccessful()->getContent();
+
+    expect($body)->toContain('data-nav-fab-position="top-left"')
+        ->and($body)->toContain('nav-fab--top-left')
+        ->and($body)->toContain('data-side="left"')
+        ->and($body)->toContain('-translate-x-full');
+});
+
+it('opens the mobile drawer from the right when the button is on the right', function () {
+    $user = User::factory()->create();
+    $user->preferences()->create([
+        ...UserPreferences::defaults(),
+        'nav_fab_position' => 'bottom-right',
+    ]);
+
+    $body = $this->actingAs($user)->get('/')->assertSuccessful()->getContent();
+
+    expect($body)->toContain('data-side="right"')
+        ->and($body)->toContain('right-0')
+        ->and($body)->toContain('translate-x-full');
 });
 
 it('keeps the only mobile menu button in place for the vertical layout', function () {

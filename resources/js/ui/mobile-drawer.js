@@ -1,8 +1,9 @@
 /**
  * Mobile slide-over menu and shared Lucide refresh.
  *
- * There is one trigger in every layout and mode: the fixed bottom-right
- * button rendered by the mobile nav component.
+ * There is one trigger in every layout and mode: the floating menu button
+ * rendered by the mobile nav component. The drawer sits on the same side as
+ * that button, so a bottom-left button opens a left drawer and so on.
  */
 document.addEventListener('DOMContentLoaded', () => {
     const menuBtn = document.getElementById('mobile-menu-btn');
@@ -12,13 +13,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!drawer || !overlay) return;
 
+    const fromRight = drawer.dataset.side === 'right';
+    const hiddenClass = fromRight ? 'translate-x-full' : '-translate-x-full';
+
     let isOpen = false;
 
     const setOpen = (open) => {
         if (open === isOpen) return;
         isOpen = open;
 
-        drawer.classList.toggle('-translate-x-full', !open);
+        drawer.classList.toggle(hiddenClass, !open);
         drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
         overlay.classList.toggle('hidden', !open);
         menuBtn?.setAttribute('aria-expanded', open ? 'true' : 'false');

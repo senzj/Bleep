@@ -48,9 +48,11 @@
 
     @php
         $navLayout = 'horizontal';
+        $navFabPosition = 'bottom-right';
         $preferences = null;
         if (Auth::check()) {
             $navLayout = Auth::user()->getNavLayout();
+            $navFabPosition = Auth::user()->getNavFabPosition();
             $preferences = Auth::user()->getPreferences();
         }
 
@@ -67,6 +69,7 @@
     <body class="min-h-screen font-sans bg-base-300 text-base-content"
           data-authenticated="{{ Auth::check() ? '1' : '0' }}"
           data-nav-layout="{{ $navLayout }}"
+          data-nav-fab-position="{{ $navFabPosition }}"
           data-show-nsfw="{{ $showNsfw ? '1' : '0' }}"
           data-blur-nsfw="{{ $blurNsfw ? '1' : '0' }}"
           data-autoplay-videos="{{ $autoplayVideos ? '1' : '0' }}"

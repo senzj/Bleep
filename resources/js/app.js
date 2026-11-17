@@ -2,6 +2,7 @@ import './bootstrap';
 import './alpine';
 import './theme';
 import './ui/navbar-compact';
+import './ui/mobile-nav-strip';
 import './ui/same-route-guard';
 import './ui/announcements';
 import './ui/sidebar';

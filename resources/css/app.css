@@ -1009,12 +1009,88 @@ body.nav-compact .compact-nav__cluster {
     min-width: 14rem;
 }
 
-/* Compact mode only changes the desktop row. Phones/tablets use the single
-   bottom-right menu button, so nothing sits above the page tabs there. */
+/* Compact mode only changes the desktop row. Phones/tablets use the floating
+   menu button, so nothing sits above the page tabs there. */
 body.nav-compact .feed-tabs {
     top: 0.5rem;
     margin-inline: 0;
     transition: top 180ms ease, margin 180ms ease;
+}
+
+
+/* --------------------------------------------------------------------------
+   Mobile navigation strip and floating menu button
+   -------------------------------------------------------------------------- */
+
+.mobile-nav-strip {
+    padding-bottom: env(safe-area-inset-bottom);
+    transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1), opacity 180ms ease;
+    will-change: transform;
+}
+
+.mobile-nav-strip--hidden {
+    transform: translateY(calc(100% + env(safe-area-inset-bottom)));
+    opacity: 0;
+    pointer-events: none;
+}
+
+.mobile-nav-strip__track {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+}
+
+.mobile-nav-strip__track::-webkit-scrollbar {
+    display: none;
+}
+
+.mobile-nav-strip .nav-link {
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 4rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.7rem;
+    line-height: 1rem;
+    scroll-snap-align: center;
+}
+
+.nav-fab {
+    transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.nav-fab--top-left {
+    top: calc(0.75rem + env(safe-area-inset-top));
+    left: max(0.75rem, env(safe-area-inset-left));
+}
+
+.nav-fab--top-right {
+    top: calc(0.75rem + env(safe-area-inset-top));
+    right: max(0.75rem, env(safe-area-inset-right));
+}
+
+.nav-fab--bottom-left {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom));
+    left: max(0.75rem, env(safe-area-inset-left));
+}
+
+.nav-fab--bottom-right {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom));
+    right: max(0.75rem, env(safe-area-inset-right));
+}
+
+/* Guests have no quick-navigation strip, so their button sits in the corner. */
+body[data-authenticated='0'] .nav-fab--bottom-left,
+body[data-authenticated='0'] .nav-fab--bottom-right {
+    bottom: calc(1.75rem + env(safe-area-inset-bottom));
+}
+
+@media (max-width: 1023px) {
+    /* Keep the last row of a page clear of the quick-navigation strip. */
+    body[data-authenticated='1'] main {
+        padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+    }
 }
 
 
