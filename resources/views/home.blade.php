@@ -53,7 +53,7 @@
             {{-- Announcements are for visitors; signed-in users get release
                  notes in Settings > System instead of the feed panel. --}}
             @guest
-                <div class="{{ $vertical ? 'order-2' : 'order-1 lg:col-span-3' }}" id="left-panel" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
+                <div class="{{ $vertical ? 'order-2' : 'order-1 lg:col-span-3 lg:col-start-1 lg:row-start-1' }}" id="left-panel" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
                 {{-- Mobile: stacked, collapsed by default --}}
                 <button type="button"
                         class="flex w-full items-center justify-between gap-2 rounded-lg border border-base-200 bg-base-100 px-3 py-2 text-sm font-semibold shadow-sm lg:hidden"
@@ -78,7 +78,7 @@
 
             {{-- Quick notifications --}}
             @auth
-                <div class="{{ $vertical ? 'order-1' : 'order-2 lg:order-3 lg:col-span-3' }}" id="right-panel" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
+                <div class="{{ $vertical ? 'order-1' : 'order-2 lg:order-3 lg:col-span-3 lg:col-start-10 lg:row-start-1' }}" id="right-panel" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
                     {{-- Mobile: stacked above the feed, collapsed by default --}}
                     <button type="button"
                             class="flex w-full items-center justify-between gap-2 rounded-lg border border-base-200 bg-base-100 px-3 py-2 text-sm font-semibold shadow-sm lg:hidden"
@@ -112,7 +112,7 @@
         {{-- Center panel - main content --}}
         <div class="{{ $vertical
             ? 'order-2 lg:order-0 lg:col-start-1 lg:row-start-1 xl:col-start-2'
-            : 'order-3 lg:order-2 lg:col-span-6' }}" id="center-panel">
+            : 'order-3 lg:order-2 lg:col-span-6 lg:col-start-4 lg:row-start-1' }}" id="center-panel">
 
             {{-- Feed panel: post form + bleeps (toggled as a single unit on mobile) --}}
             <div id="feed-panel">
@@ -250,7 +250,13 @@
                         data-page="{{ $bleeps->currentPage() + 1 }}"
                         data-has-more="{{ $bleeps->hasMorePages() ? 'true' : 'false' }}"
                         style="overflow-anchor: auto;">
+                        @php
+                            $supportPromoAt = \App\Support\SupportPromo::position($bleeps->count());
+                        @endphp
                         @forelse ($bleeps as $bleep)
+                            @if ($supportPromoAt === $loop->index)
+                                <x-announcement.support />
+                            @endif
                             <x-bleep :bleep="$bleep" />
                         @empty
                             <div class="hero py-12">

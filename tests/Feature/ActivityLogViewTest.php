@@ -51,3 +51,54 @@ it('falls back to a neutral summary when there are no details', function () {
         ->assertSuccessful()
         ->assertSee('Signed out');
 });
+
+it('lists personal activity newest first even when timestamps tie', function () {
+    $user = User::factory()->create();
+
+    Logs::unguarded(function () use ($user) {
+        Logs::create([
+            'user_id' => $user->id,
+            'action' => 'login',
+            'details' => ['message' => 'older activity marker'],
+            'created_at' => '2026-01-01 00:00:00',
+        ]);
+
+        Logs::create([
+            'user_id' => $user->id,
+            'action' => 'logout',
+            'details' => ['message' => 'newest activity marker'],
+            'created_at' => '2026-01-01 00:00:00',
+        ]);
+    });
+
+    $body = $this->actingAs($user)
+        ->get(route('settings.logs'))
+        ->assertSuccessful()
+        ->getContent();
+
+    expect(strpos($body, 'newest activity marker'))
+        ->toBeLessThan(strpos($body, 'older activity marker'));
+});
+
+it('lists admin activity newest first even when timestamps tie', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    Logs::unguarded(function () use ($admin) {
+        foreach (['older admin marker', 'newest admin marker'] as $message) {
+            Logs::create([
+                'user_id' => $admin->id,
+                'action' => 'login',
+                'details' => ['message' => $message],
+                'created_at' => '2026-01-01 00:00:00',
+            ]);
+        }
+    });
+
+    $body = $this->actingAs($admin)
+        ->get(route('admin.logs'))
+        ->assertSuccessful()
+        ->getContent();
+
+    expect(strpos($body, 'newest admin marker'))
+        ->toBeLessThan(strpos($body, 'older admin marker'));
+});

@@ -50,7 +50,6 @@ export default defineConfig({
                 'resources/js/post/lazyload.js',
                 'resources/js/profile/profile-crop.js',
                 'resources/js/settings/device.js',
-                'resources/js/settings/logs.js',
                 'resources/js/settings/password.js',
                 'resources/js/settings/preference.js',
                 'resources/js/settings/sounds.js',

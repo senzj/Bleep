@@ -159,7 +159,16 @@ it('keeps the three-column grid for the horizontal layout', function () {
     $body = $this->actingAs($user)->get('/')->assertSuccessful()->getContent();
 
     expect($body)->toContain('lg:grid-cols-12')
-        ->and($body)->not->toContain('xl:pr-58');
+        ->and($body)->not->toContain('xl:pr-58')
+        ->and($body)->toContain('lg:col-span-6 lg:col-start-4 lg:row-start-1')
+        ->and($body)->toContain('lg:col-span-3 lg:col-start-10 lg:row-start-1');
+});
+
+it('pins the guest announcements to the first of the three columns', function () {
+    $body = $this->get('/')->assertSuccessful()->getContent();
+
+    expect($body)->toContain('lg:col-span-3 lg:col-start-1 lg:row-start-1')
+        ->and($body)->toContain('lg:col-span-6 lg:col-start-4 lg:row-start-1');
 });
 
 it('moves notifications into the mobile slide-over menu', function () {

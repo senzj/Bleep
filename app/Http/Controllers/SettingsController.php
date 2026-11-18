@@ -191,7 +191,9 @@ class SettingsController extends Controller
         $user = $request->user();
 
         // Build query for user's logs with optional filters
-        $query = Logs::where('user_id', $user->id)->orderBy('created_at', 'desc');
+        $query = Logs::where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
 
         // simple text search against action, details JSON (string), and ip
         if ($request->filled('q')) {

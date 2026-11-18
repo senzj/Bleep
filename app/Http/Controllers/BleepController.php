@@ -540,9 +540,7 @@ class BleepController extends Controller
                 : ('@'.($bleep->user->username ?? 'Unknown')),
             'avatar_url' => $bleep->is_anonymous
                 ? null
-                : ($bleep->user->profile_picture
-                    ? asset('storage/'.$bleep->user->profile_picture)
-                    : asset('images/avatar/default.jpg')),
+                : $bleep->user->profile_picture_url,
             'user_role' => $bleep->is_anonymous ? null : ($bleep->user->role ?? null),
             'user_is_verified' => $bleep->is_anonymous ? false : (bool) ($bleep->user->is_verified ?? false),
         ];

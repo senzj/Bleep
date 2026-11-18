@@ -2,7 +2,10 @@
     @php
         $chatEnabled = (bool) config('features.chat', true);
 
-        $unreadConversationCount = $chatEnabled
+        // This partial renders once per nav surface (full bar, compact bar,
+        // mobile strip, slide-over). Memoising keeps the unread query from
+        // running four times for the same page.
+        $unreadConversationCount = once(fn () => $chatEnabled
             ? \Illuminate\Support\Facades\DB::table('conversation_user as cu')
                 ->join('messages as m', 'm.conversation_id', '=', 'cu.conversation_id')
                 ->where('cu.user_id', auth()->id())
@@ -11,7 +14,7 @@
                 ->whereRaw('(cu.last_read_at IS NULL OR m.created_at > cu.last_read_at)')
                 ->distinct()
                 ->count('cu.conversation_id')
-            : 0;
+            : 0);
 
         $unreadNotificationCount = once(fn () => app(\App\Services\Notifications\NotificationService::class)->unreadCount(auth()->user()));
 

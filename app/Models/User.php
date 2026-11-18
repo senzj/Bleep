@@ -146,17 +146,20 @@ class User extends Authenticatable
     // safe computed accessor — does not change DB value
     public function getProfilePictureUrlAttribute(): ?string
     {
-        $path = $this->getOriginal('profile_picture'); // raw DB value
-        if (! $path) {
+        $path = ltrim((string) $this->profile_picture, '/');
+
+        if ($path === '' || ! Storage::disk('public')->exists($path)) {
             return asset('images/avatar/default.jpg');
         }
 
-        $path = ltrim($path, '/');
-        if (Storage::disk('public')->exists($path)) {
+        // When public/storage is linked the file is reachable as a static
+        // asset, which the web server serves without booting PHP. Only hosts
+        // missing that symlink need the media route.
+        if (! str_contains($path, '..') && is_file(public_path($path))) {
             return asset('storage/'.$path);
         }
 
-        return asset('images/avatar/default.jpg');
+        return route('media.image', ['size' => 'thumb', 'path' => $path]);
     }
 
     // checks if user is admin/moderator

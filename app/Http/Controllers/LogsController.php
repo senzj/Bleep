@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Logs;
-
 use Illuminate\Http\Request;
 
 class LogsController extends Controller
@@ -15,7 +14,9 @@ class LogsController extends Controller
     {
         $user = $request->user();
 
-        $query = Logs::query()->orderByDesc('created_at');
+        $query = Logs::query()
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
 
         if (! $user->hasAdminAccess()) {
             $query->where('user_id', $user->id);

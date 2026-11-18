@@ -1,6 +1,8 @@
 @auth
     @php
-        $pendingRequestsCount = Auth::user()->followRequests()->where('status', 'pending')->count();
+        // Rendered in the full bar, the compact bar, the mobile strip and the
+        // slide-over; ask the database once per page.
+        $pendingRequestsCount = once(fn () => Auth::user()->followRequests()->where('status', 'pending')->count());
     @endphp
 
     {{-- Profile, hidden when mobile --}}

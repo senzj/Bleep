@@ -26,6 +26,6 @@ it('gives compact icon links a pressable width', function () {
     $css = navigationCss();
 
     expect($css)->toMatch(
-        '/\.compact-nav \.compact-nav__icon,\s*\.compact-nav \.nav-link \{[^}]*width: 2\.5rem;[^}]*min-width: 2\.5rem;[^}]*\}/',
+        '/\.compact-nav \.compact-nav__icon,\s*\.compact-nav \.nav-link \{[^}]*width: 2\.8rem;[^}]*min-width: 2\.8rem;[^}]*\}/',
     );
 });
