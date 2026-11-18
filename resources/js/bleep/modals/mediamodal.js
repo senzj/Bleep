@@ -74,9 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let mediaItems = [];
+    let mediaElements = [];
     let currentIndex = 0;
     let lastFocusedElement = null;
     let navigationToken = 0;
+    let activeVideoBridge = null;
 
     let imageSettleHandler = null;
     let imageErrorHandler = null;
@@ -284,6 +286,99 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         backgroundMedia = [];
+    }
+
+    // ── Inline → viewer video handoff ────────────────────────────────────────
+    // The viewer owns a separate <video> element, so playback has to be carried
+    // across by hand. Taking a snapshot of the inline player on open and copying
+    // the viewer state back on close keeps the seek position, volume and
+    // play/pause state from resetting every time the viewer is used.
+    function captureInlineVideo(index) {
+        const inline = mediaElements[index]?.querySelector('video');
+
+        if (!inline) return null;
+
+        return {
+            index,
+            element: inline,
+            currentTime: Number.isFinite(inline.currentTime) ? inline.currentTime : 0,
+            volume: inline.volume,
+            muted: inline.muted,
+            playbackRate: inline.playbackRate || 1,
+            loop: inline.loop,
+            playing: !inline.paused && !inline.ended,
+        };
+    }
+
+    function applyInlineVideoState(state) {
+        video.volume = state.volume;
+        video.muted = state.muted;
+        video.playbackRate = state.playbackRate;
+        video.loop = state.loop;
+
+        const start = () => {
+            const duration = Number.isFinite(video.duration) ? video.duration : 0;
+            const target = Math.min(Math.max(state.currentTime, 0), Math.max(duration - 0.25, 0));
+
+            if (target > 0) {
+                try {
+                    video.currentTime = target;
+                } catch {
+                    /* seeking before the media is ready is best-effort */
+                }
+            }
+
+            if (state.playing) {
+                video.play().catch(() => {});
+            } else {
+                video.pause();
+            }
+        };
+
+        if (video.readyState >= 1) {
+            start();
+        } else {
+            video.addEventListener('loadedmetadata', start, { once: true });
+        }
+    }
+
+    function syncViewerVideoToInline({ resume = true } = {}) {
+        const bridge = activeVideoBridge;
+
+        if (!bridge) return;
+
+        activeVideoBridge = null;
+
+        const inline = bridge.element;
+
+        if (!inline || !document.contains(inline)) return;
+
+        const viewerReady = video.readyState >= 1 && Number.isFinite(video.currentTime);
+        const wasPlaying = viewerReady ? !video.paused && !video.ended : bridge.playing;
+        const time = viewerReady ? video.currentTime : bridge.currentTime;
+
+        try {
+            inline.volume = video.volume;
+            inline.muted = video.muted;
+            inline.playbackRate = video.playbackRate || 1;
+            inline.loop = video.loop;
+            inline.currentTime = Math.max(0, time);
+        } catch {
+            /* keep whatever state the inline player still has */
+        }
+
+        if (resume && wasPlaying) {
+            inline.play().catch(() => {});
+        } else {
+            // Navigation inside the viewer must not restart the inline player
+            // behind the overlay, but closing should still restore playback.
+            inline.dataset.policyPause = '1';
+            inline.pause();
+
+            if (wasPlaying && !resume && !backgroundMedia.includes(inline)) {
+                backgroundMedia.push(inline);
+            }
+        }
     }
 
     // ── Transform state ──────────────────────────────────────────────────────
@@ -640,7 +735,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const bleepMedia = mediaItem.closest('[data-bleep-media]');
         if (!bleepMedia) return;
 
-        mediaItems = Array.from(bleepMedia.querySelectorAll('[data-media-index]')).map((element) => ({
+        mediaElements = Array.from(bleepMedia.querySelectorAll('[data-media-index]'));
+        mediaItems = mediaElements.map((element) => ({
             type: element.dataset.mediaType,
             // `data-media-view` points at the resized viewer image; galleries
             // that do not have one (avatars, admin reports) fall back to the
@@ -682,6 +778,9 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('flex');
         document.body.style.overflow = '';
 
+        // Hand the seek position and play state back to the feed player.
+        syncViewerVideoToInline();
+
         // Stop audio immediately; everything else can wait until after the
         // close frame so the interaction stays instant.
         if (!video.paused) {
@@ -718,6 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 image.style.removeProperty('transform');
 
                 mediaItems = [];
+                mediaElements = [];
                 currentIndex = 0;
 
                 if (counter) counter.textContent = '';
@@ -784,6 +884,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function showMedia(index, direction = 0) {
         const item = mediaItems[index];
         if (!item) return;
+
+        // Leaving a video slide hands its state back to the feed player first.
+        syncViewerVideoToInline({ resume: false });
 
         clearMediaErrors();
 
@@ -884,9 +987,22 @@ document.addEventListener('DOMContentLoaded', () => {
             zoomControls?.classList.add('hidden');
             setMediaCursor('default');
             delete video.dataset.positionRestored;
+
+            const state = captureInlineVideo(index);
+
+            video.pause();
             video.src = item.src;
             video.classList.remove('hidden');
             openModal();
+
+            if (state) {
+                activeVideoBridge = state;
+
+                // The viewer owns this handoff now; the generic background
+                // resume must not restart the inline player behind the overlay.
+                backgroundMedia = backgroundMedia.filter((element) => element !== state.element);
+                applyInlineVideoState(state);
+            }
         }
 
         if (animate) {

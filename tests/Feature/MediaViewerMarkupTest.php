@@ -22,3 +22,23 @@ it('declares the navigation token that cancels stale media loads', function () {
 
     expect($source)->toMatch('/let navigationToken = 0;/');
 });
+
+it('carries video state between the feed player and the viewer', function () {
+    $source = file_get_contents(resource_path('js/bleep/modals/mediamodal.js'));
+
+    expect($source)->toContain('captureInlineVideo')
+        ->toContain('syncViewerVideoToInline')
+        ->toContain('activeVideoBridge');
+});
+
+it('fullscreens the video itself and lends it native controls', function () {
+    $source = file_get_contents(resource_path('js/bleep/posts/media/video.js'));
+
+    expect($source)->toContain('video.requestFullscreen')
+        ->toContain("video.dataset.customControls === '1'");
+
+    $this->get('/')
+        ->assertOk()
+        ->assertSee('data-no-autoplay', false)
+        ->assertSee('id="media-modal-video"', false);
+});

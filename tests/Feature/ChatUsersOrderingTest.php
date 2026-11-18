@@ -80,5 +80,5 @@ it('returns the other participant avatar for direct conversations', function () 
     $payload = collect($this->actingAs($viewer)->getJson('/chat/conversations')->assertOk()->json('data'));
 
     expect($payload->firstWhere('id', $conversation->id)['avatar'])
-        ->toBe(asset('storage/avatars/bob.jpg'));
+        ->toBe(route('media.image', ['size' => 'thumb', 'path' => 'avatars/bob.jpg']));
 });

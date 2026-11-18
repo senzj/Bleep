@@ -63,11 +63,12 @@
              draggable="false"
              style="transform-origin: center center; width: auto !important; height: auto !important; max-width: 95vw !important; max-height: 85vh !important; object-fit: contain !important;">
 
-        {{-- Video --}}
+        {{-- Video: the viewer drives playback and state, so the feed autoplay
+             observer must leave it alone. --}}
         <video id="media-modal-video"
+               data-no-autoplay
                class="hidden w-auto h-auto max-w-[95vw] max-h-[85vh] object-contain"
                controls
-               autoplay
                playsinline
                style="width: auto !important; height: auto !important; max-width: 95vw !important; max-height: 85vh !important; object-fit: contain !important;">
         </video>

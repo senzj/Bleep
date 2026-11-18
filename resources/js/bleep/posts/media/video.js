@@ -310,6 +310,7 @@ function attachCustomVideoControls(video) {
     const muteIcon = bar.querySelector('[data-video-mute-icon]');
     const volumeEl = bar.querySelector('[data-video-volume]');
     const fullscreenBtn = bar.querySelector('[data-video-fullscreen]');
+    const fullscreenIcon = fullscreenBtn?.querySelector('span');
     const settingsBtn = bar.querySelector('[data-video-settings]');
     const menu = bar.querySelector('[data-video-menu]');
     const speedButtons = menu?.querySelectorAll('[data-video-speed]') ?? [];
@@ -331,15 +332,55 @@ function attachCustomVideoControls(video) {
         }
     };
 
-    const requestFullscreen = () => {
-        const target = host.closest('[data-media-index]') || host;
+    const isNativeFullscreen = () =>
+        document.fullscreenElement === video ||
+        document.webkitFullscreenElement === video ||
+        video.webkitDisplayingFullscreen === true;
 
-        if (document.fullscreenElement) {
-            document.exitFullscreen?.()?.catch?.(() => {});
+    const syncFullscreen = () => {
+        const active = isNativeFullscreen();
+
+        // Videos with custom chrome have no native controls, so lend them back
+        // while the video owns the whole screen. Native-controlled players
+        // (the media viewer) keep their own bar untouched.
+        if (video.dataset.customControls === '1') {
+            if (active) {
+                video.setAttribute('controls', '');
+            } else {
+                video.removeAttribute('controls');
+            }
+        }
+
+        fullscreenBtn?.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Toggle fullscreen');
+        setControlIcon(fullscreenIcon, active ? 'minimize' : 'maximize');
+    };
+
+    const requestFullscreen = () => {
+        if (isNativeFullscreen()) {
+            if (document.fullscreenElement) {
+                document.exitFullscreen?.()?.catch?.(() => {});
+            } else if (document.webkitFullscreenElement) {
+                document.webkitExitFullscreen?.();
+            } else {
+                video.webkitExitFullscreen?.();
+            }
+
+            return;
+        }
+
+        if (typeof video.requestFullscreen === 'function') {
+            video.requestFullscreen().catch(() => {});
+        } else if (typeof video.webkitEnterFullscreen === 'function') {
+            video.webkitEnterFullscreen();
         } else {
-            target.requestFullscreen?.()?.catch?.(() => {});
+            host.closest('[data-media-index]')?.requestFullscreen?.().catch?.(() => {});
         }
     };
+
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    document.addEventListener('webkitfullscreenchange', syncFullscreen);
+    video.addEventListener('webkitbeginfullscreen', syncFullscreen);
+    video.addEventListener('webkitendfullscreen', syncFullscreen);
 
     const syncSpeed = () => {
         const rate = Number(video.playbackRate) || 1;

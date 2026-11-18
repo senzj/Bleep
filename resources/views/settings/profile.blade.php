@@ -19,13 +19,11 @@
             {{-- Mobile: Centered column layout --}}
             <div class="flex flex-col items-center gap-4 md:hidden">
                 <div class="relative group cursor-pointer" onclick="document.getElementById('profile_picture_input').click()">
-                    <div class="avatar shadow-lg rounded-full border border-base-200">
-                        <div class="w-28 h-28 rounded-full ring ring-gray-400 transition-all relative overflow-hidden">
-                            <img id="profile_picture_preview" src="{{ $hasAvatar ? $avatarUrl : '' }}" alt="Profile Preview" class="w-full h-full rounded-full object-cover {{ $hasAvatar ? '' : 'hidden' }}" />
+                    <div class="relative w-28 h-28 rounded-full overflow-hidden bg-base-300 ring ring-gray-400 shadow-lg">
+                        <img id="profile_picture_preview" src="{{ $hasAvatar ? $avatarUrl : '' }}" alt="Profile Preview" class="absolute inset-0 h-full w-full object-cover {{ $hasAvatar ? '' : 'hidden' }}" />
 
-                            <div id="default_avatar" class="items-center justify-center h-full w-full bg-base-300 rounded-full {{ $hasAvatar ? 'hidden' : 'flex' }}">
-                                <i data-lucide="user" class="w-14 h-14 text-base-content/50"></i>
-                            </div>
+                        <div id="default_avatar" class="absolute inset-0 items-center justify-center {{ $hasAvatar ? 'hidden' : 'flex' }}">
+                            <i data-lucide="user" class="w-14 h-14 text-base-content/50"></i>
                         </div>
                     </div>
                     <div class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -58,19 +56,17 @@
             {{-- Desktop: Row layout with avatar on left --}}
             <div class="hidden md:flex items-center gap-4">
                 <div class="relative group cursor-pointer shrink-0" onclick="document.getElementById('profile_picture_input').click()">
-                    <div class="avatar shadow-lg rounded-full border border-base-200">
-                        <div class="w-28 h-28 rounded-full ring ring-gray-400 transition-all relative overflow-hidden">
-                            <img
-                                id="profile_picture_preview_desktop"
-                                src="{{ $hasAvatar ? $avatarUrl : '' }}"
-                                alt="Profile Preview"
-                                class="w-full h-full rounded-full object-cover {{ $hasAvatar ? '' : 'hidden' }}" />
+                    <div class="relative w-28 h-28 rounded-full overflow-hidden bg-base-300 ring ring-gray-400 shadow-lg">
+                        <img
+                            id="profile_picture_preview_desktop"
+                            src="{{ $hasAvatar ? $avatarUrl : '' }}"
+                            alt="Profile Preview"
+                            class="absolute inset-0 h-full w-full object-cover {{ $hasAvatar ? '' : 'hidden' }}" />
 
-                            <div
-                                id="default_avatar_desktop"
-                                class="items-center justify-center h-full w-full bg-base-300 rounded-full {{ $hasAvatar ? 'hidden' : 'flex' }}">
-                                <i data-lucide="user" class="w-14 h-14 text-base-content/50"></i>
-                            </div>
+                        <div
+                            id="default_avatar_desktop"
+                            class="absolute inset-0 items-center justify-center {{ $hasAvatar ? 'hidden' : 'flex' }}">
+                            <i data-lucide="user" class="w-14 h-14 text-base-content/50"></i>
                         </div>
                     </div>
                     <div class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">

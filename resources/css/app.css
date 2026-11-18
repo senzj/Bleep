@@ -760,6 +760,18 @@
     background: #000;
 }
 
+/* Feed videos go fullscreen as the video element itself, so the custom chrome
+   and badges stay out of the picture and the native controls take over. */
+video:fullscreen,
+video:-webkit-full-screen {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: contain !important;
+    background: #000;
+}
+
 /* Slide indicator for galleries with more than one item. The active dot grows
    so the current slide is readable without counting. */
 #media-modal-dots .media-modal-dot {
@@ -902,14 +914,14 @@ body.nav-compact .compact-nav {
 .compact-nav__cluster {
     position: absolute;
     top: 0.5rem;
-    height: 3rem;
+    height: 3.5rem;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.3rem;
+    gap: 0.3rem;
+    padding: 0.35rem;
     pointer-events: auto;
     background: var(--color-base-100);
     border: 1px solid var(--color-base-300);
-    border-radius: 0.5rem;
+    border-radius: 0.6rem;
     box-shadow: 0 14px 34px -20px rgb(0 0 0 / 0.55);
     transform: translateY(-8px);
     transition:
@@ -923,16 +935,16 @@ body.nav-compact .compact-nav {
 .compact-nav .compact-nav__icon,
 .compact-nav .nav-profile-toggle,
 .compact-nav .nav-link {
-    height: 2.5rem;
-    min-height: 2.5rem;
+    height: 2.8rem;
+    min-height: 2.8rem;
     padding-top: 0.25rem !important;
     padding-bottom: 0.25rem !important;
 }
 
 .compact-nav .nav-profile-toggle .avatar,
 .compact-nav .nav-profile-toggle .avatar > div {
-    height: 2rem;
-    width: 2rem;
+    height: 2.25rem;
+    width: 2.25rem;
 }
 
 body.nav-compact .compact-nav__cluster {
@@ -947,25 +959,31 @@ body.nav-compact .compact-nav__cluster {
     right: 0.5rem;
 }
 
-/* Every compact control is a pressable 2.5rem-wide target, so the icon-only
+/* Every compact control is a pressable 2.8rem-wide target, so the icon-only
    row reads as buttons instead of cramped glyphs. The brand keeps tight
    padding instead of a fixed width because the logo already fills it. */
 .compact-nav .compact-nav__icon,
 .compact-nav .nav-link {
     justify-content: center;
-    width: 2.5rem;
-    min-width: 2.5rem;
+    width: 2.8rem;
+    min-width: 2.8rem;
     padding-inline: 0;
 }
 
 .compact-nav .compact-nav__brand {
-    padding-left: 0.35rem;
-    padding-right: 0.35rem;
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
 }
 
 .compact-nav .compact-nav__brand img {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 2rem;
+    height: 2rem;
+}
+
+.compact-nav .compact-nav__icon [data-lucide],
+.compact-nav .nav-link [data-lucide] {
+    width: 1.35rem;
+    height: 1.35rem;
 }
 
 .compact-nav .nav-link {
