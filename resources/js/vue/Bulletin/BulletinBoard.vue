@@ -61,6 +61,7 @@ const pendingReactions = ref({});
 const openMenu = ref(null);
 const newNoteId = ref(null);
 const scroller = ref(null);
+const frameElement = ref(null);
 const chromeElement = ref(null);
 const viewportWidth = ref(1200);
 const viewportHeight = ref(700);
@@ -252,6 +253,7 @@ const onPointerDown = (event) => {
     }
 
     const element = scroller.value;
+    const surface = frameElement.value ?? element;
     dragState = {
         pointerId: event.pointerId,
         startX: event.clientX,
@@ -259,8 +261,8 @@ const onPointerDown = (event) => {
         scrollLeft: element.scrollLeft,
         moved: false,
     };
-    element.setPointerCapture?.(event.pointerId);
-    element.classList.add('bulletin-is-dragging');
+    surface.setPointerCapture?.(event.pointerId);
+    surface.classList.add('bulletin-is-dragging');
 };
 
 const onPointerMove = (event) => {
@@ -287,8 +289,9 @@ const endDrag = (event) => {
     }
 
     const element = scroller.value;
-    element?.releasePointerCapture?.(dragState.pointerId);
-    element?.classList.remove('bulletin-is-dragging');
+    const surface = frameElement.value ?? element;
+    surface?.releasePointerCapture?.(dragState.pointerId);
+    surface?.classList.remove('bulletin-is-dragging');
     dragState = null;
 };
 
@@ -706,11 +709,15 @@ onMounted(() => {
     }
 
     desktopQuery.addEventListener('change', onMediaChange);
-    scroller.value?.addEventListener('wheel', onWheel, { passive: false });
-    scroller.value?.addEventListener('pointerdown', onPointerDown);
-    scroller.value?.addEventListener('pointermove', onPointerMove);
-    scroller.value?.addEventListener('pointerup', endDrag);
-    scroller.value?.addEventListener('pointercancel', endDrag);
+
+    // The wooden frame is part of the drag surface: a pan can start on the
+    // brown rail as well as the cork, so the board never feels boxed in.
+    const surface = frameElement.value ?? scroller.value;
+    surface?.addEventListener('wheel', onWheel, { passive: false });
+    surface?.addEventListener('pointerdown', onPointerDown);
+    surface?.addEventListener('pointermove', onPointerMove);
+    surface?.addEventListener('pointerup', endDrag);
+    surface?.addEventListener('pointercancel', endDrag);
     document.addEventListener('pointerdown', onDocumentPointerDown);
     document.addEventListener('keydown', onDocumentKeydown);
 });
@@ -718,11 +725,13 @@ onMounted(() => {
 onBeforeUnmount(() => {
     resizeObserver?.disconnect();
     desktopQuery.removeEventListener('change', onMediaChange);
-    scroller.value?.removeEventListener('wheel', onWheel);
-    scroller.value?.removeEventListener('pointerdown', onPointerDown);
-    scroller.value?.removeEventListener('pointermove', onPointerMove);
-    scroller.value?.removeEventListener('pointerup', endDrag);
-    scroller.value?.removeEventListener('pointercancel', endDrag);
+
+    const surface = frameElement.value ?? scroller.value;
+    surface?.removeEventListener('wheel', onWheel);
+    surface?.removeEventListener('pointerdown', onPointerDown);
+    surface?.removeEventListener('pointermove', onPointerMove);
+    surface?.removeEventListener('pointerup', endDrag);
+    surface?.removeEventListener('pointercancel', endDrag);
     document.removeEventListener('pointerdown', onDocumentPointerDown);
     document.removeEventListener('keydown', onDocumentKeydown);
     window.clearTimeout(toastMessageTimer);
@@ -739,7 +748,7 @@ watch(layout, () => {
 
 <template>
     <section class="flex h-full min-h-0 flex-1 flex-col p-1.5 md:p-2">
-        <div class="bulletin-frame relative min-h-0 flex-1 overflow-hidden rounded-box">
+        <div ref="frameElement" class="bulletin-frame relative min-h-0 flex-1 overflow-hidden rounded-box">
             <div
                 ref="scroller"
                 class="bulletin-scroller absolute inset-0"

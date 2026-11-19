@@ -73,6 +73,7 @@ class User extends Authenticatable
             'privacy_accepted_at' => 'datetime',
             'cookies_accepted_at' => 'datetime',
             'age_confirmed_at' => 'datetime',
+            'last_active_at' => 'datetime',
         ];
     }
 

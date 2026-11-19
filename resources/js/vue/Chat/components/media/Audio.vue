@@ -102,7 +102,7 @@ watch(() => props.src, () => {
 </script>
 
 <template>
-	<div class="rounded-xl border border-base-300 bg-base-200" data-bleep-media data-audio-player>
+	<div class="w-full rounded-xl border border-base-300 bg-base-200" data-bleep-media data-audio-player>
 		<div class="p-3">
 			<!-- Progress Bar -->
 			<div class="relative bg-base-300 rounded-full overflow-hidden h-2 cursor-pointer group select-none mb-3" data-audio-progress-track>

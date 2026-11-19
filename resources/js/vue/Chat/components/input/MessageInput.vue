@@ -19,6 +19,20 @@ const canTalk = computed(() => !sending.value && Boolean(store.state.activeConve
 const canSendText = computed(() => Boolean(store.state.activeConversationId));
 const isVoiceMode = computed(() => inputMode.value === 'voice');
 
+const mentionCandidates = computed(() => {
+	const conversation = store.activeConversation.value;
+	if (!conversation) return [];
+
+	return (conversation.participants || [])
+		.filter((participant) => Number(participant.id) !== Number(store.state.currentUserId))
+		.map((participant) => ({
+			id: participant.id,
+			username: participant.username,
+			dname: participant.dname,
+			profile_picture_url: participant.profile_picture_url,
+		}));
+});
+
 const clearPendingMedia = () => {
 	pendingMediaItems.value.forEach((item) => {
 		if (item.previewUrl) {
@@ -280,6 +294,7 @@ const toggleInputMode = () => {
 					<TextAreaInput
 						v-model="text"
 						:disabled="!canSendText"
+						:mentions="mentionCandidates"
 						@submit="submitText"
 						@typing="onTyping"
 					/>

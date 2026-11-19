@@ -928,6 +928,106 @@ const leaveConversation = async (conversationId = state.activeConversationId) =>
     await fetchConversations({ silent: true });
 };
 
+// ── Group settings and invites ──
+const applyGroupSettings = (conversationId, settings) => {
+    const conversation = state.conversations.find((item) => Number(item.id) === Number(conversationId));
+    if (!conversation || !settings) return;
+
+    if ('name' in settings) {
+        conversation.name = settings.name;
+        conversation.title = conversation.is_group ? (settings.name || 'Group Chat') : conversation.title;
+    }
+
+    if ('invite_only' in settings) conversation.invite_only = settings.invite_only;
+    if ('role' in settings) conversation.role = settings.role;
+    if ('is_admin' in settings) conversation.is_admin = settings.is_admin;
+    if ('invite_token' in settings) conversation.invite_token = settings.invite_token;
+    if ('invite_url' in settings) conversation.invite_url = settings.invite_url;
+    if ('pending_invites' in settings) conversation.pending_invites = settings.pending_invites;
+
+    if (Array.isArray(settings.participants)) {
+        const existingById = new Map(
+            (conversation.participants || []).map((participant) => [Number(participant.id), participant])
+        );
+
+        conversation.participants = settings.participants.map((participant) => ({
+            ...(existingById.get(Number(participant.id)) || {}),
+            ...participant,
+        }));
+    }
+
+    if (Array.isArray(conversation.participants)) {
+        const self = conversation.participants.find((p) => Number(p.id) === Number(state.currentUserId));
+        if (self?.left_at) {
+            conversation.has_left = true;
+            conversation.left_at = self.left_at;
+        } else if (self) {
+            conversation.has_left = false;
+            conversation.left_at = null;
+        }
+    }
+};
+
+const updateGroupConversation = async (conversationId, payload) => {
+    const response = await window.axios.patch(`/chat/conversations/${conversationId}`, payload);
+    applyGroupSettings(conversationId, response.data?.data);
+    return response.data;
+};
+
+const addGroupMember = async (conversationId, userId) => {
+    const response = await window.axios.post(`/chat/conversations/${conversationId}/members`, {
+        user_id: Number(userId),
+    });
+    applyGroupSettings(conversationId, response.data?.data);
+    return response.data;
+};
+
+const removeGroupMember = async (conversationId, userId) => {
+    const response = await window.axios.delete(`/chat/conversations/${conversationId}/members/${userId}`);
+    applyGroupSettings(conversationId, response.data?.data);
+    return response.data;
+};
+
+const refreshGroupInviteLink = async (conversationId) => {
+    const response = await window.axios.post(`/chat/conversations/${conversationId}/invite-link`);
+    applyGroupSettings(conversationId, response.data?.data);
+    return response.data?.data?.invite_url || null;
+};
+
+const approveGroupInvite = async (conversationId, inviteId) => {
+    const response = await window.axios.post(`/chat/conversations/${conversationId}/invites/${inviteId}/approve`);
+    applyGroupSettings(conversationId, response.data?.data);
+    return response.data;
+};
+
+const declineGroupInvite = async (conversationId, inviteId) => {
+    const response = await window.axios.post(`/chat/conversations/${conversationId}/invites/${inviteId}/decline`);
+    applyGroupSettings(conversationId, response.data?.data);
+    return response.data;
+};
+
+const joinGroupByToken = async (token) => {
+    const response = await window.axios.get(`/chat/join/${encodeURIComponent(token)}`);
+    if (response.data?.status === 'joined') {
+        await fetchConversations({ silent: true });
+    }
+    return response.data;
+};
+
+const searchConversation = async (conversationId, term) => {
+    const response = await window.axios.get(`/chat/conversations/${conversationId}/search`, {
+        params: { q: term },
+    });
+    return response.data?.data || [];
+};
+
+const fetchSharedContent = async (conversationId, type = 'media') => {
+    const response = await window.axios.get(`/chat/conversations/${conversationId}/shared`, {
+        params: { type },
+    });
+    return response.data?.data || [];
+};
+
 const sendTyping = () => {
     const conversationId = state.activeConversationId;
     if (!conversationId) return;
@@ -1081,6 +1181,15 @@ export const useMessageStore = () => {
         createDirectConversation,
         createGroupConversation,
         leaveConversation,
+        updateGroupConversation,
+        addGroupMember,
+        removeGroupMember,
+        refreshGroupInviteLink,
+        approveGroupInvite,
+        declineGroupInvite,
+        joinGroupByToken,
+        searchConversation,
+        fetchSharedContent,
         sendTyping,
         markConversationRead,
         toggleReaction,

@@ -31,10 +31,12 @@
 /* Desktop boards pan by dragging the cork, so the empty surface advertises it.
    Notes keep their normal cursor because they are not drag handles. */
 @media (min-width: 768px) {
+    .bulletin-frame,
     .bulletin-scroller {
         cursor: grab;
     }
 
+    .bulletin-frame.bulletin-is-dragging,
     .bulletin-scroller.bulletin-is-dragging {
         cursor: grabbing;
         user-select: none;

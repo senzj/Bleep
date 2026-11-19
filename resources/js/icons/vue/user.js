@@ -1,6 +1,7 @@
 export {
     User,
     Users,
+    UsersRound,
     UserMinus,
     UserPlus,
     HatGlasses,

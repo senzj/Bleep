@@ -5,6 +5,7 @@ use App\Http\Middleware\CheckRememberedDevice;
 use App\Http\Middleware\CheckUserBan;
 use App\Http\Middleware\ProgressiveLockout;
 use App\Http\Middleware\ServePublicAssetsDuringMaintenance;
+use App\Http\Middleware\TrackUserActivity;
 use App\Http\Middleware\UpdateUserTimezone;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -45,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             CheckMaintenanceMode::class,
             UpdateUserTimezone::class,
+            TrackUserActivity::class,
             CheckUserBan::class,
             CheckRememberedDevice::class,
             ProgressiveLockout::class,

@@ -28,6 +28,7 @@ const isRecording = ref(false);
 const isPreparing = ref(false);
 const isCancelling = ref(false);
 const elapsedMs = ref(0);
+const pointerIsDown = ref(false);
 
 const elapsedSeconds = computed(() => Math.floor(elapsedMs.value / 1000));
 
@@ -79,6 +80,7 @@ const resetSessionUi = () => {
 	isCancelling.value = false;
 	elapsedMs.value = 0;
 	startAt.value = 0;
+	pointerIsDown.value = false;
 	stopMeter();
 	cleanupPointerCapture();
 };
@@ -99,6 +101,16 @@ const startRecording = async () => {
 	isPreparing.value = true;
 	try {
 		stream.value = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+		// The browser permission prompt can outlast the hold. If the finger or
+		// mouse is already up, drop the stream instead of starting a recording
+		// the person cannot cancel.
+		if (!pointerIsDown.value || pointerId.value === null) {
+			releaseMic();
+			resetSessionUi();
+			return false;
+		}
+
 		recorder.value = new MediaRecorder(stream.value);
 		chunks.value = [];
 
@@ -161,6 +173,7 @@ const finishRecording = (cancelled) => {
 const onPointerDown = async (event) => {
 	if (isLocked.value || event.button !== 0) return;
 
+	pointerIsDown.value = true;
 	pointerId.value = event.pointerId;
 	holdButtonRef.value?.setPointerCapture(event.pointerId);
 
@@ -171,11 +184,19 @@ const onPointerDown = async (event) => {
 };
 
 const onPointerMove = (event) => {
-	if (!isRecording.value || pointerId.value !== event.pointerId) return;
+	if (pointerId.value !== event.pointerId) return;
 	isCancelling.value = isWithinCancelArea(event.clientX, event.clientY);
+
+	if (isPreparing.value && isCancelling.value) {
+		// Dragged onto the cancel pill while the permission prompt is open.
+		pointerIsDown.value = false;
+		cleanupPointerCapture();
+	}
 };
 
 const onPointerUp = (event) => {
+	pointerIsDown.value = false;
+
 	if (!isRecording.value || pointerId.value !== event.pointerId) {
 		cleanupPointerCapture();
 		return;
@@ -184,6 +205,13 @@ const onPointerUp = (event) => {
 };
 
 const onPointerCancel = (event) => {
+	pointerIsDown.value = false;
+
+	if (isPreparing.value) {
+		cleanupPointerCapture();
+		return;
+	}
+
 	if (!isRecording.value || pointerId.value !== event.pointerId) return;
 	finishRecording(true);
 };

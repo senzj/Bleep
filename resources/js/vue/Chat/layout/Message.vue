@@ -3,10 +3,12 @@ import { computed, ref } from 'vue';
 import MessageInput from '../components/input/MessageInput.vue';
 import MessageList from '../components/messages/MessageList.vue';
 import { useMessageStore } from '../store/useMessageStore';
+import { useChatPreferences } from '../composables/useChatPreferences';
 
-const emit = defineEmits(['go-back']);
+const emit = defineEmits(['go-back', 'open-settings']);
 
 const store = useMessageStore();
+const { preferences, displayName } = useChatPreferences();
 
 const leavingGroup = ref(false);
 const leaveError = ref('');
@@ -64,10 +66,10 @@ const headerAvatarUrl = computed(() => {
 });
 
 const formatActiveAgo = (isoString) => {
-	if (!isoString) return 'Active recently';
+	if (!isoString) return 'Offline';
 
 	const lastActive = new Date(isoString).getTime();
-	if (Number.isNaN(lastActive)) return 'Active recently';
+	if (Number.isNaN(lastActive)) return 'Offline';
 
 	const diffSeconds = Math.max(0, Math.floor((Date.now() - lastActive) / 1000));
 	if (diffSeconds < 60) return 'Active just now';
@@ -81,14 +83,9 @@ const formatActiveAgo = (isoString) => {
 	const diffDays = Math.floor(diffHours / 24);
 	if (diffDays < 7) return `Active ${diffDays}d ago`;
 
-	const diffWeeks = Math.floor(diffDays / 7);
-	if (diffWeeks < 4) return `Active ${diffWeeks}w ago`;
-
-	const diffMonths = Math.floor(diffDays / 30);
-	if (diffMonths < 12) return `Active ${diffMonths}mo ago`;
-
-	const diffYears = Math.floor(diffDays / 365);
-	return `Active ${diffYears}y ago`;
+	// Past a week the exact moment matters more than "12w ago".
+	const date = new Date(lastActive);
+	return `Last seen ${date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`;
 };
 
 const headerStatusText = computed(() => {
@@ -100,7 +97,7 @@ const headerStatusText = computed(() => {
 	}
 
 	const otherParticipant = getOtherParticipant(conversation);
-	if (!otherParticipant) return 'Active recently';
+	if (!otherParticipant) return 'Offline';
 
 	const isPresenceOnline = store.onlineUsers.value.some((user) => Number(user.id) === Number(otherParticipant.id));
 	const isSessionOnline = Boolean(otherParticipant.is_online);
@@ -108,6 +105,16 @@ const headerStatusText = computed(() => {
 	if (isOnlineNow) return 'Online';
 
 	return formatActiveAgo(otherParticipant.last_seen_at || otherParticipant.last_read_at);
+});
+
+const headerTitle = computed(() => {
+	const conversation = store.activeConversation.value;
+	if (!conversation) return 'Select a conversation';
+
+	if (conversation.is_group) return conversation.title || 'Group Chat';
+
+	const otherParticipant = getOtherParticipant(conversation);
+	return displayName(otherParticipant, conversation.title) || 'Conversation';
 });
 
 const showOnlineIndicator = computed(() => {
@@ -161,7 +168,7 @@ const handleReplyMessage = (message) => {
 </script>
 
 <template>
-	<section class="bg-base-200 flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+	<section class="chat-surface flex h-full min-h-0 flex-1 flex-col overflow-hidden" :data-chat-bg="preferences.background">
 		<header class="border-base-300 bg-base-100 sticky top-0 z-10 shrink-0 flex items-center justify-between border-b px-4 py-3">
 			<div class="flex items-center gap-3">
 				<button class="btn btn-ghost btn-sm btn-circle md:hidden" @click="emit('go-back')">
@@ -171,7 +178,7 @@ const handleReplyMessage = (message) => {
                 <div class="relative">
 					<img
 						:src="headerAvatarUrl"
-						:alt="`${store.activeConversation.value?.title || 'Conversation'} avatar`"
+						:alt="`${headerTitle} avatar`"
 						class="h-10 w-10 rounded-full object-cover"
 					>
                     <span
@@ -183,7 +190,7 @@ const handleReplyMessage = (message) => {
 
 				<div>
 					<h3 class="font-semibold">
-                        {{ store.activeConversation.value?.title || 'Select a conversation' }}
+                        {{ headerTitle }}
 					</h3>
 					<p class="text-base-content/70 text-xs">
 						{{ headerStatusText }}
@@ -191,17 +198,29 @@ const handleReplyMessage = (message) => {
 				</div>
 			</div>
 
-			<button
-				v-if="isGroupConversation && !hasLeftGroup"
-				type="button"
-				class="btn btn-ghost btn-sm text-error"
-				:disabled="leavingGroup"
-				@click="handleLeaveGroup"
-			>
-				<span v-if="leavingGroup" class="loading loading-spinner loading-xs"></span>
-				<i v-else data-lucide="log-out" class="lucide lucide-sm"></i>
-				<span class="hidden sm:inline">Leave</span>
-			</button>
+			<div class="flex items-center gap-1">
+				<button
+					v-if="store.activeConversation.value"
+					type="button"
+					class="btn btn-ghost btn-sm btn-circle"
+					aria-label="Chat settings"
+					@click="emit('open-settings')"
+				>
+					<i data-lucide="settings" class="lucide lucide-sm"></i>
+				</button>
+
+				<button
+					v-if="isGroupConversation && !hasLeftGroup"
+					type="button"
+					class="btn btn-ghost btn-sm text-error"
+					:disabled="leavingGroup"
+					@click="handleLeaveGroup"
+				>
+					<span v-if="leavingGroup" class="loading loading-spinner loading-xs"></span>
+					<i v-else data-lucide="log-out" class="lucide lucide-sm"></i>
+					<span class="hidden sm:inline">Leave</span>
+				</button>
+			</div>
 		</header>
 
 		<MessageList

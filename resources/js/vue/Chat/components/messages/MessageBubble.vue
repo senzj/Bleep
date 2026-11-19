@@ -3,10 +3,13 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import LucideIcons from '../../../LucideIcons.vue';
 import MessageReply from './MessageReply.vue';
 import MessageContent from './MessageContent.vue';
+import MessageMedia from './MessageMedia.vue';
+import SharedBleepCard from './SharedBleepCard.vue';
 import MessageActions from './MessageActions.vue';
 import MessageEdit from './MessageEdit.vue';
 import MessageSeen from './MessageSeen.vue';
 import { useMessageStore } from '../../store/useMessageStore';
+import { useChatPreferences } from '../../composables/useChatPreferences';
 import MessageFooter from './MessageFooter.vue';
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
@@ -36,6 +39,9 @@ const props = defineProps({
 
 const emit = defineEmits(['edit-message', 'delete-message', 'reply', 'react', 'scroll-to-message']);
 const store = useMessageStore();
+const { preferences, bubbleClass, displayName } = useChatPreferences();
+
+const senderLabel = computed(() => displayName(props.message.sender, props.message.sender?.username || 'user'));
 
 const showActionMenu = ref(false);
 const showEmojiPicker = ref(false);
@@ -67,6 +73,17 @@ const canDeleteMessage = computed(() =>
 const canManageMessage = computed(() => canEditMessage.value || canDeleteMessage.value);
 const isDeleted = computed(() => props.message.is_deleted);
 const hasEditMedia = computed(() => retainedMediaItems.value.length + pendingMediaItems.value.length > 0);
+
+const displayBody = computed(() => Boolean(props.message.body) && !props.message.shared_bleep);
+
+const attachmentItems = computed(() => normalizeMessageMedia(props.message).filter((item) => item.media_kind !== 'voice'));
+const hasAttachments = computed(() => Boolean(props.message.shared_bleep) || attachmentItems.value.length > 0);
+const hasVoice = computed(() => normalizeMessageMedia(props.message).some((item) => item.media_kind === 'voice'));
+
+// Text, voice notes and edit mode keep the bubble. A message made only of a
+// bleep card, audio or a gallery gets no bubble at all, so the card can use
+// the full message column.
+const showsBubble = computed(() => displayBody.value || hasVoice.value || isDeleted.value || editing.value || !hasAttachments.value);
 
 const normalizeMessageMedia = (message) => {
     if (Array.isArray(message?.media_items) && message.media_items.length) {
@@ -396,7 +413,7 @@ onUnmounted(() => {
 
                 <div class="chat-header gap-3 flex items-center">
                     <span v-if="!mine && props.showAvatar" class="text-sm font-semibold">
-                        {{ message.sender?.dname || 'User' }}
+                        {{ senderLabel }}
                     </span>
                 </div>
 
@@ -410,8 +427,8 @@ onUnmounted(() => {
                         @scroll-to-message="(id) => emit('scroll-to-message', id)"
                     />
 
-                    <div class="chat-bubble relative items-center min-w-30 max-w-80 gap-1" :class="[
-                        isDeleted ? 'chat-bubble-ghost' : (mine ? 'chat-bubble-primary' : 'chat-bubble-secondary'),
+                    <div v-if="showsBubble" class="chat-bubble relative items-center min-w-30 max-w-80 gap-1" :class="[
+                        isDeleted ? 'chat-bubble-ghost' : bubbleClass(mine),
                         highlighted ? 'ring-2 ring-primary ring-offset-1 ring-offset-base-100' : '',
                     ]">
                         <!-- Desktop hover actions — beside the bubble -->
@@ -456,6 +473,32 @@ onUnmounted(() => {
                             :message="message"
                         />
                     </div>
+
+                    <!-- Attachments: bleep cards, audio and galleries live outside
+                         the bubble so they fill the message column edge to edge. -->
+                    <div v-if="!isDeleted && !editing && hasAttachments" class="relative w-full max-w-[min(100%,24rem)]">
+                        <MessageActions
+                            v-if="!showsBubble"
+                            :is-deleted="isDeleted"
+                            :mine="mine"
+                            :can-manage-message="canManageMessage"
+                            :can-edit="canEditMessage"
+                            :can-delete="canDeleteMessage"
+                            :show-emoji-picker="showEmojiPicker"
+                            :show-action-menu="showActionMenu"
+                            :quick-emojis="QUICK_EMOJIS"
+                            @toggle-emoji-picker="toggleEmojiPicker"
+                            @react="handleQuickReact"
+                            @reply="handleReply"
+                            @toggle-action-menu="toggleActionMenu"
+                            @edit="handleEdit"
+                            @delete="handleDelete"
+                        />
+
+                        <SharedBleepCard v-if="message.shared_bleep" :bleep="message.shared_bleep" :mine="mine" :class="showsBubble ? 'mt-1' : ''" />
+
+                        <MessageMedia :message="message" filter="nonVoice" />
+                    </div>
                 </div>
 
                 <div class="chat-footer mt-1 justify-end">
@@ -480,6 +523,6 @@ onUnmounted(() => {
         </div>
 
         <!-- Seen avatars (hidden for deleted messages) -->
-        <MessageSeen v-if="!isDeleted" :message="message" :seenAvatars="seenAvatars" :mine="mine" />
+        <MessageSeen v-if="!isDeleted && preferences.showSeen" :message="message" :seenAvatars="seenAvatars" :mine="mine" />
     </div>
 </template>

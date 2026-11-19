@@ -1176,3 +1176,55 @@ body[data-authenticated='0'] .nav-fab--bottom-right {
 .follow-btn[data-following='1']:focus-visible .unfollow-text {
     color: #fff !important;
 }
+
+/* ── Chat appearance ──
+   Backgrounds are painted on the message viewport only, so the sidebar and
+   composer keep the theme surface. */
+.chat-surface {
+    background-color: var(--color-base-200);
+}
+
+.chat-surface[data-chat-bg='dots'] {
+    background-image: radial-gradient(color-mix(in oklab, var(--color-base-content) 12%, transparent) 1px, transparent 1px);
+    background-size: 18px 18px;
+}
+
+.chat-surface[data-chat-bg='grid'] {
+    background-image:
+        linear-gradient(color-mix(in oklab, var(--color-base-content) 7%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in oklab, var(--color-base-content) 7%, transparent) 1px, transparent 1px);
+    background-size: 28px 28px;
+}
+
+.chat-surface[data-chat-bg='warm'] {
+    background-image: linear-gradient(160deg, #fef3c7 0%, #fde68a 45%, #f5d0a9 100%);
+}
+
+.chat-surface[data-chat-bg='night'] {
+    background-image: linear-gradient(160deg, #0f172a 0%, #1e293b 55%, #312e81 100%);
+}
+
+:where([data-theme='dark'], [data-theme='night'], [data-theme='dim'], [data-theme='black'], [data-theme='business'], [data-theme='dracula'], [data-theme='synthwave']) .chat-surface[data-chat-bg='warm'] {
+    background-image: linear-gradient(160deg, #3b2f1e 0%, #4a3a25 50%, #2a2117 100%);
+}
+
+@keyframes chat-settings-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0.4;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.chat-settings-panel {
+    animation: chat-settings-in 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chat-settings-panel {
+        animation: none;
+    }
+}

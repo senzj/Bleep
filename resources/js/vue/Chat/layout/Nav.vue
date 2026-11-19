@@ -2,9 +2,11 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import SearchBar from '../components/sidebar/SearchBar.vue';
 import { useMessageStore } from '../store/useMessageStore';
+import { useChatPreferences } from '../composables/useChatPreferences';
 import LucideIcons from '../../LucideIcons.vue';
 
 const store = useMessageStore();
+const { displayName } = useChatPreferences();
 const query = ref('');
 let searchTimer = null;
 
@@ -117,6 +119,76 @@ const formatConversationTime = (isoString) => {
 	return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
+const mediaSummary = (last) => {
+	const items = Array.isArray(last.media_items) && last.media_items.length
+		? last.media_items
+		: (last.media_path || last.media_url ? [{ media_kind: last.media_kind, media_type: last.media_type }] : []);
+
+	if (!items.length) return null;
+
+	const kinds = items.map((item) => {
+		const type = item.media_type || '';
+		const kind = item.media_kind || '';
+		if (kind === 'voice' || type.startsWith('audio/webm')) return 'voice';
+		if (type.startsWith('image/')) return 'image';
+		if (type.startsWith('video/')) return 'video';
+		if (kind === 'audio' || type.startsWith('audio/')) return 'audio';
+		return 'file';
+	});
+
+	const count = kinds.length;
+	const label = (kind) => {
+		const plural = count > 1 ? 's' : '';
+		if (kind === 'voice') return `Voice message${plural}`;
+		if (kind === 'image') return `Photo${plural}`;
+		if (kind === 'video') return `Video${plural}`;
+		if (kind === 'audio') return `Audio file${plural}`;
+		return `File${plural}`;
+	};
+
+	return count > 1 ? `${count} attachments` : label(kinds[0]);
+};
+
+// Mirrors the label a person would read in a notification, not the raw body.
+const conversationTitle = (conversation) => {
+	if (!conversation) return 'Conversation';
+	if (conversation.is_group) return conversation.title || 'Group Chat';
+
+	const other = getConversationOtherParticipant(conversation);
+	return displayName(other, conversation.title) || 'Conversation';
+};
+
+const conversationPreview = (conversation) => {
+	const last = conversation?.last_message;
+	if (!last) return 'No messages yet';
+	if (last.is_deleted) return 'Message deleted';
+
+	const mine = Number(last.sender_id) === Number(store.state.currentUserId);
+	const senderName = displayName(last.sender, last.sender?.username || 'Someone');
+	const isGroup = Boolean(conversation?.is_group);
+
+	let text;
+
+	if (last.shared_bleep) {
+		text = 'Sent a bleep post';
+	} else if (last.media_kind === 'voice') {
+		text = 'Voice message';
+	} else if (last.media_kind === 'audio') {
+		text = 'Audio file';
+	} else if (last.body) {
+		const username = store.state.currentUsername;
+		const mentionsMe = !mine && username
+			&& new RegExp(`@${username}\\b`, 'i').test(last.body);
+
+		text = mentionsMe ? 'Mentioned you' : last.body;
+	} else {
+		text = mediaSummary(last) || 'Media';
+	}
+
+	if (mine) return text;
+	return isGroup ? `${senderName}: ${text}` : text;
+};
+
 
 const emit = defineEmits(['open-chat', 'create-group']);
 
@@ -143,7 +215,7 @@ const startDirectMessage = async (userId) => {
 
             <!-- Create Group Button -->
             <button class="btn btn-primary btn-sm rounded-md" @click="emit('create-group')">
-                <i data-lucide="users" class="w-4 h-4"></i>
+                <i data-lucide="users-round" class="w-4 h-4"></i>
                 <span class="hidden sm:inline">Create Group</span>
             </button>
 		</div>
@@ -238,7 +310,7 @@ const startDirectMessage = async (userId) => {
 							<div class="flex items-start justify-between gap-2">
 								<div class="min-w-0 flex items-center gap-2">
                                     <p class="truncate text-sm font-semibold">
-                                        {{ item.conversation.title }}
+                                        {{ conversationTitle(item.conversation) }}
 
                                     </p>
                                     <p
@@ -261,7 +333,7 @@ const startDirectMessage = async (userId) => {
 
 							<div class="flex items-center justify-between gap-2">
                                 <p class="text-base-content/70 truncate text-xs ml-1">
-                                    {{ item.conversation.last_message?.body || (item.conversation.last_message ? 'Media' : 'No messages yet') }}
+                                    {{ conversationPreview(item.conversation) }}
                                 </p>
 
                                 <p class="text-base-content/60 text-[11px]">
@@ -291,7 +363,7 @@ const startDirectMessage = async (userId) => {
 								/>
 							</div>
 							<div class="min-w-0">
-								<p class="truncate text-sm font-medium">{{ item.user.dname || item.user.username }}</p>
+								<p class="truncate text-sm font-medium">{{ displayName(item.user, item.user.username) }}</p>
 								<p class="text-base-content/70 truncate text-xs">@{{ item.user.username }}</p>
 							</div>
 						</div>

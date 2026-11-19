@@ -16,6 +16,8 @@ class Conversation extends Model
     protected $fillable = [
         'name',
         'is_group',
+        'invite_only',
+        'invite_token',
         'creator_id',
         'chat_theme',
         'chat_bg',
@@ -26,6 +28,7 @@ class Conversation extends Model
     {
         return [
             'is_group' => 'boolean',
+            'invite_only' => 'boolean',
             'last_message_at' => 'datetime',
         ];
     }
@@ -63,5 +66,14 @@ class Conversation extends Model
     public function latestMessage(): HasOne
     {
         return $this->hasOne(Message::class)->withTrashed()->latestOfMany();
+    }
+
+    /**
+     * Join requests raised by an invite link or a direct add on an
+     * invite-only group. Pending rows are invisible to the requested member.
+     */
+    public function invites(): HasMany
+    {
+        return $this->hasMany(ConversationInvite::class);
     }
 }

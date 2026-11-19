@@ -43,6 +43,9 @@ const openShareModal = (bleepId) => {
     const selectedCount = document.getElementById('share-selected-count');
     const chatSearch = document.getElementById('share-chat-search');
     const chatList = document.getElementById('share-chat-list');
+    const messageInput = document.getElementById('share-message-input');
+    const platformsPanel = document.getElementById('share-platforms');
+    const moreBtn = document.getElementById('share-more-btn');
 
     if (!modal || !overlay || !input || !urlDisplay || !linkCard || !copyBtn || !cancelBtn) {
         return;
@@ -110,12 +113,23 @@ const openShareModal = (bleepId) => {
         }, 1800);
     };
 
+    const setPlatformsOpen = (open) => {
+        if (!platformsPanel || !moreBtn) return;
+
+        platformsPanel.classList.toggle('hidden', !open);
+        moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+
     const close = () => {
         cleanup();
         actionInFlight = false;
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         document.body.style.overflow = '';
+        if (messageInput) {
+            messageInput.value = '';
+        }
+        setPlatformsOpen(false);
         restoreFocus();
         window.__shareModalCleanup = null;
     };
@@ -532,7 +546,9 @@ const openShareModal = (bleepId) => {
 
         try {
             // Make sure the share exists even if the viewer only sends to chats.
-            const url = await ensureShareUrl();
+            await ensureShareUrl();
+
+            const note = messageInput?.value.trim() || '';
 
             let sent = 0;
             const failed = [];
@@ -545,7 +561,9 @@ const openShareModal = (bleepId) => {
                         method: 'POST',
                         body: {
                             conversation_id: conversationId,
-                            body: url,
+                            // The card already opens the post, so the raw
+                            // share URL is not repeated in the bubble.
+                            body: note || null,
                             shared_bleep_id: Number(bleepId),
                         },
                     });
@@ -603,6 +621,9 @@ const openShareModal = (bleepId) => {
     attach(closeBtn, 'click', close);
     attach(overlay, 'click', close);
     attach(chatSearch, 'input', renderChatTargets);
+    attach(moreBtn, 'click', () => {
+        setPlatformsOpen(platformsPanel?.classList.contains('hidden'));
+    });
 
     modal.querySelectorAll('[data-share-platform]').forEach((button) => {
         attach(button, 'click', () => platformHandler(button.dataset.sharePlatform));
@@ -638,9 +659,14 @@ const openShareModal = (bleepId) => {
     // Reset per-open state.
     setUrl(`${window.location.origin}/bleeps/${bleepId}`);
     selectedKeys.clear();
+    setPlatformsOpen(false);
 
     if (chatSearch) {
         chatSearch.value = '';
+    }
+
+    if (messageInput) {
+        messageInput.value = '';
     }
 
     // Only offer the OS share sheet on devices that support it.

@@ -6,9 +6,9 @@ defineProps({
 </script>
 
 <template>
-	<div data-bleep-media>
+	<div data-bleep-media class="w-full">
 		<div
-			class="inline-block cursor-pointer overflow-hidden rounded-lg"
+			class="w-full cursor-pointer overflow-hidden rounded-xl"
 			data-media-index="0"
 			data-media-type="image"
 			:data-media-src="src"
@@ -17,7 +17,7 @@ defineProps({
 			<img
 				:src="src"
 				:alt="alt"
-				class="max-h-64 w-auto rounded-lg object-cover hover:opacity-90 transition-opacity select-none"
+				class="max-h-[70vh] w-full rounded-xl object-cover hover:opacity-90 transition-opacity select-none"
 				loading="lazy"
 			/>
 		</div>

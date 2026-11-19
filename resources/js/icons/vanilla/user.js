@@ -10,6 +10,7 @@ export {
     UserRoundPlus,
     UserRoundX,
     Users,
+    UsersRound,
     IdCard,
     HeartHandshake,
 } from 'lucide';

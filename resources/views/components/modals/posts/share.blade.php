@@ -45,6 +45,19 @@
             </div>
 
             @auth
+                {{-- Optional note that travels with the bleep card --}}
+                <label class="form-control w-full">
+                    <span class="mb-1 text-sm font-semibold">Add a message</span>
+                    <textarea
+                        id="share-message-input"
+                        rows="2"
+                        maxlength="1000"
+                        class="textarea textarea-bordered w-full resize-none text-sm"
+                        placeholder="Say something about this bleep (optional)"
+                        aria-label="Optional message to send with the bleep"
+                    ></textarea>
+                </label>
+
                 {{-- People and group chats --}}
                 <div class="space-y-2">
                     <div class="flex items-center justify-between gap-2">
@@ -58,14 +71,30 @@
                             placeholder="Search people and chats" autocomplete="off" aria-label="Search people and chats" />
                     </label>
 
-                    <div id="share-chat-list" class="flex items-center gap-2 overflow-x-auto pb-1 pr-1" role="listbox" aria-multiselectable="true" aria-label="People and group chats">
-                        <p class="px-2 py-3 text-xs text-base-content/50">Loading your chats…</p>
+                    <div class="relative">
+                        <div id="share-chat-list" class="flex items-center gap-2 overflow-x-auto pb-1 pr-24" role="listbox" aria-multiselectable="true" aria-label="People and group chats">
+                            <p class="px-2 py-3 text-xs text-base-content/50">Loading your chats…</p>
+                        </div>
+
+                        {{-- Stays pinned to the end of the list however many chats there are --}}
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center bg-linear-to-l from-base-100 via-base-100/90 to-transparent pl-6">
+                            <button
+                                id="share-more-btn"
+                                type="button"
+                                class="pointer-events-auto btn btn-ghost btn-xs gap-1"
+                                aria-expanded="false"
+                                aria-controls="share-platforms"
+                            >
+                                <i data-lucide="ellipsis" class="h-3.5 w-3.5"></i>
+                                <span>More</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             @endauth
 
-            {{-- Other platforms --}}
-            <div class="space-y-2">
+            {{-- Other platforms (collapsed until "More options") --}}
+            <div id="share-platforms" class="hidden space-y-2">
                 <h4 class="text-sm font-semibold">Share to other platforms</h4>
 
                 <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">

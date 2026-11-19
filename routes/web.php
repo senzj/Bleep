@@ -17,6 +17,7 @@ use App\Http\Controllers\BleepController;
 use App\Http\Controllers\BlockedUsersController;
 use App\Http\Controllers\BulletinController;
 use App\Http\Controllers\Chat\ConversationController;
+use App\Http\Controllers\Chat\GroupController;
 use App\Http\Controllers\Chat\MediaUploadController;
 use App\Http\Controllers\Chat\MessageController;
 use App\Http\Controllers\Chat\MessageReactionController;
@@ -204,6 +205,28 @@ Route::middleware('auth')->group((function () {
         ->name('chat.conversations.leave');
     Route::get('/chat/conversations/{conversation}/messages', [ConversationController::class, 'messages'])
         ->name('chat.conversations.messages');
+
+    // Group settings, membership and invites
+    Route::patch('/chat/conversations/{conversation}', [GroupController::class, 'update'])
+        ->name('chat.conversations.update');
+    Route::post('/chat/conversations/{conversation}/members', [GroupController::class, 'addMember'])
+        ->name('chat.conversations.members.add');
+    Route::delete('/chat/conversations/{conversation}/members/{user}', [GroupController::class, 'removeMember'])
+        ->name('chat.conversations.members.remove');
+    Route::post('/chat/conversations/{conversation}/invite-link', [GroupController::class, 'inviteLink'])
+        ->name('chat.conversations.invite-link');
+    Route::post('/chat/conversations/{conversation}/invites/{invite}/approve', [GroupController::class, 'approveInvite'])
+        ->name('chat.conversations.invites.approve');
+    Route::post('/chat/conversations/{conversation}/invites/{invite}/decline', [GroupController::class, 'declineInvite'])
+        ->name('chat.conversations.invites.decline');
+    Route::get('/chat/join/{token}', [GroupController::class, 'join'])
+        ->name('chat.join');
+
+    // In-conversation history tools
+    Route::get('/chat/conversations/{conversation}/search', [GroupController::class, 'search'])
+        ->name('chat.conversations.search');
+    Route::get('/chat/conversations/{conversation}/shared', [GroupController::class, 'shared'])
+        ->name('chat.conversations.shared');
 
     Route::post('/chat/media', [MediaUploadController::class, 'store'])
         ->name('chat.media.store');

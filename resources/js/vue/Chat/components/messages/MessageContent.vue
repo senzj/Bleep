@@ -1,13 +1,17 @@
 <script setup>
+import { computed } from 'vue';
 import MessageMedia from './MessageMedia.vue';
-import SharedBleepCard from './SharedBleepCard.vue';
 
-defineProps({
+const props = defineProps({
     message: {
         type: Object,
         required: true,
     },
 });
+
+// A shared bleep's body is the /s/{token} link. The card below already opens
+// the post, so the raw link stays hidden.
+const displayBody = computed(() => Boolean(props.message.body) && !props.message.shared_bleep);
 </script>
 
 <template>
@@ -18,8 +22,7 @@ defineProps({
 
     <!-- Normal message content -->
     <template v-else>
-        <p v-if="message.body" class="text-md wrap-break-word">{{ message.body }}</p>
-        <SharedBleepCard v-if="message.shared_bleep" :bleep="message.shared_bleep" class="mt-2" />
-        <MessageMedia :message="message" />
+        <p v-if="displayBody" class="text-md wrap-break-word">{{ message.body }}</p>
+        <MessageMedia :message="message" filter="voice" />
     </template>
 </template>

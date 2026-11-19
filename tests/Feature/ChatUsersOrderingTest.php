@@ -82,3 +82,41 @@ it('returns the other participant avatar for direct conversations', function () 
     expect($payload->firstWhere('id', $conversation->id)['avatar'])
         ->toBe(route('media.image', ['size' => 'thumb', 'path' => 'avatars/bob.jpg']));
 });
+
+it('counts weeks away from the persistent last active stamp', function () {
+    $viewer = User::factory()->create();
+    $away = makeFriend($viewer, ['last_active_at' => now()->subWeeks(3)]);
+
+    $payload = collect($this->actingAs($viewer)->getJson('/chat/users')->assertOk()->json('data'))
+        ->firstWhere('id', $away->id);
+
+    expect($payload['is_online'])->toBeFalse()
+        ->and($payload['last_seen_at'])->toBe($away->last_active_at->toIso8601String());
+});
+
+it('falls back to the persistent last active stamp in conversation participants', function () {
+    $viewer = User::factory()->create();
+    $away = User::factory()->create(['last_active_at' => now()->subMonths(2)]);
+
+    $conversation = Conversation::create([
+        'is_group' => false,
+        'creator_id' => $viewer->id,
+    ]);
+    $conversation->participants()->attach([$viewer->id, $away->id]);
+
+    $payload = collect($this->actingAs($viewer)->getJson('/chat/conversations')->assertOk()->json('data'))
+        ->firstWhere('id', $conversation->id);
+
+    $participant = collect($payload['participants'])->firstWhere('id', $away->id);
+
+    expect($participant['is_online'])->toBeFalse()
+        ->and($participant['last_seen_at'])->toBe($away->last_active_at->toIso8601String());
+});
+
+it('records when a signed-in member was last active', function () {
+    $user = User::factory()->create(['last_active_at' => null]);
+
+    $this->actingAs($user)->get('/')->assertOk();
+
+    expect($user->fresh()->last_active_at)->not->toBeNull();
+});

@@ -245,6 +245,8 @@ class ChatMessageFormatter
             'author_profile_picture_url' => $isAnonymous ? null : $bleep->user?->profile_picture_url,
             'media_url' => $media?->url(),
             'media_type' => $media?->type,
+            'created_at' => optional($bleep->created_at)->toIso8601String(),
+            'views' => (int) ($bleep->views ?? 0),
         ];
     }
 

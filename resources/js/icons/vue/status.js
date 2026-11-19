@@ -1,4 +1,5 @@
 export {
+    Eye,
     Heart,
     HeartCrack,
     MessageCircle,

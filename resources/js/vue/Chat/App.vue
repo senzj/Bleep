@@ -1,13 +1,25 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import Message from './layout/Message.vue';
 import Nav from './layout/Nav.vue';
 import CreateGroupChat from './components/modals/CreateGroupChat.vue';
+import ChatSettings from './components/settings/ChatSettings.vue';
 import { useMessageStore } from './store/useMessageStore';
 
 const store = useMessageStore();
 const mobileView = ref('nav');
 const showCreateGroup = ref(false);
+const settingsOpen = ref(false);
+
+const gridClass = computed(() => {
+    if (settingsOpen.value) {
+        return 'grid-cols-1 md:grid-cols-[340px_1fr] lg:grid-cols-[300px_1fr_320px] xl:grid-cols-[340px_1fr_340px]';
+    }
+
+    return 'grid-cols-1 md:grid-cols-[360px_1fr]';
+});
+
+const activeConversation = computed(() => store.activeConversation.value);
 
 const openChat = () => {
     mobileView.value = 'chat';
@@ -121,7 +133,11 @@ const handleUrlNavigation = async (isPopState = false) => {
 </script>
 
 <template>
-    <div v-lucide class="bg-base-100 rounded-lg grid h-full min-h-0 w-full grid-cols-1 overflow-hidden md:grid-cols-[360px_1fr]">
+    <div
+        v-lucide
+        class="bg-base-100 rounded-lg grid h-full min-h-0 w-full overflow-hidden"
+        :class="gridClass"
+    >
         <Nav
             class="min-h-0"
             :class="mobileView === 'nav' ? 'flex' : 'hidden md:flex'"
@@ -132,7 +148,23 @@ const handleUrlNavigation = async (isPopState = false) => {
             class="min-h-0"
             :class="mobileView === 'chat' ? 'flex' : 'hidden md:flex'"
             @go-back="goBackToNav"
+            @open-settings="settingsOpen = true"
         />
+
+        <div
+            v-if="settingsOpen"
+            class="fixed inset-0 z-40 bg-black/40 lg:hidden"
+            aria-hidden="true"
+            @click="settingsOpen = false"
+        ></div>
+
+        <div
+            v-if="settingsOpen && activeConversation"
+            class="chat-settings-panel fixed inset-y-0 right-0 z-50 w-[92vw] max-w-sm shadow-2xl lg:static lg:z-auto lg:w-auto lg:max-w-none lg:shadow-none"
+        >
+            <ChatSettings :conversation="activeConversation" @close="settingsOpen = false" />
+        </div>
+
         <CreateGroupChat
             v-if="showCreateGroup"
             @close="showCreateGroup = false"

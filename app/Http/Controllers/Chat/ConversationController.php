@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Chat;
 use App\Events\Chat\ConversationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
+use App\Models\ConversationInvite;
 use App\Models\User;
 use App\Services\Broadcasting\BroadcastGateway;
 use App\Services\Chat\ChatMessageFormatter;
@@ -83,6 +84,7 @@ class ConversationController extends Controller
                 'users.username',
                 'users.dname',
                 'users.profile_picture',
+                'users.last_active_at',
                 'recent_dm.last_messaged_at',
                 'active_sessions.last_activity',
             ])
@@ -109,6 +111,8 @@ class ConversationController extends Controller
 
         $data = $users->map(function (User $user) use ($onlineCutoff) {
             $lastActivity = (int) ($user->last_activity ?? 0);
+            $storedActivity = $user->last_active_at?->timestamp ?? 0;
+            $lastSeen = max($lastActivity, $storedActivity);
 
             return [
                 'id' => $user->id,
@@ -120,7 +124,7 @@ class ConversationController extends Controller
                 'interaction_score' => (int) ($user->interaction_score ?? 0),
                 'last_messaged_at' => $user->last_messaged_at ? Carbon::parse($user->last_messaged_at)->toIso8601String() : null,
                 'is_online' => $lastActivity > 0 && $lastActivity >= $onlineCutoff,
-                'last_seen_at' => $lastActivity > 0 ? Carbon::createFromTimestamp($lastActivity)->toIso8601String() : null,
+                'last_seen_at' => $lastSeen > 0 ? Carbon::createFromTimestamp($lastSeen)->toIso8601String() : null,
             ];
         })->values();
 
@@ -163,6 +167,7 @@ class ConversationController extends Controller
             ->with([
                 'participants:id,username,dname,profile_picture',
                 'latestMessage' => fn ($query) => $query->with(ChatMessageFormatter::relations()),
+                'invites' => fn ($query) => $query->where('status', ConversationInvite::STATUS_PENDING)->with('user'),
             ])
             ->orderByDesc('conversation_user.is_pinned')
             ->orderByDesc('last_message_at')
@@ -180,6 +185,14 @@ class ConversationController extends Controller
             ->groupBy('user_id')
             ->selectRaw('user_id, MAX(last_activity) as last_activity')
             ->pluck('last_activity', 'user_id');
+
+        // Sessions disappear on logout and expiry, so keep the persistent
+        // last-seen stamp as the fallback for members who have been away.
+        $lastSeenByUserId = User::query()
+            ->whereIn('id', $participantIds)
+            ->whereNotNull('last_active_at')
+            ->pluck('last_active_at', 'id')
+            ->map(fn ($lastActiveAt) => Carbon::parse($lastActiveAt)->timestamp);
 
         $conversationIds = $conversations->pluck('id');
         $unreadCounts = DB::table('messages as m')
@@ -201,6 +214,10 @@ class ConversationController extends Controller
                 'username' => $participant->username,
                 'dname' => $participant->dname,
                 'profile_picture_url' => $participant->profile_picture_url,
+                'role' => $participant->pivot?->role,
+                'left_at' => $participant->pivot?->left_at
+                    ? Carbon::parse($participant->pivot->left_at)->toIso8601String()
+                    : null,
                 'last_read_at' => optional($participant->pivot?->last_read_at)?->toIso8601String(),
                 'is_online' => false,
                 'last_seen_at' => null,
@@ -216,6 +233,8 @@ class ConversationController extends Controller
                 ->values();
 
             $lastMessage = $conversation->latestMessage;
+            $viewerPivot = $conversation->pivot;
+            $isAdmin = $viewerPivot && $viewerPivot->left_at === null && $viewerPivot->role === 'admin';
 
             return [
                 'id' => $conversation->id,
@@ -226,6 +245,23 @@ class ConversationController extends Controller
                 'is_group' => $conversation->is_group,
                 'avatar' => $otherParticipants->first()?->profile_picture_url,
                 'participants' => $participants,
+                'role' => $viewerPivot?->role,
+                'is_admin' => (bool) $isAdmin,
+                'invite_only' => (bool) $conversation->invite_only,
+                'invite_token' => $isAdmin ? $conversation->invite_token : null,
+                'invite_url' => $isAdmin && $conversation->invite_token
+                    ? route('chat.join', $conversation->invite_token)
+                    : null,
+                'pending_invites' => $isAdmin
+                    ? $conversation->invites->map(fn (ConversationInvite $invite) => [
+                        'id' => $invite->id,
+                        'user_id' => $invite->user_id,
+                        'username' => $invite->user?->username,
+                        'dname' => $invite->user?->dname,
+                        'profile_picture_url' => $invite->user?->profile_picture_url,
+                        'requested_at' => optional($invite->created_at)->toIso8601String(),
+                    ])->values()
+                    : [],
                 'last_read_at' => optional($conversation->pivot->last_read_at)?->toIso8601String(),
                 'left_at' => $conversation->pivot->left_at
                     ? Carbon::parse($conversation->pivot->left_at)->toIso8601String()
@@ -235,14 +271,15 @@ class ConversationController extends Controller
                 'last_message' => $lastMessage ? ChatMessageFormatter::format($lastMessage, $user->id) : null,
                 'unread_count' => (int) ($unreadCounts[$conversation->id] ?? 0),
             ];
-        })->map(function (array $conversation) use ($lastActivityByUserId, $onlineCutoff) {
+        })->map(function (array $conversation) use ($lastActivityByUserId, $lastSeenByUserId, $onlineCutoff) {
             $conversation['participants'] = collect($conversation['participants'])
-                ->map(function (array $participant) use ($lastActivityByUserId, $onlineCutoff) {
+                ->map(function (array $participant) use ($lastActivityByUserId, $lastSeenByUserId, $onlineCutoff) {
                     $lastActivity = (int) ($lastActivityByUserId[$participant['id']] ?? 0);
+                    $lastSeen = max($lastActivity, (int) ($lastSeenByUserId[$participant['id']] ?? 0));
 
                     $participant['is_online'] = $lastActivity > 0 && $lastActivity >= $onlineCutoff;
-                    $participant['last_seen_at'] = $lastActivity > 0
-                        ? Carbon::createFromTimestamp($lastActivity)->toIso8601String()
+                    $participant['last_seen_at'] = $lastSeen > 0
+                        ? Carbon::createFromTimestamp($lastSeen)->toIso8601String()
                         : null;
 
                     return $participant;

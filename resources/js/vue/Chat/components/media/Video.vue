@@ -42,7 +42,7 @@ onUnmounted(() => videoRef.value?.pause());
 </script>
 
 <template>
-	<div ref="wrapperRef" data-bleep-media>
+	<div ref="wrapperRef" data-bleep-media class="w-full">
 		<!-- Hidden element for media modal to pick up -->
 		<div
 			class="hidden"
@@ -54,12 +54,12 @@ onUnmounted(() => videoRef.value?.pause());
 
 		<!-- Visible video player -->
 		<div
-			class="relative inline-block max-h-64 cursor-pointer overflow-hidden rounded-lg"
+			class="relative w-full cursor-pointer overflow-hidden rounded-xl"
 			@click="handleVideoClick"
 		>
 			<video
 				ref="videoRef"
-				class="block max-h-64 rounded-lg"
+				class="block max-h-[70vh] w-full rounded-xl bg-black"
 				:src="src"
 				preload="metadata"
 				playsinline
