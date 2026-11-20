@@ -7,7 +7,7 @@
     donation page.
 --}}
 @php
-    $supportUrl = config('features.support_url') ?: 'https://github.com/sponsors/senzj';
+    $supportUrl = config('features.support_url');
 @endphp
 
 <div class="relative overflow-hidden rounded-lg border border-[#ff5e5b]/40 bg-base-100 shadow-md" data-support-card>

@@ -145,7 +145,7 @@
                                 data-nsfw-age-accept
                                 class="btn btn-error btn-sm text-white"
                             >
-                                I understand and want to view
+                                I understand and want to proceed
                             </button>
                         </div>
                     </div>
