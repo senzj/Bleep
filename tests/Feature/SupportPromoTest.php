@@ -55,12 +55,26 @@ it('shows the support card inside the feed', function () {
 
     expect(substr_count($body, 'data-support-card'))->toBe(1)
         ->and($body)->toContain('Support the project')
-        ->and($body)->toContain('ko-fi.com');
+        ->and($body)->toContain(config('features.support_url'));
 
     $cardAt = strpos($body, 'data-support-card');
 
     expect($cardAt)->toBeGreaterThan(strpos($body, 'id="bleeps-container"'))
         ->and($cardAt)->toBeLessThan(strpos($body, 'id="following-container"'));
+});
+
+it('points the support card at the configured support page', function () {
+    config([
+        'features.support_promo_chance' => 1,
+        'features.support_url' => 'https://example.test/support-the-project',
+    ]);
+
+    Bleep::factory()->create(['is_anonymous' => false]);
+
+    $this->withSession(['support_promo.fetches' => 10])
+        ->get('/')
+        ->assertOk()
+        ->assertSee('https://example.test/support-the-project', false);
 });
 
 it('shows the support card to guests', function () {

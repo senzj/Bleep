@@ -1,3 +1,5 @@
+@props(['fullHeight' => false])
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -49,10 +51,12 @@
     @php
         $navLayout = 'horizontal';
         $navFabPosition = 'bottom-right';
+        $navMobileMode = 'fab';
         $preferences = null;
         if (Auth::check()) {
             $navLayout = Auth::user()->getNavLayout();
             $navFabPosition = Auth::user()->getNavFabPosition();
+            $navMobileMode = Auth::user()->getNavMobileMode();
             $preferences = Auth::user()->getPreferences();
         }
 
@@ -66,10 +70,12 @@
         $rememberMediaPosition = $preferences?->remember_media_position ?? true;
     @endphp
 
-    <body class="min-h-screen font-sans bg-base-300 text-base-content"
+    <body class="min-h-screen flex flex-col font-sans bg-base-300 text-base-content"
           data-authenticated="{{ Auth::check() ? '1' : '0' }}"
           data-nav-layout="{{ $navLayout }}"
           data-nav-fab-position="{{ $navFabPosition }}"
+          data-nav-mobile-mode="{{ $navMobileMode }}"
+          data-chat-page="{{ request()->routeIs('messages', 'chat.conversation') ? '1' : '0' }}"
           data-show-nsfw="{{ $showNsfw ? '1' : '0' }}"
           data-blur-nsfw="{{ $blurNsfw ? '1' : '0' }}"
           data-autoplay-videos="{{ $autoplayVideos ? '1' : '0' }}"
@@ -100,11 +106,11 @@
 
         @if($navLayout === 'vertical')
             {{-- Vertical nav layout: flex container with sidebar + content --}}
-            <div class="flex min-h-screen">
+            <div class="flex flex-1 min-h-0">
                 @include('components.include.navbar')
 
-                <div class="flex-1 flex flex-col">
-                    <main class="flex-1 w-full px-2 py-4 sm:px-4 lg:px-6">
+                <div class="flex-1 flex flex-col min-h-0">
+                    <main class="flex-1 w-full min-h-0 {{ $fullHeight ? 'overflow-hidden p-0' : 'px-2 py-4 sm:px-4 lg:px-6' }}">
                         {{ $slot }}
                     </main>
                 </div>
@@ -113,7 +119,7 @@
             {{-- Horizontal nav layout: traditional stacked layout --}}
             @include('components.include.navbar')
 
-            <main class="flex-1 w-full px-2 py-4 sm:px-4 lg:px-6">
+            <main class="flex-1 w-full min-h-0 {{ $fullHeight ? 'overflow-hidden p-0' : 'px-2 py-4 sm:px-4 lg:px-6' }}">
                 {{ $slot }}
             </main>
         @endif

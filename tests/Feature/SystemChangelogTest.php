@@ -42,14 +42,13 @@ it('keeps the system changelog behind authentication', function () {
         ->assertRedirect(route('login'));
 });
 
-it('advertises the latest Bleep and bulletin releases to guests', function () {
+it('keeps release announcements out of the guest feed', function () {
     $this->get('/')
         ->assertSuccessful()
-        ->assertSee('System Update v2.6.2')
-        ->assertSee('Bulletin board patch: v1.1')
-        ->assertSee('Quieter logo, easier icons')
-        ->assertSee('data-announcement="warning"', false)
-        ->assertSee('data-announcement="update"', false);
+        ->assertDontSee('System Update v2.6.2')
+        ->assertDontSee('Bulletin board patch: v1.1')
+        ->assertDontSee('data-announcement="warning"', false)
+        ->assertDontSee('data-announcement="update"', false);
 });
 
 it('keeps release announcements out of the signed-in feed', function () {
@@ -65,8 +64,7 @@ it('keeps release announcements out of the signed-in feed', function () {
 it('explains the polling fallback when realtime notifications are unavailable', function () {
     config()->set('broadcasting.default', 'null');
 
-    $this->get('/')
-        ->assertSuccessful()
+    $this->blade('<x-announcement.system />')
         ->assertSee('Realtime notifications are unavailable on this host');
 });
 
@@ -74,7 +72,6 @@ it('advertises live notifications when reverb is configured', function () {
     config()->set('broadcasting.default', 'reverb');
     config()->set('broadcasting.connections.reverb.key', 'test-key');
 
-    $this->get('/')
-        ->assertSuccessful()
+    $this->blade('<x-announcement.system />')
         ->assertSee('Notifications arrive live when the realtime connection is available');
 });

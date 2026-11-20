@@ -17,11 +17,12 @@ it('renders the compact navbar hook and the notifications panel for signed-in us
         ->assertSee('aria-controls="right-panel-content"', false);
 });
 
-it('shows the announcements panel to guests only', function () {
+it('keeps announcements and system updates out of the guest feed', function () {
     $this->get('/')
         ->assertSuccessful()
-        ->assertSee('id="left-panel"', false)
-        ->assertSee('aria-controls="left-panel-content"', false);
+        ->assertDontSee('id="left-panel"', false)
+        ->assertDontSee('aria-controls="left-panel-content"', false)
+        ->assertDontSee('data-announcement', false);
 });
 
 it('does not render the notifications side panel for guests', function () {
@@ -90,14 +91,29 @@ it('renders exactly one bottom-right mobile menu button in the horizontal layout
         ->and($body)->toContain('nav-fab--bottom-right');
 });
 
-it('gives signed-in members a quick navigation strip on phones', function () {
+it('uses the floating menu button by default on phones', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user)
-        ->get('/')
-        ->assertSuccessful()
-        ->assertSee('id="mobile-nav-strip"', false)
-        ->assertSee('mobile-nav-strip__track', false);
+    $body = $this->actingAs($user)->get('/')->assertSuccessful()->getContent();
+
+    expect($body)->toContain('data-nav-mobile-mode="fab"')
+        ->and($body)->toContain('id="mobile-menu-btn"')
+        ->and($body)->not->toContain('id="mobile-nav-strip"');
+});
+
+it('renders the bottom navigation bar when the member chooses it', function () {
+    $user = User::factory()->create();
+    $user->preferences()->create([
+        ...UserPreferences::defaults(),
+        'nav_mobile_mode' => 'bottom',
+    ]);
+
+    $body = $this->actingAs($user)->get('/')->assertSuccessful()->getContent();
+
+    expect($body)->toContain('data-nav-mobile-mode="bottom"')
+        ->and($body)->toContain('id="mobile-nav-strip"')
+        ->and($body)->toContain('id="mobile-strip-menu-btn"')
+        ->and($body)->not->toContain('id="mobile-menu-btn"');
 });
 
 it('leaves the quick navigation strip off for guests', function () {
@@ -164,11 +180,28 @@ it('keeps the three-column grid for the horizontal layout', function () {
         ->and($body)->toContain('lg:col-span-3 lg:col-start-10 lg:row-start-1');
 });
 
-it('pins the guest announcements to the first of the three columns', function () {
+it('centers the guest feed without an announcement column', function () {
     $body = $this->get('/')->assertSuccessful()->getContent();
 
-    expect($body)->toContain('lg:col-span-3 lg:col-start-1 lg:row-start-1')
-        ->and($body)->toContain('lg:col-span-6 lg:col-start-4 lg:row-start-1');
+    expect($body)->toContain('lg:col-span-6 lg:col-start-4 lg:row-start-1')
+        ->and($body)->not->toContain('lg:col-span-3 lg:col-start-1 lg:row-start-1');
+});
+
+it('gives chat the whole viewport without app-level mobile navigation', function () {
+    $user = User::factory()->create();
+
+    foreach ([route('messages'), route('chat.conversation', 1)] as $url) {
+        $body = $this->actingAs($user)
+            ->get($url)
+            ->assertSuccessful()
+            ->getContent();
+
+        expect($body)->toContain('data-chat-page="1"')
+            ->and($body)->toContain('data-home-url="'.route('home').'"')
+            ->and($body)->not->toContain('id="mobile-menu-btn"')
+            ->and($body)->not->toContain('id="mobile-nav-strip"')
+            ->and($body)->not->toContain('id="hor-mobile-drawer"');
+    }
 });
 
 it('moves notifications into the mobile slide-over menu', function () {

@@ -12,6 +12,7 @@ class UserPreferences extends Model
         'user_id',
         'nav_layout',
         'nav_fab_position',
+        'nav_mobile_mode',
         'theme',
 
         // Content preferences
@@ -58,6 +59,7 @@ class UserPreferences extends Model
     protected $casts = [
         'nav_layout' => 'string',
         'nav_fab_position' => 'string',
+        'nav_mobile_mode' => 'string',
         'theme' => 'string',
 
         'show_nsfw' => 'boolean',
@@ -108,6 +110,7 @@ class UserPreferences extends Model
             // Theme and layout preferences
             'nav_layout' => 'horizontal',
             'nav_fab_position' => 'bottom-right',
+            'nav_mobile_mode' => 'fab',
             'theme' => 'system',
 
             // Content preferences

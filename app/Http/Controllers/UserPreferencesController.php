@@ -14,6 +14,7 @@ class UserPreferencesController extends Controller
     private const VALID_KEYS = [
         'nav_layout',
         'nav_fab_position',
+        'nav_mobile_mode',
         'theme',
         'show_nsfw',
         'blur_nsfw_media',
@@ -131,6 +132,7 @@ class UserPreferencesController extends Controller
             'preferences' => ['required', 'array'],
             'preferences.nav_layout' => ['sometimes', 'string', 'in:horizontal,vertical'],
             'preferences.nav_fab_position' => ['sometimes', 'string', 'in:top-left,top-right,bottom-left,bottom-right'],
+            'preferences.nav_mobile_mode' => ['sometimes', 'string', 'in:fab,bottom'],
             'preferences.theme' => ['sometimes', 'string', 'max:50'],
             'preferences.show_nsfw' => ['sometimes', 'boolean'],
             'preferences.blur_nsfw_media' => ['sometimes', 'boolean'],
@@ -303,6 +305,9 @@ class UserPreferencesController extends Controller
 
             $key === 'nav_fab_position' => in_array($value, ['top-left', 'top-right', 'bottom-left', 'bottom-right'], true)
                     ? null : 'Invalid menu button position',
+
+            $key === 'nav_mobile_mode' => in_array($value, ['fab', 'bottom'], true)
+                    ? null : 'Invalid mobile navigation mode',
 
             $key === 'default_feed_sort' => in_array($value, ['newest', 'popular', 'following'])
                     ? null : 'Invalid feed sort value',

@@ -44,6 +44,20 @@ it('reflects the share count in the bleep footer', function () {
     expect(substr_count($response->getContent(), 'id="share-modal"'))->toBe(1);
 });
 
+it('renders a compact platform carousel without the device share button', function () {
+    Bleep::factory()->create(['is_anonymous' => false]);
+
+    $body = $this->get('/')
+        ->assertOk()
+        ->getContent();
+
+    expect($body)->toContain('id="share-platforms-track"')
+        ->and($body)->toContain('data-share-platform="facebook"')
+        ->and($body)->toContain('btn-circle')
+        ->and($body)->not->toContain('id="share-native-btn"')
+        ->and($body)->not->toContain('Share with device');
+});
+
 it('renders the share modal only once on a feed with multiple bleeps', function () {
     Bleep::factory()->count(3)->create(['is_anonymous' => false]);
 

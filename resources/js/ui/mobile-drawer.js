@@ -7,6 +7,7 @@
  */
 document.addEventListener('DOMContentLoaded', () => {
     const menuBtn = document.getElementById('mobile-menu-btn');
+    const stripMenuBtn = document.getElementById('mobile-strip-menu-btn');
     const closeBtn = document.getElementById('hor-mobile-close-btn');
     const drawer = document.getElementById('hor-mobile-drawer');
     const overlay = document.getElementById('hor-mobile-overlay');
@@ -26,16 +27,18 @@ document.addEventListener('DOMContentLoaded', () => {
         drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
         overlay.classList.toggle('hidden', !open);
         menuBtn?.setAttribute('aria-expanded', open ? 'true' : 'false');
+        stripMenuBtn?.setAttribute('aria-expanded', open ? 'true' : 'false');
         document.body.style.overflow = open ? 'hidden' : '';
 
         if (open) {
             closeBtn?.focus({ preventScroll: true });
         } else {
-            menuBtn?.focus({ preventScroll: true });
+            (menuBtn ?? stripMenuBtn)?.focus({ preventScroll: true });
         }
     };
 
     menuBtn?.addEventListener('click', () => setOpen(true));
+    stripMenuBtn?.addEventListener('click', () => setOpen(true));
     closeBtn?.addEventListener('click', () => setOpen(false));
     overlay.addEventListener('click', () => setOpen(false));
 

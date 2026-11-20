@@ -101,10 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper = document.querySelector(`.nsfw-wrapper[data-bleep-id="${bleepId}"], .bleep-nsfw-wrapper[data-bleep-id="${bleepId}"]`);
         }
 
-        // The account preference normally decides, but a one-off age check on a
-        // post page lets a visitor reveal this specific bleep after confirming.
-        if (!prefs.showNsfw && wrapper?.dataset?.ageAccepted !== '1') return;
-
         if (!wrapper) {
             console.error('NSFW wrapper not found for bleepId:', bleepId);
             return;
@@ -256,7 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const reveal = e.target.closest('.nsfw-reveal-btn');
         if (reveal) {
-            if (!prefs.showNsfw) return;
+            // Viewing is always an explicit choice. The account preference
+            // only decides whether content starts revealed or covered.
             revealNsfw(reveal.getAttribute('data-bleep-id'), reveal);
             return;
         }
@@ -273,12 +270,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isNsfw) return;
 
             if (!prefs.showNsfw) {
+                // Keep the cover, but leave the View button fully usable: the
+                // preference controls auto-reveal, not permission to open.
                 hideNsfw(id, null, w);
-                const revealBtn = w.querySelector('.nsfw-reveal-btn');
-                if (revealBtn) {
-                    revealBtn.setAttribute('disabled', 'true');
-                    revealBtn.classList.add('opacity-60', 'cursor-not-allowed');
-                }
                 return;
             }
 

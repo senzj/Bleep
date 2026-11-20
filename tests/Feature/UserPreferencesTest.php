@@ -243,6 +243,43 @@ it('defaults the mobile menu button to the bottom right', function () {
     expect($user->getNavFabPosition())->toBe('bottom-right');
 });
 
+it('saves the mobile navigation mode from the preference api', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson('/api/preferences/update', [
+            'key' => 'nav_mobile_mode',
+            'value' => 'bottom',
+        ])
+        ->assertOk()
+        ->assertJsonPath('value', 'bottom');
+
+    expect($user->preferences()->first()->nav_mobile_mode)->toBe('bottom');
+});
+
+it('rejects an unknown mobile navigation mode', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson('/api/preferences/update', [
+            'key' => 'nav_mobile_mode',
+            'value' => 'sideways',
+        ])
+        ->assertUnprocessable()
+        ->assertJson([
+            'success' => false,
+            'error' => 'Invalid mobile navigation mode',
+        ]);
+
+    expect($user->preferences()->first())->toBeNull();
+});
+
+it('defaults the mobile navigation to the floating button', function () {
+    $user = User::factory()->create();
+
+    expect($user->getNavMobileMode())->toBe('fab');
+});
+
 function commentsFor(Bleep $bleep, User $user, bool $anonymous, string $message): void
 {
     Comments::factory()->create([

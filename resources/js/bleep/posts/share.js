@@ -38,14 +38,14 @@ const openShareModal = (bleepId) => {
     const copyBtn = document.getElementById('share-copy-btn');
     const cancelBtn = document.getElementById('share-cancel-btn');
     const closeBtn = document.getElementById('share-close-btn');
-    const nativeBtn = document.getElementById('share-native-btn');
     const submitBtn = document.getElementById('share-submit-btn');
     const selectedCount = document.getElementById('share-selected-count');
     const chatSearch = document.getElementById('share-chat-search');
     const chatList = document.getElementById('share-chat-list');
     const messageInput = document.getElementById('share-message-input');
-    const platformsPanel = document.getElementById('share-platforms');
-    const moreBtn = document.getElementById('share-more-btn');
+    const platformTrack = document.getElementById('share-platforms-track');
+    const platformPrev = document.getElementById('share-platforms-prev');
+    const platformNext = document.getElementById('share-platforms-next');
 
     if (!modal || !overlay || !input || !urlDisplay || !linkCard || !copyBtn || !cancelBtn) {
         return;
@@ -59,7 +59,6 @@ const openShareModal = (bleepId) => {
 
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const canUseChat = Boolean(chatList && submitBtn);
-    const canNativeShare = typeof navigator.share === 'function';
     const cleanups = [];
     const previouslyFocused = document.activeElement;
 
@@ -70,10 +69,10 @@ const openShareModal = (bleepId) => {
     let chatTargetsRequested = false;
     const selectedKeys = new Set();
 
-    const attach = (element, type, handler) => {
+    const attach = (element, type, handler, options = undefined) => {
         if (!element) return;
-        element.addEventListener(type, handler);
-        cleanups.push(() => element.removeEventListener(type, handler));
+        element.addEventListener(type, handler, options);
+        cleanups.push(() => element.removeEventListener(type, handler, options));
     };
 
     const cleanup = () => {
@@ -113,11 +112,33 @@ const openShareModal = (bleepId) => {
         }, 1800);
     };
 
-    const setPlatformsOpen = (open) => {
-        if (!platformsPanel || !moreBtn) return;
+    // The platform row slides instead of wrapping, so the dialog stays compact
+    // on phones. Arrows are disabled at each end.
+    const syncPlatformButtons = () => {
+        if (!platformTrack) return;
 
-        platformsPanel.classList.toggle('hidden', !open);
-        moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        const maxScroll = Math.max(0, platformTrack.scrollWidth - platformTrack.clientWidth);
+        const atStart = platformTrack.scrollLeft <= 2;
+        const atEnd = platformTrack.scrollLeft >= maxScroll - 2;
+
+        if (platformPrev) {
+            platformPrev.disabled = atStart;
+            platformPrev.classList.toggle('btn-disabled', atStart);
+        }
+
+        if (platformNext) {
+            platformNext.disabled = atEnd;
+            platformNext.classList.toggle('btn-disabled', atEnd);
+        }
+    };
+
+    const scrollPlatforms = (direction) => {
+        if (!platformTrack) return;
+
+        platformTrack.scrollBy({
+            left: direction * Math.max(160, platformTrack.clientWidth * 0.75),
+            behavior: 'smooth',
+        });
     };
 
     const close = () => {
@@ -129,7 +150,6 @@ const openShareModal = (bleepId) => {
         if (messageInput) {
             messageInput.value = '';
         }
-        setPlatformsOpen(false);
         restoreFocus();
         window.__shareModalCleanup = null;
     };
@@ -282,23 +302,6 @@ const openShareModal = (bleepId) => {
             if (err?.message === 'unauthenticated') return;
             console.error('Share copy failed', err);
             showToast(err?.message || 'Copy failed', 'error');
-        }
-    };
-
-    const nativeHandler = async () => {
-        if (actionInFlight) return;
-        actionInFlight = true;
-
-        try {
-            const url = await ensureShareUrl();
-            await navigator.share({ title: 'Bleep', text: 'Check out this bleep', url });
-            close();
-        } catch (err) {
-            // Cancelling the OS share sheet is not an error.
-            if (err?.name === 'AbortError' || err?.message === 'unauthenticated') return;
-            showToast(err?.message || 'Share failed', 'error');
-        } finally {
-            actionInFlight = false;
         }
     };
 
@@ -615,15 +618,15 @@ const openShareModal = (bleepId) => {
         }
     });
 
-    attach(nativeBtn, 'click', nativeHandler);
     attach(submitBtn, 'click', sendToSelected);
     attach(cancelBtn, 'click', close);
     attach(closeBtn, 'click', close);
     attach(overlay, 'click', close);
     attach(chatSearch, 'input', renderChatTargets);
-    attach(moreBtn, 'click', () => {
-        setPlatformsOpen(platformsPanel?.classList.contains('hidden'));
-    });
+    attach(platformPrev, 'click', () => scrollPlatforms(-1));
+    attach(platformNext, 'click', () => scrollPlatforms(1));
+    attach(platformTrack, 'scroll', syncPlatformButtons, { passive: true });
+    attach(window, 'resize', syncPlatformButtons, { passive: true });
 
     modal.querySelectorAll('[data-share-platform]').forEach((button) => {
         attach(button, 'click', () => platformHandler(button.dataset.sharePlatform));
@@ -659,7 +662,10 @@ const openShareModal = (bleepId) => {
     // Reset per-open state.
     setUrl(`${window.location.origin}/bleeps/${bleepId}`);
     selectedKeys.clear();
-    setPlatformsOpen(false);
+
+    if (platformTrack) {
+        platformTrack.scrollLeft = 0;
+    }
 
     if (chatSearch) {
         chatSearch.value = '';
@@ -669,12 +675,8 @@ const openShareModal = (bleepId) => {
         messageInput.value = '';
     }
 
-    // Only offer the OS share sheet on devices that support it.
-    if (nativeBtn) {
-        nativeBtn.classList.toggle('hidden', !canNativeShare);
-    }
-
     syncSelectionUI();
+    syncPlatformButtons();
 
     if (canUseChat) {
         loadChatTargets();
@@ -689,6 +691,7 @@ const openShareModal = (bleepId) => {
     requestAnimationFrame(() => {
         linkCard.focus({ preventScroll: true });
         renderShareIcons(modal);
+        syncPlatformButtons();
     });
 };
 

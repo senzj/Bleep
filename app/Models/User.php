@@ -288,6 +288,14 @@ class User extends Authenticatable
     }
 
     /**
+     * How phones and tablets reach navigation: floating button or bottom bar.
+     */
+    public function getNavMobileMode(): string
+    {
+        return $this->preferences?->nav_mobile_mode ?? 'fab';
+    }
+
+    /**
      * Limit remembered devices to 5 per user.
      * Deletes oldest if limit exceeded.
      */

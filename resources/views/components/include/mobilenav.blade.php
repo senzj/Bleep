@@ -1,18 +1,21 @@
 @php
     $navFabPosition = 'bottom-right';
+    $navMobileMode = 'fab';
     if (Auth::check()) {
         $navFabPosition = Auth::user()->getNavFabPosition();
+        $navMobileMode = Auth::user()->getNavMobileMode();
     }
+
+    // Chat owns the whole viewport on phones, so it hides the app-level mobile
+    // navigation and provides its own way back to the feed.
+    $showMobileNav = ! request()->routeIs('messages', 'chat.conversation');
 
     $drawerSide = str_ends_with($navFabPosition, 'left') ? 'left' : 'right';
     $drawerHiddenClass = $drawerSide === 'right' ? 'translate-x-full' : '-translate-x-full';
 @endphp
 
-{{-- Mobile quick navigation strip --}}
-{{-- Scrolling down tucks the strip away; scrolling up brings it back. The
-     floating menu button stays available so the full slide-over is always
-     one tap away. --}}
-@auth
+@if ($showMobileNav && $navMobileMode === 'bottom' && Auth::check())
+    {{-- Bottom navigation bar: every primary section plus the full menu. --}}
     <nav
         id="mobile-nav-strip"
         class="mobile-nav-strip lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-base-200 bg-base-100/95 shadow-[0_-10px_30px_-20px_rgba(0,0,0,0.6)] backdrop-blur"
@@ -20,23 +23,37 @@
     >
         <div class="mobile-nav-strip__track flex items-stretch gap-1 overflow-x-auto px-2 py-1.5">
             <x-include.navlinks />
+
+            <button
+                id="mobile-strip-menu-btn"
+                type="button"
+                class="nav-link flex flex-col items-center justify-center rounded-sm bg-base-100/70 hover:bg-base-300/80 transition-colors"
+                aria-label="Open menu"
+                aria-controls="hor-mobile-drawer"
+                aria-expanded="false"
+            >
+                <i data-lucide="menu" class="w-5 h-5 shrink-0"></i>
+                <span class="sidebar-text">Menu</span>
+            </button>
         </div>
     </nav>
-@endauth
+@endif
 
-{{-- Mobile slide-over trigger --}}
-{{-- The one and only mobile nav trigger, in every layout and mode. --}}
-<button
-    id="mobile-menu-btn"
-    type="button"
-    class="nav-fab nav-fab--{{ $navFabPosition }} lg:hidden fixed z-40 btn btn-primary btn-circle shadow-xl h-13 w-13"
-    aria-label="Open menu"
-    aria-controls="hor-mobile-drawer"
-    aria-expanded="false"
->
-    <i data-lucide="menu" class="w-6 h-6"></i>
-</button>
+@if ($showMobileNav && $navMobileMode === 'fab')
+    {{-- Mobile slide-over trigger --}}
+    <button
+        id="mobile-menu-btn"
+        type="button"
+        class="nav-fab nav-fab--{{ $navFabPosition }} lg:hidden fixed z-40 btn btn-primary btn-circle shadow-xl h-13 w-13"
+        aria-label="Open menu"
+        aria-controls="hor-mobile-drawer"
+        aria-expanded="false"
+    >
+        <i data-lucide="menu" class="w-6 h-6"></i>
+    </button>
+@endif
 
+@if ($showMobileNav)
 <div id="hor-mobile-overlay" class="fixed inset-0 bg-black/50 z-50 hidden lg:hidden transition-opacity duration-300" aria-hidden="true"></div>
 
 <aside
@@ -103,3 +120,4 @@
         @endauth
     </div>
 </aside>
+@endif

@@ -197,14 +197,29 @@ const pickEditMedia = () => {
     input.click();
 };
 
-const toggleActionMenu = () => {
-    showActionMenu.value = !showActionMenu.value;
-    if (!showActionMenu.value) showEmojiPicker.value = false;
-};
-
 const closeActionMenu = () => {
     showActionMenu.value = false;
     showEmojiPicker.value = false;
+};
+
+// Only one message may show a menu at a time.
+const announceMenuOpen = () => {
+    window.dispatchEvent(new CustomEvent('chat:close-message-menus', {
+        detail: { messageId: Number(props.message.id) },
+    }));
+};
+
+const onAnotherMenuOpened = (event) => {
+    if (Number(event.detail?.messageId) === Number(props.message.id)) return;
+    closeActionMenu();
+};
+
+const toggleActionMenu = () => {
+    showActionMenu.value = !showActionMenu.value;
+    if (showActionMenu.value) {
+        showEmojiPicker.value = false;
+        announceMenuOpen();
+    }
 };
 
 const onPointerDown = (event) => {
@@ -214,7 +229,9 @@ const onPointerDown = (event) => {
 
     clearTimeout(longPressTimer);
     longPressTimer = setTimeout(() => {
+        showEmojiPicker.value = false;
         showActionMenu.value = true;
+        announceMenuOpen();
     }, 450);
 };
 
@@ -245,14 +262,21 @@ const handleQuickReact = async (emoji) => {
 
 const toggleEmojiPicker = () => {
     showEmojiPicker.value = !showEmojiPicker.value;
+    if (showEmojiPicker.value) {
+        showActionMenu.value = false;
+        announceMenuOpen();
+    }
 };
 
 const onClickOutside = (event) => {
     if (!showActionMenu.value && !showEmojiPicker.value) return;
-    // Close if click is outside the entire component
-    if (!event.target.closest('.group\\/msg')) {
-        closeActionMenu();
-    }
+
+    // Clicks on this message's own menu or its trigger must reach the button.
+    // Everything else — another message, the page, the composer — closes it.
+    const menu = event.target.closest?.('[data-chat-message-menu]');
+    if (menu && menu.dataset.chatMessageMenu === String(props.message.id)) return;
+
+    closeActionMenu();
 };
 
 // ── Swipe-to-reply (touch only) ──
@@ -348,11 +372,15 @@ const submitInlineEdit = async () => {
     }
 };
 
-onMounted(() => document.addEventListener('pointerdown', onClickOutside));
+onMounted(() => {
+    document.addEventListener('pointerdown', onClickOutside);
+    window.addEventListener('chat:close-message-menus', onAnotherMenuOpened);
+});
 onUnmounted(() => {
     cancelLongPress();
     revokePendingMediaPreviews();
     document.removeEventListener('pointerdown', onClickOutside);
+    window.removeEventListener('chat:close-message-menus', onAnotherMenuOpened);
 });
 </script>
 
@@ -368,14 +396,24 @@ onUnmounted(() => {
         @touchmove.passive="onTouchMove"
         @touchend.passive="onTouchEnd"
     >
-        <!-- Mobile long-press menu — appears above the bubble -->
+        <!-- Mobile long-press menu — reactions above, actions below. -->
         <div
             v-if="showActionMenu"
-            class="absolute z-40 rounded-xl border border-base-300 bg-base-100 p-1 shadow-xl md:hidden"
-            :class="mine ? 'right-4 bottom-full mb-1' : 'left-14 bottom-full mb-1'"
+            class="fixed inset-0 z-30 md:hidden"
+            aria-hidden="true"
+            @pointerdown.stop
+            @click="closeActionMenu"
+        ></div>
+
+        <div
+            v-if="showActionMenu"
+            :data-chat-message-menu="message.id"
+            class="absolute z-40 flex flex-col gap-1 md:hidden"
+            :class="mine ? 'right-4 bottom-full mb-1 items-end' : 'left-14 bottom-full mb-1 items-start'"
+            @pointerdown.stop
         >
-            <!-- Quick emoji row -->
-            <div class="flex items-center gap-1 px-1 py-1 border-b border-base-300 mb-1">
+            <!-- Quick reactions float on their own, Messenger-style. -->
+            <div class="flex w-max items-center gap-1 rounded-full border border-base-300 bg-base-100 px-1.5 py-1 shadow-xl">
                 <button
                     v-for="emoji in QUICK_EMOJIS"
                     :key="emoji"
@@ -384,15 +422,19 @@ onUnmounted(() => {
                     @click="handleQuickReact(emoji)"
                 >{{ emoji }}</button>
             </div>
-            <button type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200 flex items-center gap-2" @click="handleReply">
-                <LucideIcons name="reply" class="h-3.5 w-3.5" /> Reply
-            </button>
-            <button v-if="canEditMessage" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200 flex items-center gap-2" @click="handleEdit">
-                <LucideIcons name="pencil" class="h-3.5 w-3.5" /> Edit
-            </button>
-            <button v-if="canDeleteMessage" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs text-error hover:bg-base-200 flex items-center gap-2" @click="handleDelete">
-                <LucideIcons name="trash-2" class="h-3.5 w-3.5" /> Delete
-            </button>
+
+            <!-- Actions sit in a separate card below the reactions. -->
+            <div class="min-w-32 rounded-xl border border-base-300 bg-base-100 p-1 shadow-xl">
+                <button type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200 flex items-center gap-2" @click="handleReply">
+                    <LucideIcons name="reply" class="h-3.5 w-3.5" /> Reply
+                </button>
+                <button v-if="canEditMessage" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-base-200 flex items-center gap-2" @click="handleEdit">
+                    <LucideIcons name="pencil" class="h-3.5 w-3.5" /> Edit
+                </button>
+                <button v-if="canDeleteMessage" type="button" class="w-full rounded-lg px-2 py-1.5 text-left text-xs text-error hover:bg-base-200 flex items-center gap-2" @click="handleDelete">
+                    <LucideIcons name="trash-2" class="h-3.5 w-3.5" /> Delete
+                </button>
+            </div>
         </div>
 
         <!-- Swipe wrapper for touch gestures -->
@@ -433,6 +475,7 @@ onUnmounted(() => {
                     ]">
                         <!-- Desktop hover actions — beside the bubble -->
                         <MessageActions
+                            :message-id="message.id"
                             :is-deleted="isDeleted"
                             :mine="mine"
                             :can-manage-message="canManageMessage"
@@ -479,6 +522,7 @@ onUnmounted(() => {
                     <div v-if="!isDeleted && !editing && hasAttachments" class="relative w-full max-w-[min(100%,24rem)]">
                         <MessageActions
                             v-if="!showsBubble"
+                            :message-id="message.id"
                             :is-deleted="isDeleted"
                             :mine="mine"
                             :can-manage-message="canManageMessage"

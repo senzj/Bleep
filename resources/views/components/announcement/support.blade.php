@@ -2,11 +2,12 @@
     Support the project card.
 
     Shown inside the bleep feed on a random share of renders (see
-    App\Support\SupportPromo). Replace the URL on the next line with your
-    Ko-fi page — everything else here is display only.
+    App\Support\SupportPromo). The destination comes from
+    config('features.support_url') so a deployment can point it at its own
+    donation page.
 --}}
 @php
-    $kofiUrl = 'https://ko-fi.com/REPLACE_WITH_YOUR_PAGE';
+    $supportUrl = config('features.support_url') ?: 'https://github.com/sponsors/senzj';
 @endphp
 
 <div class="relative overflow-hidden rounded-lg border border-[#ff5e5b]/40 bg-base-100 shadow-md" data-support-card>
@@ -21,17 +22,17 @@
         <div class="min-w-0 flex-1">
             <p class="text-base font-semibold">Support the project</p>
             <p class="mt-0.5 text-sm text-base-content/70">
-                Bleep is free and has no ads. If it made your day a little better, you can buy it a coffee.
+                Bleep is free and has no ads. If it made your day a little better, you can support it.
             </p>
         </div>
 
-        <a href="{{ $kofiUrl }}"
+        <a href="{{ $supportUrl }}"
            target="_blank"
            rel="noopener noreferrer"
            class="btn btn-sm shrink-0 self-start border-0 bg-[#ff5e5b] text-white shadow-sm hover:bg-[#f04b48] sm:self-center"
-           aria-label="Support the project on Ko-fi">
+           aria-label="Open the project support page">
             <i data-lucide="heart" class="h-4 w-4" aria-hidden="true"></i>
-            Buy me a coffee
+            Support the project
         </a>
     </div>
 </div>

@@ -16,6 +16,12 @@
     }
 
     $isAnonymous = (bool) $bleep->is_anonymous;
+    $isNsfw = (bool) $bleep->is_nsfw;
+
+    // Visitors only meet NSFW posts through the dedicated post page, where a
+    // blocking warning explains what they are about to open. The feed skips
+    // the card instead of showing an in-card banner.
+    $hideNsfwFromGuestFeed = $isNsfw && ! Auth::check() && ! request()->routeIs('post');
 
     if ($isAnonymous) {
         $viewerSeed = auth()->check() ? auth()->id() : request()->session()->getId();
@@ -50,7 +56,7 @@
 @endphp
 
 {{-- Container --}}
-
+@if (! $hideNsfwFromGuestFeed)
 <article
     class="rounded-lg {{ $justPosted ? 'bleep-card-enter' : '' }}"
     data-bleep-card="{{ $bleep->id }}"
@@ -271,7 +277,6 @@
                     @php
                         $mediaItems = ($bleep->media ?? collect())->take(9);
                         $hasMedia = $mediaItems->count() > 0;
-                        $isNsfw = (bool) $bleep->is_nsfw;
                     @endphp
 
                     {{-- ALWAYS render the wrapper, toggle visibility based on NSFW state --}}
@@ -418,6 +423,7 @@
     </div>
 
 </article>
+@endif
 
 {{-- Loads once --}}
 @once

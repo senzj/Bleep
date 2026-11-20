@@ -1089,24 +1089,18 @@ body.nav-compact .feed-tabs {
 }
 
 .nav-fab--bottom-left {
-    bottom: calc(4.75rem + env(safe-area-inset-bottom));
+    bottom: calc(1.75rem + env(safe-area-inset-bottom));
     left: max(0.75rem, env(safe-area-inset-left));
 }
 
 .nav-fab--bottom-right {
-    bottom: calc(4.75rem + env(safe-area-inset-bottom));
-    right: max(0.75rem, env(safe-area-inset-right));
-}
-
-/* Guests have no quick-navigation strip, so their button sits in the corner. */
-body[data-authenticated='0'] .nav-fab--bottom-left,
-body[data-authenticated='0'] .nav-fab--bottom-right {
     bottom: calc(1.75rem + env(safe-area-inset-bottom));
+    right: max(0.75rem, env(safe-area-inset-right));
 }
 
 @media (max-width: 1023px) {
     /* Keep the last row of a page clear of the quick-navigation strip. */
-    body[data-authenticated='1'] main {
+    body[data-authenticated='1'][data-nav-mobile-mode='bottom'][data-chat-page='0'] main {
         padding-bottom: calc(5rem + env(safe-area-inset-bottom));
     }
 }
@@ -1175,6 +1169,23 @@ body[data-authenticated='0'] .nav-fab--bottom-right {
 .follow-btn[data-following='1']:focus-visible .follow-text,
 .follow-btn[data-following='1']:focus-visible .unfollow-text {
     color: #fff !important;
+}
+
+/* The chat page owns the viewport: the composer stays put and only the
+   message list scrolls. */
+body[data-chat-page='1'] {
+    overflow: hidden;
+}
+
+/* Social share buttons scroll horizontally; the arrows do the work, so the
+   native scrollbar stays out of the way. */
+.share-platform-track {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.share-platform-track::-webkit-scrollbar {
+    display: none;
 }
 
 /* ── Chat appearance ──

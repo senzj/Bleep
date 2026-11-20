@@ -2,6 +2,10 @@
 import LucideIcons from '../../../LucideIcons.vue';
 
 defineProps({
+    messageId: {
+        type: [Number, String],
+        default: null,
+    },
     isDeleted: {
         type: Boolean,
         default: false,
@@ -42,6 +46,7 @@ const emit = defineEmits(['toggle-emoji-picker', 'react', 'reply', 'toggle-actio
 <template>
     <div
         v-if="!isDeleted"
+        :data-chat-message-menu="messageId"
         class="absolute top-1/2 -translate-y-1/2 z-30 hidden md:flex items-center opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 gap-1 align-middle"
         :class="mine ? 'right-full mr-1' : 'left-full ml-1'"
     >

@@ -7,6 +7,7 @@ import LucideIcons from '../../LucideIcons.vue';
 
 const store = useMessageStore();
 const { displayName } = useChatPreferences();
+const homeUrl = document.getElementById('chat-app')?.dataset.homeUrl || '/';
 const query = ref('');
 let searchTimer = null;
 
@@ -210,8 +211,19 @@ const startDirectMessage = async (userId) => {
 
 <template>
 	<aside class="border-base-300 bg-base-100 flex h-full flex-col border-r p-4">
-		<div class="mb-3 flex items-center justify-between">
-			<h2 class="text-lg font-semibold">Chats</h2>
+		<div class="mb-3 flex items-center justify-between gap-2">
+			<div class="flex min-w-0 items-center gap-2">
+                <!-- Phones have no app-level bottom nav on chat; this is the way home. -->
+                <a
+                    :href="homeUrl"
+                    class="btn btn-ghost btn-sm btn-circle md:hidden"
+                    aria-label="Back to bleeps"
+                    title="Back to bleeps"
+                >
+                    <i data-lucide="arrow-left" class="lucide lucide-sm"></i>
+                </a>
+			    <h2 class="truncate text-lg font-semibold">Chats</h2>
+            </div>
 
             <!-- Create Group Button -->
             <button class="btn btn-primary btn-sm rounded-md" @click="emit('create-group')">

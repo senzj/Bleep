@@ -50,31 +50,9 @@
             ? 'order-1 grid items-start content-start self-start gap-7 md:grid-cols-2 lg:order-0 lg:col-start-2 lg:row-start-1 lg:grid-cols-1 xl:col-start-3 xl:-mr-58 xl:max-w-sm'
             : 'contents' }}" id="side-panels">
 
-            {{-- Announcements are for visitors; signed-in users get release
-                 notes in Settings > System instead of the feed panel. --}}
-            @guest
-                <div class="{{ $vertical ? 'order-2' : 'order-1 lg:col-span-3 lg:col-start-1 lg:row-start-1' }}" id="left-panel" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
-                {{-- Mobile: stacked, collapsed by default --}}
-                <button type="button"
-                        class="flex w-full items-center justify-between gap-2 rounded-lg border border-base-200 bg-base-100 px-3 py-2 text-sm font-semibold shadow-sm lg:hidden"
-                        @click="open = !open"
-                        :aria-expanded="open"
-                        aria-controls="left-panel-content">
-                    <span class="flex items-center gap-2">
-                        <i data-lucide="megaphone" class="w-4 h-4"></i>
-                        Announcements
-                    </span>
-                    <span class="transition-transform duration-200" :class="open ? 'rotate-180' : ''">
-                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                    </span>
-                </button>
-
-                <div id="left-panel-content" x-show="open" x-transition.opacity.duration.200ms x-cloak class="mt-1 lg:mt-0">
-                    {{-- Server Announcement --}}
-                    <x-announcement.system />
-                </div>
-            </div>
-            @endguest
+            {{-- Guests get the feed only. Announcements, disabled-feature
+                 notices and system updates belong to signed-in members, who
+                 can also find release notes in Settings > System. --}}
 
             {{-- Quick notifications --}}
             @auth

@@ -9,6 +9,7 @@ const emit = defineEmits(['go-back', 'open-settings']);
 
 const store = useMessageStore();
 const { preferences, displayName } = useChatPreferences();
+const homeUrl = document.getElementById('chat-app')?.dataset.homeUrl || '/';
 
 const leavingGroup = ref(false);
 const leaveError = ref('');
@@ -199,6 +200,15 @@ const handleReplyMessage = (message) => {
 			</div>
 
 			<div class="flex items-center gap-1">
+				<a
+					:href="homeUrl"
+					class="btn btn-ghost btn-sm btn-circle md:hidden"
+					aria-label="Back to bleeps"
+					title="Back to bleeps"
+				>
+					<i data-lucide="home" class="lucide lucide-sm"></i>
+				</a>
+
 				<button
 					v-if="store.activeConversation.value"
 					type="button"

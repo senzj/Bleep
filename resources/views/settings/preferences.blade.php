@@ -62,6 +62,22 @@
                     <p class="text-sm text-base-content/70">Choose between a horizontal top navbar or vertical sidebar navigation. Changes take effect after page reload.</p>
                 </div>
 
+                {{-- Mobile navigation style --}}
+                <div class="form-control flex flex-col justify-center border border-base-200 p-3 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="label-text">Mobile navigation</span>
+                        <select id="nav-mobile-mode-select" class="pref-select select select-bordered select-sm" data-pref="nav_mobile_mode">
+                            <option value="fab" {{ $preferences->nav_mobile_mode === 'fab' ? 'selected' : '' }}>
+                                Floating button
+                            </option>
+                            <option value="bottom" {{ $preferences->nav_mobile_mode === 'bottom' ? 'selected' : '' }}>
+                                Bottom bar
+                            </option>
+                        </select>
+                    </div>
+                    <p class="text-sm text-base-content/70">Choose how phones and tablets reach navigation. The floating button keeps the screen clear; the bottom bar keeps every section one tap away.</p>
+                </div>
+
                 {{-- Mobile menu button position --}}
                 <div class="form-control flex flex-col justify-center border border-base-200 p-3 rounded-lg">
                     <div class="flex items-center justify-between mb-2">

@@ -22,4 +22,10 @@ return [
     */
     'support_promo_chance' => (float) env('FEATURE_SUPPORT_PROMO_CHANCE', 0.2),
 
+    /*
+    | Where the support card sends people. Set FEATURE_SUPPORT_URL to your own
+    | donation page; the default is the project's GitHub Sponsors page.
+    */
+    'support_url' => env('FEATURE_SUPPORT_URL', 'https://github.com/sponsors/senzj'),
+
 ];

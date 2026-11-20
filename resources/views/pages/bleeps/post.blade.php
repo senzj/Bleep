@@ -122,28 +122,39 @@
             @if ($showNsfwAgeGate)
                 <div
                     data-nsfw-age-gate
-                    class="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl border border-red-500/30 bg-base-100/95 p-5 text-center backdrop-blur-sm"
-                    role="alert"
+                    class="fixed inset-0 z-50 grid place-items-center bg-base-100/95 px-6 py-8 backdrop-blur-sm"
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-labelledby="nsfw-age-title"
+                    aria-describedby="nsfw-age-description"
                 >
-                    <i data-lucide="shield-alert" class="mx-auto mb-2 h-8 w-8 text-red-500"></i>
-                    <p class="text-lg font-semibold">Age check required</p>
-                    <p class="mx-auto mt-1 max-w-md text-sm text-base-content/70">
-                        This post is marked NSFW. Confirm that you are of legal age in your region
-                        to view sensitive content.
-                    </p>
-                    <button
-                        type="button"
-                        data-nsfw-age-accept
-                        class="btn btn-error btn-sm mt-3 text-white"
-                    >
-                        I am of legal age — show post
-                    </button>
+                    <div class="w-full max-w-sm rounded-2xl border border-red-500/30 bg-base-100 p-6 text-center shadow-2xl">
+                        <span class="mx-auto grid size-14 place-items-center rounded-full bg-red-500/10 text-red-500">
+                            <i data-lucide="shield-alert" class="h-7 w-7"></i>
+                        </span>
+                        <h2 id="nsfw-age-title" class="mt-4 text-lg font-semibold">Sensitive content warning</h2>
+                        <p id="nsfw-age-description" class="mt-1 text-sm text-base-content/70">
+                            This bleep is marked NSFW and may contain sensitive or inappropriate
+                            content. Continue only if you are of legal age in your region and want
+                            to view it at your own risk.
+                        </p>
+                        <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
+                            <a href="{{ route('home') }}" class="btn btn-ghost btn-sm">Go back</a>
+                            <button
+                                type="button"
+                                data-nsfw-age-accept
+                                class="btn btn-error btn-sm text-white"
+                            >
+                                I understand and want to view
+                            </button>
+                        </div>
+                    </div>
                 </div>
             @endif
 
             {{-- Bleep Post --}}
             <div
-                class="space-y-4"
+                class="{{ $showNsfwAgeGate ? 'hidden ' : '' }}space-y-4"
                 @if ($showNsfwAgeGate) data-nsfw-age-content @endif
             >
                 <x-bleep :bleep="$bleep" />
