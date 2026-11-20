@@ -19,7 +19,7 @@ it('shows the age gate to guests on an NSFW post page', function () {
         ->assertSee('at your own risk')
         ->assertSee('fixed inset-0', false)
         ->assertSee('data-nsfw-age-content', false)
-        ->assertSee('I understand — view post');
+        ->assertSee('I understand and want to proceed');
 
     expect($response->getContent())->toContain('hidden space-y-4');
 });
