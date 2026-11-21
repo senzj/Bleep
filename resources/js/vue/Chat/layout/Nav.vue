@@ -289,7 +289,7 @@ const openOnlinePerson = (person) => {
 </script>
 
 <template>
-	<aside class="border-base-300 bg-base-100 flex h-full min-h-0 flex-col border-r">
+	<aside class="border-base-300 bg-base-100 flex h-full min-h-0 min-w-0 flex-col border-r">
 		<header class="border-base-200 shrink-0 space-y-3 border-b p-4">
 			<div class="flex items-center justify-between gap-2">
 				<div class="flex min-w-0 items-center gap-2">

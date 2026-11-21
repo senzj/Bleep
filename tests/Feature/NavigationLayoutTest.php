@@ -3,6 +3,7 @@
 use App\Models\Bleep;
 use App\Models\User;
 use App\Models\UserPreferences;
+use App\Services\System\SystemSettings;
 
 it('renders the compact navbar hook and the notifications panel for signed-in users', function () {
     $user = User::factory()->create();
@@ -17,18 +18,21 @@ it('renders the compact navbar hook and the notifications panel for signed-in us
         ->assertSee('aria-controls="right-panel-content"', false);
 });
 
-it('keeps announcements and system updates out of the guest feed', function () {
+it('shows the admin announcement to guests without side panels', function () {
     $this->get('/')
         ->assertSuccessful()
+        ->assertSee('data-announcement="admin"', false)
+        ->assertDontSee('data-announcement="update"', false)
         ->assertDontSee('id="left-panel"', false)
-        ->assertDontSee('aria-controls="left-panel-content"', false)
-        ->assertDontSee('data-announcement', false);
+        ->assertDontSee('aria-controls="left-panel-content"', false);
 });
 
 it('does not render the notifications side panel for guests', function () {
-    $this->get('/')
-        ->assertSuccessful()
-        ->assertDontSee('id="right-panel"', false);
+    $body = $this->get('/')->assertSuccessful()->getContent();
+
+    expect($body)->not->toContain('id="right-panel"', false)
+        ->and($body)->not->toContain('id="side-panels"', false)
+        ->and($body)->not->toContain('aria-controls="right-panel-content"', false);
 });
 
 it('keeps the home links enabled and marked current on the home page', function () {
@@ -49,6 +53,8 @@ it('links back to the home feed from the header on other pages', function () {
 });
 
 it('keeps the chat tab highlighted on chat sub pages', function () {
+    config(['features.chat' => true]);
+
     $user = User::factory()->create();
 
     $this->actingAs($user)
@@ -180,11 +186,47 @@ it('keeps the three-column grid for the horizontal layout', function () {
         ->and($body)->toContain('lg:col-span-3 lg:col-start-10 lg:row-start-1');
 });
 
-it('centers the guest feed without an announcement column', function () {
+it('centers the guest feed without side columns', function () {
     $body = $this->get('/')->assertSuccessful()->getContent();
 
-    expect($body)->toContain('lg:col-span-6 lg:col-start-4 lg:row-start-1')
-        ->and($body)->not->toContain('lg:col-span-3 lg:col-start-1 lg:row-start-1');
+    expect($body)->toContain('mx-auto mt-7 w-full max-w-[40rem]')
+        ->and($body)->not->toContain('lg:col-span-6 lg:col-start-4 lg:row-start-1')
+        ->and($body)->not->toContain('id="side-panels"', false);
+});
+
+it('shows the admin announcement to guests and removes it when disabled', function () {
+    SystemSettings::update([
+        'announcement_enabled' => true,
+        'announcement_message' => 'Chat is offline while we move hosts.',
+    ]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('Chat is offline while we move hosts.')
+        ->assertSee('data-announcement="admin"', false);
+
+    SystemSettings::update(['announcement_enabled' => false]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertDontSee('Chat is offline while we move hosts.')
+        ->assertDontSee('data-announcement="admin"', false);
+});
+
+it('shows the admin announcement on signed-in pages too', function () {
+    SystemSettings::update([
+        'announcement_enabled' => true,
+        'announcement_level' => 'info',
+        'announcement_message' => 'Scheduled maintenance tonight.',
+    ]);
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/')
+        ->assertSuccessful()
+        ->assertSee('Scheduled maintenance tonight.')
+        ->assertSee('alert-info', false);
 });
 
 it('gives chat the whole viewport without app-level mobile navigation', function () {
@@ -202,6 +244,18 @@ it('gives chat the whole viewport without app-level mobile navigation', function
             ->and($body)->not->toContain('id="mobile-nav-strip"')
             ->and($body)->not->toContain('id="hor-mobile-drawer"');
     }
+});
+
+it('sizes the chat main container without clipping it', function () {
+    $user = User::factory()->create();
+
+    $body = $this->actingAs($user)
+        ->get(route('messages'))
+        ->assertSuccessful()
+        ->getContent();
+
+    expect($body)->toContain('<main class="flex-1 w-full min-h-0 p-0">')
+        ->and($body)->not->toContain('overflow-hidden p-0');
 });
 
 it('moves notifications into the mobile slide-over menu', function () {

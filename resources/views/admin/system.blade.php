@@ -151,6 +151,13 @@
                                                     </option>
                                                 @endforeach
                                             </select>
+                                        @elseif ($definition['type'] === 'text')
+                                            <textarea
+                                                id="setting-{{ $key }}"
+                                                name="{{ $key }}"
+                                                rows="4"
+                                                class="textarea textarea-bordered w-full"
+                                            >{{ $values[$key] }}</textarea>
                                         @else
                                             <input
                                                 id="setting-{{ $key }}"

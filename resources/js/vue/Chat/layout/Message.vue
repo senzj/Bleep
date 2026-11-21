@@ -169,7 +169,7 @@ const handleReplyMessage = (message) => {
 </script>
 
 <template>
-	<section class="chat-surface flex h-full min-h-0 flex-1 flex-col overflow-hidden" :data-chat-bg="preferences.background">
+	<section class="chat-surface flex h-full min-h-0 min-w-0 flex-1 flex-col" :data-chat-bg="preferences.background">
 		<header class="border-base-300 bg-base-100 sticky top-0 z-10 shrink-0 flex items-center justify-between border-b px-4 py-3">
 			<div class="flex items-center gap-3">
 				<button class="btn btn-ghost btn-sm btn-circle md:hidden" @click="emit('go-back')">

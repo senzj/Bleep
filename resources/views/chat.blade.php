@@ -4,7 +4,7 @@
     ])
 @endpush
 
-<x-layout full-height>
+<x-layout :fullHeight="true">
     <x-slot:title>
         Chat
     </x-slot:title>

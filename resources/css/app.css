@@ -1182,10 +1182,13 @@ body.nav-compact .feed-tabs {
     color: #fff !important;
 }
 
-/* The chat page owns the viewport: the composer stays put and only the
-   message list scrolls. */
+/* The chat page owns the viewport height. Dynamic units keep the composer
+   visible when mobile browser chrome appears, and the inner message list is
+   the only scroll surface. */
 body[data-chat-page='1'] {
-    overflow: hidden;
+    height: 100dvh;
+    min-height: 100dvh;
+    overscroll-behavior: none;
 }
 
 /* Social share buttons scroll horizontally; the arrows do the work, so the

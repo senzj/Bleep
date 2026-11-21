@@ -135,7 +135,7 @@ const handleUrlNavigation = async (isPopState = false) => {
 <template>
     <div
         v-lucide
-        class="bg-base-100 rounded-lg grid h-full min-h-0 w-full overflow-hidden"
+        class="bg-base-100 rounded-lg grid h-full min-h-0 w-full min-w-0 grid-rows-1"
         :class="gridClass"
     >
         <Nav

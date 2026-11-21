@@ -42,6 +42,8 @@
 
     <body class="min-h-dvh bg-base-300 font-sans text-base-content antialiased" data-page="bulletin">
         <div class="flex min-h-dvh flex-col md:h-dvh md:overflow-hidden">
+            <x-announcement.banner />
+
             {{ $slot }}
         </div>
 

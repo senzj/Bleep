@@ -63,6 +63,28 @@ it('validates setting types', function () {
     expect(SystemSetting::count())->toBe(0);
 });
 
+it('saves the site announcement from the system page', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $this->actingAs($admin)->post('/admin/system', [
+        'announcement_enabled' => '1',
+        'announcement_level' => 'warning',
+        'announcement_message' => "Chat is offline while we move hosts.\nBleeps still work.",
+    ])->assertRedirect(route('admin.system'));
+
+    expect(SystemSettings::get('announcement_message'))->toBe("Chat is offline while we move hosts.\nBleeps still work.")
+        ->and(SystemSettings::get('announcement_level'))->toBe('warning')
+        ->and(SystemSettings::get('announcement_enabled'))->toBeTrue();
+});
+
+it('rejects an unknown announcement style', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $this->actingAs($admin)->post('/admin/system', [
+        'announcement_level' => 'neon',
+    ])->assertSessionHasErrors(['announcement_level']);
+});
+
 it('uses system defaults for new user preferences', function () {
     SystemSettings::update([
         'default_theme' => 'dark',

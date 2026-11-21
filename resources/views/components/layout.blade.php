@@ -110,7 +110,9 @@
                 @include('components.include.navbar')
 
                 <div class="flex-1 flex flex-col min-h-0">
-                    <main class="flex-1 w-full min-h-0 {{ $fullHeight ? 'overflow-hidden p-0' : 'px-2 py-4 sm:px-4 lg:px-6' }}">
+                    <x-announcement.banner />
+
+                    <main class="flex-1 w-full min-h-0 {{ $fullHeight ? 'p-0' : 'px-2 py-4 sm:px-4 lg:px-6' }}">
                         {{ $slot }}
                     </main>
                 </div>
@@ -119,7 +121,9 @@
             {{-- Horizontal nav layout: traditional stacked layout --}}
             @include('components.include.navbar')
 
-            <main class="flex-1 w-full min-h-0 {{ $fullHeight ? 'overflow-hidden p-0' : 'px-2 py-4 sm:px-4 lg:px-6' }}">
+            <x-announcement.banner />
+
+            <main class="flex-1 w-full min-h-0 {{ $fullHeight ? 'p-0' : 'px-2 py-4 sm:px-4 lg:px-6' }}">
                 {{ $slot }}
             </main>
         @endif

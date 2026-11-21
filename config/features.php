@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'chat' => (bool) env('FEATURE_CHAT_ENABLED', true),
+    'chat' => (bool) env('FEATURE_CHAT_ENABLED', false),
 
     /*
     | Chance that a rendered page of bleeps includes the Support the project

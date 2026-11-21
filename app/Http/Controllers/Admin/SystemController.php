@@ -161,6 +161,7 @@ class SystemController extends Controller
                 'boolean' => ['sometimes', 'boolean'],
                 'integer' => ['sometimes', 'integer', 'min:'.$definition['min'], 'max:'.$definition['max']],
                 'select' => ['sometimes', 'string', Rule::in(array_keys($definition['options'] ?? []))],
+                'text' => ['sometimes', 'nullable', 'string', 'max:2000'],
                 default => ['sometimes', 'nullable', 'string', 'max:255'],
             };
         }

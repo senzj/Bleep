@@ -29,20 +29,28 @@
     <x-slot:title>Home</x-slot:title>
 
     @php
-        // Get user's nav layout preference, default to horizontal
+        // Guests get a single, centered feed column. No side panels are
+        // rendered at all, so no empty notification or announcement column is
+        // reserved on any layout or orientation.
+        $guest = ! Auth::check();
+
         $navLayout = 'horizontal';
-        if (Auth::check()) {
+        if (! $guest) {
             $navLayout = Auth::user()->getNavLayout();
         }
-        $vertical = $navLayout === 'vertical';
+
+        $vertical = ! $guest && $navLayout === 'vertical';
     @endphp
 
     {{-- Vertical navbar: [spacer | feed | merged panels] on xl, [feed | merged panels] on lg.
          xl:pr-58 equals the sidebar width (w-58) so the feed lands on the true screen center. --}}
-    <div class="grid grid-cols-1 gap-2 lg:gap-3 {{ $vertical
-        ? 'lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_minmax(0,40rem)_minmax(0,1fr)] xl:pr-58 mt-7'
-        : 'lg:grid-cols-12' }}">
+    <div class="grid grid-cols-1 gap-2 lg:gap-3 {{ $guest
+        ? 'mx-auto mt-7 w-full max-w-[40rem]'
+        : ($vertical
+            ? 'lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_minmax(0,40rem)_minmax(0,1fr)] xl:pr-58 mt-7'
+            : 'lg:grid-cols-12') }}">
 
+        @auth
         {{-- Side panels wrapper.
              Vertical: one merged column (side by side on tablet, stacked on mobile and desktop).
              Horizontal: `contents`, so the panels act as direct grid children exactly like before. --}}
@@ -50,47 +58,44 @@
             ? 'order-1 grid items-start content-start self-start gap-7 md:grid-cols-2 lg:order-0 lg:col-start-2 lg:row-start-1 lg:grid-cols-1 xl:col-start-3 xl:-mr-58 xl:max-w-sm'
             : 'contents' }}" id="side-panels">
 
-            {{-- Guests get the feed only. Announcements, disabled-feature
-                 notices and system updates belong to signed-in members, who
-                 can also find release notes in Settings > System. --}}
-
             {{-- Quick notifications --}}
-            @auth
-                <div class="{{ $vertical ? 'order-1' : 'order-2 lg:order-3 lg:col-span-3 lg:col-start-10 lg:row-start-1' }}" id="right-panel" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
-                    {{-- Mobile: stacked above the feed, collapsed by default --}}
-                    <button type="button"
-                            class="flex w-full items-center justify-between gap-2 rounded-lg border border-base-200 bg-base-100 px-3 py-2 text-sm font-semibold shadow-sm lg:hidden"
-                            @click="open = !open"
-                            :aria-expanded="open"
-                            aria-controls="right-panel-content">
-                        <span class="flex items-center gap-2">
-                            <span class="relative inline-flex" aria-hidden="true">
-                                <i data-lucide="bell" class="w-4 h-4"></i>
-                                <span
-                                    data-quick-notification-badge
-                                    data-count="0"
-                                    class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white hidden"
-                                ></span>
-                            </span>
-                            Notifications
+            <div class="{{ $vertical ? 'order-1' : 'order-2 lg:order-3 lg:col-span-3 lg:col-start-10 lg:row-start-1' }}" id="right-panel" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
+                {{-- Mobile: stacked above the feed, collapsed by default --}}
+                <button type="button"
+                        class="flex w-full items-center justify-between gap-2 rounded-lg border border-base-200 bg-base-100 px-3 py-2 text-sm font-semibold shadow-sm lg:hidden"
+                        @click="open = !open"
+                        :aria-expanded="open"
+                        aria-controls="right-panel-content">
+                    <span class="flex items-center gap-2">
+                        <span class="relative inline-flex" aria-hidden="true">
+                            <i data-lucide="bell" class="w-4 h-4"></i>
+                            <span
+                                data-quick-notification-badge
+                                data-count="0"
+                                class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white hidden"
+                            ></span>
                         </span>
-                        <span class="transition-transform duration-200" :class="open ? 'rotate-180' : ''">
-                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                        </span>
-                    </button>
+                        Notifications
+                    </span>
+                    <span class="transition-transform duration-200" :class="open ? 'rotate-180' : ''">
+                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </span>
+                </button>
 
-                    <div id="right-panel-content" x-show="open" x-transition.opacity.duration.200ms x-cloak class="mt-1 lg:mt-0">
-                        {{-- Quick Few Notifications --}}
-                        <x-notifications.quick />
-                    </div>
+                <div id="right-panel-content" x-show="open" x-transition.opacity.duration.200ms x-cloak class="mt-1 lg:mt-0">
+                    {{-- Quick Few Notifications --}}
+                    <x-notifications.quick />
                 </div>
-            @endauth
+            </div>
         </div>
+        @endauth
 
         {{-- Center panel - main content --}}
-        <div class="{{ $vertical
-            ? 'order-2 lg:order-0 lg:col-start-1 lg:row-start-1 xl:col-start-2'
-            : 'order-3 lg:order-2 lg:col-span-6 lg:col-start-4 lg:row-start-1' }}" id="center-panel">
+        <div class="{{ $guest
+            ? 'min-w-0'
+            : ($vertical
+                ? 'order-2 lg:order-0 lg:col-start-1 lg:row-start-1 xl:col-start-2'
+                : 'order-3 lg:order-2 lg:col-span-6 lg:col-start-4 lg:row-start-1') }}" id="center-panel">
 
             {{-- Feed panel: post form + bleeps (toggled as a single unit on mobile) --}}
             <div id="feed-panel">

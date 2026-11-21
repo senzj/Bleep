@@ -272,6 +272,53 @@ class SystemSettings
                 'min' => null,
                 'max' => null,
             ],
+
+            'announcement_enabled' => [
+                'label' => 'Show site announcement',
+                'description' => 'Display the announcement banner at the top of every page, including for signed-out visitors.',
+                'group' => 'Announcement',
+                'type' => 'boolean',
+                'default' => true,
+                'env' => null,
+                'config' => null,
+                'preference' => null,
+                'options' => null,
+                'min' => null,
+                'max' => null,
+            ],
+
+            'announcement_level' => [
+                'label' => 'Announcement style',
+                'description' => 'Colour and urgency of the announcement banner.',
+                'group' => 'Announcement',
+                'type' => 'select',
+                'default' => 'warning',
+                'env' => null,
+                'config' => null,
+                'preference' => null,
+                'options' => [
+                    'info' => 'Info',
+                    'success' => 'Success',
+                    'warning' => 'Warning',
+                    'error' => 'Error',
+                ],
+                'min' => null,
+                'max' => null,
+            ],
+
+            'announcement_message' => [
+                'label' => 'Announcement message',
+                'description' => 'Shown at the top of every page. Leave blank to hide it without turning the setting off.',
+                'group' => 'Announcement',
+                'type' => 'text',
+                'default' => "Due to hosting limitations, Chat is unavailable. Editing may fail and media uploads can be interrupted.\nBleeps, comments and the bulletin board still work.",
+                'env' => null,
+                'config' => null,
+                'preference' => null,
+                'options' => null,
+                'min' => null,
+                'max' => null,
+            ],
         ];
     }
 
