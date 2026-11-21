@@ -87,7 +87,9 @@ function loadVideoSource(video) {
  */
 function isVideoSourceLoaded(video) {
     const source = video.querySelector('source');
-    return source && source.src && source.src !== '' && !source.src.startsWith('about:');
+    const src = video.currentSrc || video.getAttribute('src') || source?.src || '';
+
+    return src !== '' && !src.startsWith('about:');
 }
 
 /**
@@ -220,10 +222,15 @@ function restoreStoredVideoPosition(video) {
  * Replace the browser's native video controls with a compact bar that follows
  * the app's Tailwind/DaisyUI theme. Comment videos keep native controls because
  * they are mounted by Vue and manage their own lifecycle.
+ *
+ * `viewer` is used by the expanded media viewer: it may use the custom chrome
+ * even though it opts out of autoplay, and its fullscreen action is the viewer
+ * itself, so no native fullscreen button is offered.
  */
-function attachCustomVideoControls(video) {
+function attachCustomVideoControls(video, { viewer = false } = {}) {
     if (video.dataset.customControls === '1') return;
-    if (video.hasAttribute('data-no-autoplay')) return;
+    if (video.hasAttribute('data-no-autoplay') && !viewer) return;
+    if (video.hasAttribute('data-native-controls')) return;
 
     const host = video.parentElement;
     if (!host) return;
@@ -237,7 +244,7 @@ function attachCustomVideoControls(video) {
     host.classList.add('group');
 
     const bar = document.createElement('div');
-    bar.className = 'bleep-video-controls';
+    bar.className = `bleep-video-controls${viewer ? ' bleep-video-controls--viewer' : ''}`;
     bar.dataset.videoControls = '1';
     bar.innerHTML = `
         <button type="button" data-video-play class="btn btn-ghost btn-xs btn-circle shrink-0" aria-label="Play video">
@@ -260,7 +267,7 @@ function attachCustomVideoControls(video) {
                 aria-label="Video settings" aria-haspopup="menu" aria-expanded="false">
             <span><i data-lucide="settings" class="h-4 w-4"></i></span>
         </button>
-        <button type="button" data-video-fullscreen class="btn btn-ghost btn-xs btn-circle shrink-0" aria-label="Toggle fullscreen">
+        <button type="button" data-video-fullscreen class="btn btn-ghost btn-xs btn-circle shrink-0${viewer ? ' hidden' : ''}" aria-label="Toggle fullscreen">
             <span><i data-lucide="maximize" class="h-4 w-4"></i></span>
         </button>
         <div data-video-menu class="bleep-video-menu hidden" role="menu">
@@ -287,7 +294,7 @@ function attachCustomVideoControls(video) {
                 <i data-lucide="picture-in-picture" class="h-4 w-4"></i>
                 <span>Picture in picture</span>
             </button>
-            <button type="button" data-video-fullscreen-menu class="bleep-video-menu__item" role="menuitem">
+            <button type="button" data-video-fullscreen-menu class="bleep-video-menu__item${viewer ? ' hidden' : ''}" role="menuitem">
                 <i data-lucide="maximize" class="h-4 w-4"></i>
                 <span>Fullscreen</span>
             </button>
@@ -356,6 +363,17 @@ function attachCustomVideoControls(video) {
     };
 
     const requestFullscreen = () => {
+        // The app's expanded viewer is the fullscreen surface for feed media.
+        // It keeps the custom chrome, close button and seek controls available
+        // on mobile, where native video fullscreen hides the custom UI.
+        const tile = !viewer ? host.closest('[data-media-index]') : null;
+
+        if (tile && tile.closest('[data-bleep-media]') && document.getElementById('media-modal')) {
+            tile.click();
+
+            return;
+        }
+
         if (isNativeFullscreen()) {
             if (document.fullscreenElement) {
                 document.exitFullscreen?.()?.catch?.(() => {});
@@ -498,12 +516,23 @@ function attachCustomVideoControls(video) {
     };
 
     playBtn?.addEventListener('click', () => {
-        if (video.paused) {
-            if (video.ended) video.currentTime = 0;
-            video.play().catch(() => {});
-        } else {
+        if (!video.paused) {
             video.pause();
+
+            return;
         }
+
+        if (video.ended) video.currentTime = 0;
+
+        // Load the source inside the tap handler. Deferring either step to
+        // `loadedmetadata` loses the mobile user activation and the play
+        // promise is rejected, which is why inline videos would not start on
+        // phones even though desktop worked.
+        if (!isVideoSourceLoaded(video)) {
+            loadVideoSource(video);
+        }
+
+        video.play().catch(() => syncPlayIcon());
     });
 
     seekEl?.addEventListener('input', () => {
@@ -588,11 +617,15 @@ function initVideoPlayers(container = document) {
         // Set stored volume
         video.volume = storedVolume;
 
+        // The expanded viewer may use the custom chrome even though it opts
+        // out of feed autoplay.
+        const isViewerVideo = video.id === 'media-modal-video';
+
         // Swap the browser's controls for the themed custom bar.
-        attachCustomVideoControls(video);
+        attachCustomVideoControls(video, { viewer: isViewerVideo });
 
         // Observe video for autoplay when in view
-        if (observer) {
+        if (observer && !isViewerVideo) {
             observer.observe(video);
         }
 
@@ -602,23 +635,17 @@ function initVideoPlayers(container = document) {
         }
 
         // Handle manual play
-        video.addEventListener('play', (e) => {
+        video.addEventListener('play', () => {
             delete video.dataset.policyPause;
             delete video.dataset.userPaused;
 
-            // Check if source needs to be loaded
+            // Programmatic plays (autoplay, viewer handoff) may arrive before
+            // the deferred source exists. Load it and re-ask for playback
+            // without pausing first, so the request is not lost on touch
+            // devices that reject delayed play calls.
             if (!isVideoSourceLoaded(video)) {
-                e.preventDefault();
-                pauseProgrammatically(video);
-
-                // Load the source
                 loadVideoSource(video);
-
-                // Play after metadata loads
-                video.addEventListener('loadedmetadata', () => {
-                    video.play().catch(() => {});
-                }, { once: true });
-                return;
+                video.play().catch(() => {});
             }
 
             pauseAllVideosExcept(video);

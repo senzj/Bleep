@@ -438,8 +438,19 @@
 
 /* Inside the full-screen viewer the bar belongs to the video only, never to
    the image view. */
-#media-modal-container > video.hidden + .bleep-video-controls {
+#media-modal-video-stage.hidden .bleep-video-controls {
     display: none;
+}
+
+/* The viewer bar is the primary playback surface, so give it a little more
+   breathing room on touch screens and keep it clear of the home indicator. */
+#media-modal-video-stage {
+    touch-action: manipulation;
+}
+
+#media-modal-video-stage .bleep-video-controls.bleep-video-controls--viewer {
+    padding: 2rem 0.75rem calc(0.65rem + env(safe-area-inset-bottom));
+    touch-action: manipulation;
 }
 
 /* Open hand while hovering the zoomable image, closed hand while dragging. */

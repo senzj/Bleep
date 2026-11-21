@@ -6,6 +6,7 @@ use App\Models\Conversation;
 use App\Models\Following;
 use App\Models\Likes;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 function makeFriend(User $viewer, array $attributes = []): User
@@ -92,6 +93,46 @@ it('counts weeks away from the persistent last active stamp', function () {
 
     expect($payload['is_online'])->toBeFalse()
         ->and($payload['last_seen_at'])->toBe($away->last_active_at->toIso8601String());
+});
+
+it('marks a chatted non-mutual member as online in the conversation list', function () {
+    $viewer = User::factory()->create();
+    $chatPartner = User::factory()->create();
+
+    $conversation = Conversation::create([
+        'is_group' => false,
+        'creator_id' => $viewer->id,
+    ]);
+    $conversation->participants()->attach([$viewer->id, $chatPartner->id]);
+
+    DB::table('sessions')->insert([
+        'id' => 'chat-presence-session',
+        'user_id' => $chatPartner->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'Pest',
+        'payload' => '',
+        'last_activity' => now()->timestamp,
+    ]);
+
+    $conversations = collect($this->actingAs($viewer)
+        ->getJson('/chat/conversations')
+        ->assertOk()
+        ->json('data'));
+
+    $participant = collect($conversations->firstWhere('id', $conversation->id)['participants'])
+        ->firstWhere('id', $chatPartner->id);
+
+    expect($participant['is_online'])->toBeTrue();
+
+    // The friend directory only lists mutuals, so the home online row also
+    // reads conversation participants to include people already chatted with.
+    $directoryIds = collect($this->actingAs($viewer)
+        ->getJson('/chat/users')
+        ->assertOk()
+        ->json('data'))
+        ->pluck('id');
+
+    expect($directoryIds)->not->toContain($chatPartner->id);
 });
 
 it('falls back to the persistent last active stamp in conversation participants', function () {

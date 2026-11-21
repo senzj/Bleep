@@ -48,21 +48,23 @@
                  style="width:0%"></div>
         </div>
 
-        {{-- Controls Row --}}
-        <div class="flex items-center justify-between gap-2">
+        {{-- Controls Row: a three-column grid keeps the play button perfectly
+             centred no matter how wide the time or action columns grow. --}}
+        <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
 
             {{-- Left: Time --}}
-            <div class="text-xs text-base-content/60 min-w-[70px] tabular-nums font-mono">
+            <div class="text-xs text-base-content/60 min-w-0 justify-self-start tabular-nums font-mono">
                 <span class="audio-current-time" data-audio-id="{{ $audioId }}">0:00</span>
                 <span class="mx-1">/</span>
                 <span class="audio-total-time"   data-audio-id="{{ $audioId }}">0:00</span>
             </div>
 
             {{-- Center: Play/Pause --}}
-            <div class="flex items-center gap-1">
+            <div class="flex items-center justify-center">
                 <button type="button"
-                        class="audio-play-btn btn btn-primary btn-sm btn-circle shadow-md hover:scale-105 active:scale-95 transition-transform"
-                        data-audio-id="{{ $audioId }}">
+                        class="audio-play-btn btn btn-primary btn-circle shadow-md hover:scale-105 active:scale-95 transition-transform touch-manipulation"
+                        data-audio-id="{{ $audioId }}"
+                        aria-label="Play audio">
                     <span class="play-icon    pointer-events-none"><i data-lucide="play"  class="w-5 h-5 pointer-events-none"></i></span>
                     <span class="pause-icon   pointer-events-none" style="display:none;"><i data-lucide="pause" class="w-5 h-5 pointer-events-none"></i></span>
                     <span class="loading-icon pointer-events-none" style="display:none;"><span class="loading loading-spinner loading-sm"></span></span>
@@ -70,7 +72,7 @@
             </div>
 
             {{-- Right: Speed + Download + Volume --}}
-            <div class="flex items-center gap-3 min-w-[70px] justify-end" data-audio-actions>
+            <div class="flex items-center gap-3 min-w-0 justify-self-end" data-audio-actions>
 
                 {{-- Speed --}}
                 <div class="relative" x-data="{ open: false }">

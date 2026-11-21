@@ -326,28 +326,33 @@ function initAudioPlayers(container = document) {
                 loadedSource = true;
             }
 
+            if (!audioEl.paused) {
+                audioEl.pause();
+                return;
+            }
+
             const startPlayback = () => {
                 if (activeAudio && activeAudio !== audioEl) activeAudio.pause();
                 if (window.pauseAllVideos) window.pauseAllVideos();
-                audioEl.play().catch(() => setPlayState(false));
                 activeAudio = audioEl;
+
+                // Mobile browsers only allow unmuted playback from directly
+                // inside the tap handler. Waiting for `loadedmetadata` used to
+                // drop that activation, so the play promise was rejected.
+                audioEl.play().catch(() => setPlayState(false));
             };
 
-            if (audioEl.paused) {
-                // Apply the remembered position before the first frame plays,
-                // so a refresh resumes exactly where the listener stopped.
-                if (loadedSource) {
-                    audioEl.addEventListener('loadedmetadata', () => {
-                        restoreStoredAudioPosition(audioEl);
-                        startPlayback();
-                    }, { once: true });
-                } else {
+            // Apply the remembered position once metadata exists, but start
+            // the request immediately so the gesture is still valid.
+            if (loadedSource) {
+                audioEl.addEventListener('loadedmetadata', () => {
                     restoreStoredAudioPosition(audioEl);
-                    startPlayback();
-                }
+                }, { once: true });
             } else {
-                audioEl.pause();
+                restoreStoredAudioPosition(audioEl);
             }
+
+            startPlayback();
         });
 
         audioEl.addEventListener('play',    () => setPlayState(true));

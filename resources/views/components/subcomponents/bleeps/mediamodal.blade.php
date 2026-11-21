@@ -64,14 +64,17 @@
              style="transform-origin: center center; width: auto !important; height: auto !important; max-width: 95vw !important; max-height: 85vh !important; object-fit: contain !important;">
 
         {{-- Video: the viewer drives playback and state, so the feed autoplay
-             observer must leave it alone. --}}
-        <video id="media-modal-video"
-               data-no-autoplay
-               class="hidden w-auto h-auto max-w-[95vw] max-h-[85vh] object-contain"
-               controls
-               playsinline
-               style="width: auto !important; height: auto !important; max-width: 95vw !important; max-height: 85vh !important; object-fit: contain !important;">
-        </video>
+             observer must leave it alone. The stage gives the custom control
+             bar a positioned parent inside the centred viewer. --}}
+        <div id="media-modal-video-stage" class="relative max-w-[95vw] max-h-[85vh]">
+            <video id="media-modal-video"
+                   data-no-autoplay
+                   class="hidden w-auto h-auto max-w-[95vw] max-h-[85vh] object-contain"
+                   controls
+                   playsinline
+                   style="width: auto !important; height: auto !important; max-width: 95vw !important; max-height: 85vh !important; object-fit: contain !important;">
+            </video>
+        </div>
     </div>
 
     {{-- Counter and slide indicator --}}

@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.getElementById('media-modal-next');
     const image = document.getElementById('media-modal-image');
     const video = document.getElementById('media-modal-video');
+    const videoStage = document.getElementById('media-modal-video-stage');
     const counter = document.getElementById('media-modal-counter');
     const dots = document.getElementById('media-modal-dots');
     const container = document.getElementById('media-modal-container');
@@ -251,6 +252,11 @@ document.addEventListener('DOMContentLoaded', () => {
         measureViewerCenter();
 
         ensureIcons();
+
+        // The viewer's video uses the same custom controls as the feed. This
+        // is a no-op once the page-level player initializer has run, and it
+        // covers viewers mounted after the initial pass.
+        window.initVideoPlayers?.(modal);
     }
 
     /**
@@ -330,9 +336,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (state.playing) {
                 video.play().catch(() => {});
-            } else {
-                video.pause();
             }
+            // The viewer starts paused; never force a late pause here. Doing so
+            // could stop playback the viewer had just started while metadata
+            // was still arriving on a slow mobile connection.
         };
 
         if (video.readyState >= 1) {
@@ -810,6 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     video.load();
                 }
                 video.classList.add('hidden');
+                videoStage?.classList.add('hidden');
 
                 image.removeAttribute('src');
                 image.alt = '';
@@ -913,6 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resetZoom();
         image.classList.add('hidden');
         video.classList.add('hidden');
+        videoStage?.classList.add('hidden');
         video.pause();
         setLoading(false);
 
@@ -993,6 +1002,7 @@ document.addEventListener('DOMContentLoaded', () => {
             video.pause();
             video.src = item.src;
             video.classList.remove('hidden');
+            videoStage?.classList.remove('hidden');
             openModal();
 
             if (state) {
